@@ -541,3 +541,28 @@ here receives the directive before any further work.
   are GONE — display is now the classic Georgia serif stack, body is the
   clean system sans stack. Zero font downloads → the font-swap-bound LCP
   (U1 measured 3.2s mobile) is dead by construction. STR/05 §2 updated.
+
+## Fix wave (post-mega-wave, 2 agents, disjoint territories)
+
+- **FW-2** ✅ interaction layer — 11/11: Sheet focus management complete
+  (focus dialog on open, doc-level Tab-cycle trap with wraparound,
+  open-stack for nested sheets, focus restore on close, dismissible-Esc,
+  motion props untouched post-P0); Button disabled 70% +
+  pointer-events-none (kills hover-paint drift across variants);
+  useCountUp t clamped [0,1] (no more −74 coins first frames); countdown
+  urgent ≤3 (10s windows back to amber→red spec); usePrefersReducedMotion
+  → useSyncExternalStore + SSR snapshot (no +0 flash, data-reduced-motion
+  contract intact); parseCodeFromPasted prefers /r/ segment then last ≥5
+  charset run (+7 unit tests); footer links 48px, tab-bar labels text-xs,
+  header auth slot fixed h-13 (52px, zero CLS) + 48×48 controls; ghost
+  THROW stub + E/X keys guarded, "YOU WIN"/"{name} WINS" copy, LEAVE THE
+  TABLE added to game-over (room:leave → reset → /rooms); MotionLab ghost
+  fires for real + lab bar scrollable (THROW fits 812px); totalPile
+  plumbed through the store (lobby:state/play:accept/round:new reset) +
+  rendered as an "on the table: N" chip; HandFan/GameCard accessible
+  names carry the rank; ProfileView Link><Button nested ×3 un-nested.
+  heroSeat spectator nullability deliberately untouched (parked as its
+  own follow-up). Web suite 63/63, tsc clean, build green (22 routes).
+- **FW-1** 🏃 data layer — in flight (emote enum, HandshakeSchema prune,
+  tier union, admin safeParse, mock charset/doors/fixtures, robots +
+  sitemap + metadata + favicon).

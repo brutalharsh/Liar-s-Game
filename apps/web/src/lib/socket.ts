@@ -34,9 +34,9 @@ import {
   clientEventSchemas,
   type ClientAction,
   type EmitResult,
-  type Handshake,
   type ServerEvent,
   type ServerEventName,
+  type WireAvatarSpec,
   flattenAck,
   serverEventSchemas,
   themeToWire,
@@ -44,6 +44,18 @@ import {
 import { MockRoom } from "@/lib/mock/demo-room";
 
 export type TransportMode = "mock" | "live";
+
+/**
+ * Local identity payload handed to `connect`. This is APP-side only — NOT a
+ * wire contract: the live transport authenticates purely via the `lg_session`
+ * cookie (withCredentials, STR/07 §0 — there is no guest/reconnect token on
+ * the wire). The mock adapter consumes the nickname/avatarSpec to script the
+ * hero seat.
+ */
+export interface ConnectIdentity {
+  nickname?: string;
+  avatarSpec?: WireAvatarSpec;
+}
 
 /**
  * Transport lifecycle (live adapter only; the mock never fires).
@@ -55,7 +67,7 @@ export type SocketStatus = "connected" | "reconnected" | "dropped";
 
 export interface SocketAdapter {
   readonly mode: TransportMode;
-  connect(handshake: Handshake): Promise<void>;
+  connect(identity: ConnectIdentity): Promise<void>;
   on(handler: (ev: ServerEvent) => void): () => void;
   /** Subscribe to transport lifecycle changes. Unsubscribe = returned fn. */
   onStatus(handler: (status: SocketStatus) => void): () => void;
@@ -88,16 +100,18 @@ export class LiveSocketAdapter implements SocketAdapter {
     for (const handler of this.statusHandlers) handler(status);
   }
 
-  connect(handshake: Handshake): Promise<void> {
+  connect(_identity: ConnectIdentity): Promise<void> {
     if (this.connectPromise) return this.connectPromise;
     this.everConnected = false;
     this.connectPromise = new Promise<void>((resolve, reject) => {
       // Auth per STR/07 §0: the Socket.IO handshake carries the `lg_session`
-      // cookie implicitly — withCredentials sends it. `auth` carries the
-      // sessionIndependent identity (reconnect token etc.).
+      // cookie implicitly — withCredentials sends it. NOTHING rides `auth`
+      // (no guest/reconnect tokens exist on the wire; identity comes from
+      // the session + DB server-side), so the identity payload is ignored
+      // here — only the mock adapter consumes it.
       const socket = this.makeClient(this.url(), {
         withCredentials: true,
-        auth: handshake as Record<string, unknown>,
+        auth: {},
       });
       this.socket = socket;
       socket.on("connect", () => {
@@ -224,9 +238,9 @@ class MockSocketAdapter implements SocketAdapter {
   private handler: ((ev: ServerEvent) => void) | null = null;
   private connectPromise: Promise<void> | null = null;
 
-  connect(handshake: Handshake): Promise<void> {
+  connect(identity: ConnectIdentity): Promise<void> {
     if (this.connectPromise) return this.connectPromise;
-    this.room.setIdentity({ nickname: handshake.nickname, avatarSpec: handshake.avatarSpec ?? null });
+    this.room.setIdentity({ nickname: identity.nickname, avatarSpec: identity.avatarSpec ?? null });
     this.room.bind((ev) => this.handler?.(ev));
     this.connectPromise = new Promise<void>((resolve) => {
       // a beat of "walking over to the table", then presence marks us live

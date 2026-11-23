@@ -3,6 +3,8 @@ import { TableClient } from "@/components/table/TableClient";
 
 export const metadata: Metadata = {
   title: "Table",
+  description:
+    "The felt itself: throw cards face-down, call liars, and pray the cylinder clicks empty in a live Liar's Game match.",
 };
 
 export default async function TablePage({

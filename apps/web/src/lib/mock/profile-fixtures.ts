@@ -156,7 +156,7 @@ const POOL_SEEDS: readonly PoolSeed[] = [
   { id: "u-orion", nick: "ORION", animal: "eagle", level: 49, frac: 0.55, title: "cat-with-nine-lives", spec: { hair: "hair-bleach", frame: "frame-ivory" } },
   { id: "u-blackjack", nick: "BLACKJACK", animal: "raccoon", level: 47, frac: 0.21, title: "sharp-eye", spec: { hat: "hat-bowler", glasses: "glasses-goggles" } },
   { id: "u-tuck", nick: "TUCK", animal: "gator", level: 44, frac: 0.49, title: "bar-legend", spec: { hat: "hat-newsboy" } },
-  { id: "u-me", nick: "YOU", animal: "fox", level: 42, frac: 0.38, title: "dead-eye", spec: { hat: "hat-stetson", shirt: "shirt-vest", frame: "frame-brass" } },
+  { id: "u-me", nick: "MAVERICK", animal: "fox", level: 42, frac: 0.38, title: "dead-eye", spec: { hat: "hat-stetson", shirt: "shirt-vest", frame: "frame-brass" } },
   { id: "u-moss", nick: "MOSS", animal: "deer", level: 39, frac: 0.66, title: null, spec: { hair: "hair-brunette", shirt: "shirt-cardsharp" } },
   { id: "u-echo", nick: "ECHO", animal: "snake", level: 37, frac: 0.12, title: "chicken-dinner", spec: { frame: "frame-mahogany", voicePack: "voice-whisper" } },
   { id: "u-grit", nick: "GRIT", animal: "wolf", level: 34, frac: 0.83, title: "regular", spec: { beard: "beard-incognito" } },
@@ -215,9 +215,14 @@ function metricValue(account: PoolAccount, metric: LeaderboardMetric): number {
 }
 
 function boardFor(metric: LeaderboardMetric): PoolAccount[] {
-  return POOL.slice().sort(
+  const ranked = POOL.slice().sort(
     (a, b) => metricValue(b, metric) - metricValue(a, metric) || a.accountId.localeCompare(b.accountId),
   );
+  // titles rows only exist for players who actually unlocked one (the real
+  // facet counts title_progress docs); the other metrics rank every account.
+  // Filtering HERE keeps the rows and the pager's total derived from the
+  // SAME list, so a 0-value titles row can never contradict the count.
+  return metric === "titles" ? ranked.filter((a) => a.titles > 0) : ranked;
 }
 
 /** GET /api/leaderboard — mock branch consumed by getLeaderboard(). */
@@ -225,9 +230,7 @@ export const mockLeaderboard = {
   async page(metric: LeaderboardMetric, page: number, perPage: number): Promise<LeaderboardPage> {
     const ranked = boardFor(metric);
     const start = (page - 1) * perPage;
-    // titles rows only exist for players who actually unlocked one (the real
-    // facet counts title_progress docs); the other metrics rank every account.
-    const total = metric === "titles" ? ranked.filter((a) => a.titles > 0).length : ranked.length;
+    const total = ranked.length;
     const leaderboard: LeaderboardEntry[] = ranked.slice(start, start + perPage).map((account, i) => ({
       accountId: account.accountId,
       nickname: account.nickname,
@@ -290,7 +293,7 @@ function viewerProfile(atMax: boolean): ProfileResponse {
       },
       you: {
         seat: randInt(rng, 1, capacity),
-        nickname: "YOU",
+        nickname: "MAVERICK",
         titleAtPlay: i < 4 ? "dead-eye" : "sharp-eye",
         stats: {
           kills,
@@ -312,8 +315,8 @@ function viewerProfile(atMax: boolean): ProfileResponse {
   return {
     user: {
       id: "u-me",
-      nickname: "YOU",
-      name: "You Doe",
+      nickname: "MAVERICK",
+      name: "Maverick Doe",
       avatarUrl: null,
       avatarSpec: { base: "fox", hat: "hat-stetson", shirt: "shirt-vest", frame: "frame-brass" },
       activeTitle: atMax ? "bar-legend" : "dead-eye",

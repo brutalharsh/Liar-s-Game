@@ -232,8 +232,12 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
 
   // users list
   router.get('/users', (req: Request, res: Response): void => {
-    const query = ListQuery.parse(req.query);
-    const search = query.search && query.search.length > 0 ? query.search : null;
+    const query = ListQuery.safeParse(req.query);
+    if (!query.success) {
+      jsonError(res, 400, 'VALIDATION');
+      return;
+    }
+    const search = query.data.search && query.data.search.length > 0 ? query.data.search : null;
     const filter = search
       ? {
           $or: [
@@ -247,7 +251,7 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
     void Promise.all([
       User.find(filter)
         .sort({ lastSeenAt: -1 })
-        .skip((query.page - 1) * USERS_PER_PAGE)
+        .skip((query.data.page - 1) * USERS_PER_PAGE)
         .limit(USERS_PER_PAGE)
         .select('provider name nickname avatarUrl email level xp banned activeTitle createdAt lastSeenAt')
         .lean()
@@ -257,7 +261,7 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
       const ids = docs.map((doc) => String(doc._id));
       void deriveBalances(ids).then((balances) => {
         res.json({
-          page: query.page,
+          page: query.data.page,
           perPage: USERS_PER_PAGE,
           total,
           users: docs.map((doc) => ({
@@ -409,19 +413,23 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
 
   // payment records browser
   router.get('/payments', (req: Request, res: Response): void => {
-    const query = PaymentsQuery.parse(req.query);
-    const filter = query.status ? { status: query.status } : {};
+    const query = PaymentsQuery.safeParse(req.query);
+    if (!query.success) {
+      jsonError(res, 400, 'VALIDATION');
+      return;
+    }
+    const filter = query.data.status ? { status: query.data.status } : {};
     void Promise.all([
       Checkout.find(filter)
         .sort({ createdAt: -1 })
-        .skip((query.page - 1) * USERS_PER_PAGE)
+        .skip((query.data.page - 1) * USERS_PER_PAGE)
         .limit(USERS_PER_PAGE)
         .lean()
         .exec(),
       Checkout.countDocuments(filter).exec(),
     ]).then(([rows, total]) => {
       res.json({
-        page: query.page,
+        page: query.data.page,
         perPage: USERS_PER_PAGE,
         total,
         checkouts: rows.map(mapCheckout),
@@ -646,9 +654,13 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
 
   // image browser (20/page from the service, absolute URLs resolved)
   router.get('/images', async (req: Request, res: Response): Promise<void> => {
-    const query = ImagesQuery.parse(req.query);
+    const query = ImagesQuery.safeParse(req.query);
+    if (!query.success) {
+      jsonError(res, 400, 'VALIDATION');
+      return;
+    }
     try {
-      const list = await images.listImages(query.page);
+      const list = await images.listImages(query.data.page);
       const base = config.imageServer.url.replace(/\/+$/, '');
       res.json({
         page: list.page,
@@ -677,18 +689,22 @@ export function createAdminRouter(config: AppConfig, deps: AdminRouterDeps = {})
 
   // audit trail browser
   router.get('/audit', (req: Request, res: Response): void => {
-    const query = ListQuery.parse(req.query);
+    const query = ListQuery.safeParse(req.query);
+    if (!query.success) {
+      jsonError(res, 400, 'VALIDATION');
+      return;
+    }
     void Promise.all([
       AdminAudit.find()
         .sort({ at: -1 })
-        .skip((query.page - 1) * AUDIT_PER_PAGE)
+        .skip((query.data.page - 1) * AUDIT_PER_PAGE)
         .limit(AUDIT_PER_PAGE)
         .lean()
         .exec(),
       AdminAudit.countDocuments({}).exec(),
     ]).then(([rows, total]) => {
       res.json({
-        page: query.page,
+        page: query.data.page,
         perPage: AUDIT_PER_PAGE,
         total,
         rows: rows.map((row) => ({

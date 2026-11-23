@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { LiveSocketAdapter, socketMode, toWireAction } from "@/lib/socket";
-import { HandshakeSchema } from "@/lib/wire";
+import { LiveSocketAdapter, socketMode, toWireAction, type ConnectIdentity } from "@/lib/socket";
 import type { Socket } from "socket.io-client";
 
 /**
@@ -12,7 +11,11 @@ import type { Socket } from "socket.io-client";
  * ============================================================================
  */
 
-const HS = { guestToken: "g-token-0123456789abcdef" };
+/**
+ * Connect payload used by the lifecycle tests — the wire carries NO handshake
+ * tokens (STR/07 §0: cookie-only auth); only the local identity rides this.
+ */
+const ID: ConnectIdentity = { nickname: "MAVERICK" };
 
 type Ack = (err: Error | null, ack?: unknown) => void;
 
@@ -173,16 +176,12 @@ describe("LiveSocketAdapter — transport lifecycle", () => {
     expect(socketMode()).toBe("mock");
   });
 
-  it("the test handshake satisfies the shared strict schema", () => {
-    expect(HandshakeSchema.safeParse(HS).success).toBe(true);
-  });
-
   it("connect resolves on the first connect, is memoized, and signals 'connected' once", async () => {
     const { adapter, made } = liveAdapterWithFake();
     const statuses: string[] = [];
     adapter.onStatus((s) => statuses.push(s));
-    const connected = adapter.connect(HS);
-    expect(adapter.connect(HS)).toBe(connected); // memoized — exactly one dial
+    const connected = adapter.connect(ID);
+    expect(adapter.connect(ID)).toBe(connected); // memoized — exactly one dial
     made[0]?.fire("connect");
     await connected;
     expect(statuses).toEqual(["connected"]);
@@ -193,7 +192,7 @@ describe("LiveSocketAdapter — transport lifecycle", () => {
     const { adapter, made } = liveAdapterWithFake();
     const statuses: string[] = [];
     adapter.onStatus((s) => statuses.push(s));
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 
@@ -204,12 +203,12 @@ describe("LiveSocketAdapter — transport lifecycle", () => {
 
   it("a failed FIRST connect rejects, tears the fake down, and a retry dials fresh", async () => {
     const { adapter, made } = liveAdapterWithFake();
-    const first = adapter.connect(HS);
+    const first = adapter.connect(ID);
     made[0]?.fire("connect_error", new Error("boom"));
     await expect(first).rejects.toThrow("boom");
     expect(made[0]?.disconnected()).toBe(true); // no half-open socket left behind
 
-    const second = adapter.connect(HS); // must not inherit the poisoned memo
+    const second = adapter.connect(ID); // must not inherit the poisoned memo
     made[1]?.fire("connect");
     await second;
     expect(made).toHaveLength(2); // a fresh client was dialed
@@ -219,7 +218,7 @@ describe("LiveSocketAdapter — transport lifecycle", () => {
     const { adapter, made } = liveAdapterWithFake();
     const statuses: string[] = [];
     adapter.onStatus((s) => statuses.push(s));
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
     made[0]?.fire("disconnect", "ping timeout");
@@ -232,7 +231,7 @@ describe("LiveSocketAdapter — transport lifecycle", () => {
     const { adapter, made } = liveAdapterWithFake();
     const seen: string[] = [];
     const off = adapter.onStatus((s) => seen.push(s));
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
     off();
@@ -245,7 +244,7 @@ describe("LiveSocketAdapter — inbound validation (leak tripwire)", () => {
   it("forwards contract events; filters unknown names and malformed payloads", async () => {
     const { adapter, made } = liveAdapterWithFake();
     const errSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 
@@ -264,7 +263,7 @@ describe("LiveSocketAdapter — inbound validation (leak tripwire)", () => {
 describe("LiveSocketAdapter — outbound emit", () => {
   it("validates against the shared schema BEFORE anything leaves the browser", async () => {
     const { adapter, made } = liveAdapterWithFake();
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 
@@ -276,7 +275,7 @@ describe("LiveSocketAdapter — outbound emit", () => {
 
   it("a clean ack flattens to the screens' EmitResult shape", async () => {
     const { adapter, made } = liveAdapterWithFake();
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 
@@ -287,7 +286,7 @@ describe("LiveSocketAdapter — outbound emit", () => {
 
   it("a room:join ack flattens to { ok, code, spectator, yourSeat }", async () => {
     const { adapter, made } = liveAdapterWithFake();
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 
@@ -298,7 +297,7 @@ describe("LiveSocketAdapter — outbound emit", () => {
 
   it("an ack timeout never throws — it resolves { ok:false, ACK_TIMEOUT }", async () => {
     const { adapter, made } = liveAdapterWithFake();
-    const connected = adapter.connect(HS);
+    const connected = adapter.connect(ID);
     made[0]?.fire("connect");
     await connected;
 

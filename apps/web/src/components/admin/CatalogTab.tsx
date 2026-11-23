@@ -254,7 +254,7 @@ export function CatalogTab() {
                           )}
                         </td>
                         <td className="px-2 py-2">
-                          <Badge tone={item.tier === "rare" ? "brass" : "neutral"}>{item.tier ?? "fine"}</Badge>
+                          <Badge tone={item.tier === "common" || !item.tier ? "neutral" : "brass"}>{item.tier ?? "common"}</Badge>
                           {item.levelReq ? <Badge tone="warn">LVL {item.levelReq}</Badge> : null}
                           {item.free ? <Badge tone="good">FREE</Badge> : null}
                         </td>
@@ -347,7 +347,7 @@ export function CatalogTab() {
                         ) : (
                           <>
                             <p className="truncate font-body text-sm text-ivory">{item.name}</p>
-                            <p className="font-body text-xs text-brass">🪙 {formatCoins(item.price)} · {item.tier ?? "fine"}</p>
+                            <p className="font-body text-xs text-brass">🪙 {formatCoins(item.price)} · {item.tier ?? "common"}</p>
                           </>
                         )}
                       </div>

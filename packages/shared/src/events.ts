@@ -15,7 +15,6 @@
 import { z } from 'zod';
 import type { Seat } from './types.js';
 import {
-  AvatarSpecSchema,
   CardSchema,
   DeadlineTsSchema,
   MatchRecordSchema,
@@ -27,24 +26,11 @@ import {
   TableCardSchema,
   XpGainSchema,
 } from './types.js';
+import { EmoteIdSchema } from './emotes.js';
 import { RoomCodeSchema } from './room-code.js';
 
 /** Monotonic per-room event counter carried by EVERY server→client payload (STR/07 §4). */
 export const SeqSchema = z.number().int().min(0);
-
-// ---------------------------------------------------------------------------
-// Handshake (STR/07 §0) — Socket.IO `auth` object
-// ---------------------------------------------------------------------------
-
-export const HandshakeSchema = z.strictObject({
-  /** Server-issued guest/session token (at least 128-bit in practice). */
-  guestToken: z.string().min(16).max(128),
-  /** Present when reclaiming a held seat after a drop (issued per room join). */
-  reconnectToken: z.string().min(16).max(128).optional(),
-  nickname: z.string().max(64).optional(), // sanitizeDisplayName applies server-side
-  avatarSpec: AvatarSpecSchema.optional(),
-});
-export type Handshake = z.infer<typeof HandshakeSchema>;
 
 // ---------------------------------------------------------------------------
 // Client → Server (STR/07 §1) — ALL of these are zod-parsed before anything else
@@ -90,8 +76,8 @@ export const LiarCallPayloadSchema = z.strictObject({
 export type LiarCallPayload = z.infer<typeof LiarCallPayloadSchema>;
 
 export const EmoteSendPayloadSchema = z.strictObject({
-  /** Catalog emote slug; 3s cooldown enforced server-side. */
-  emoteId: z.string().min(1).max(32),
+  /** Canonical catalog slug (shared EMOTE_IDS — STR/05 §6); 3s cooldown enforced server-side. */
+  emoteId: EmoteIdSchema,
 });
 export type EmoteSendPayload = z.infer<typeof EmoteSendPayloadSchema>;
 
@@ -251,7 +237,8 @@ export type PresenceUpdatePayload = z.infer<typeof PresenceUpdatePayloadSchema>;
 export const EmoteBroadcastPayloadSchema = z.strictObject({
   seq: SeqSchema,
   seat: SeatSchema,
-  emoteId: z.string().min(1).max(32),
+  /** Canonical catalog slug — the enum keeps foreign emotes off the broadcast too. */
+  emoteId: EmoteIdSchema,
 });
 export type EmoteBroadcastPayload = z.infer<typeof EmoteBroadcastPayloadSchema>;
 

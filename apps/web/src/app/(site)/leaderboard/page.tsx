@@ -4,6 +4,8 @@ import { LeaderboardView } from "@/components/leaderboard/LeaderboardView";
 
 export const metadata: Metadata = {
   title: "Leaderboard",
+  description:
+    "Global all-time Liar's Game leaderboards — XP, wins, kills and unlocked titles. No MMR, just scars.",
 };
 
 /**

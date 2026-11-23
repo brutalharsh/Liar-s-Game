@@ -1,4 +1,5 @@
 import type { AvatarAnimal, LobbySnapshot, SeatView, ThemeId, Visibility } from "@/lib/wire";
+import { generateRoomCode } from "@/lib/wire";
 import { MOCK_PLAYERS } from "@/lib/mock/players";
 import { themeMeta, DEFAULT_THEME } from "@/lib/mock/themes";
 import { seededRng, randInt } from "@/lib/mock/rng";
@@ -99,7 +100,10 @@ export function makePublicRooms(): PublicRoomCard[] {
     const host = MOCK_PLAYERS[Math.floor(rng() * MOCK_PLAYERS.length)] ?? MOCK_PLAYERS[0];
     const seats = randInt(rng, 1, 6);
     rooms.push({
-      code: `RM${100 + i}`,
+      // Codes the teach-page tells users to type: 5 chars from shared's
+      // confusable-free alphabet (no I/L/O/0/1), minted by the SAME
+      // generator the server uses — never chars a real code can't contain.
+      code: generateRoomCode((max) => Math.floor(rng() * max)),
       name: names[i] ?? `TABLE ${i + 1}`,
       hostName: host.nickname,
       hostAvatar: { animal: host.avatar.animal },

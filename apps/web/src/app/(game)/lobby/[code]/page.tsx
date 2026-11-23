@@ -3,6 +3,8 @@ import { LobbyClient } from "@/components/lobby/LobbyClient";
 
 export const metadata: Metadata = {
   title: "Lobby",
+  description:
+    "A Liar's Game lobby: take your seat, wait for the host to fill the table, and shuffle up for a round of bluff and revolver.",
 };
 
 export default async function LobbyPage({

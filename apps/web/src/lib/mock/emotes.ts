@@ -1,21 +1,11 @@
-/** 10 preset emotes (STR/05 §6) — icon + text, colorblind-safe by design. */
-export interface EmotePreset {
-  id: string;
-  label: string;
-  emoji: string;
-}
+/**
+ * Emote presets — thin re-export of the CANONICAL shared catalog (STR/02,
+ * STR/05 §6). The UI's old W-era id set lived here and diverged from the
+ * server's relay whitelist (only `laugh` overlapped) — since the
+ * unification both ends derive from `@liars-game/shared` (AGENTS.md #4).
+ */
+export type { EmotePreset } from "@liars-game/shared";
 
-export const EMOTE_PRESETS: readonly EmotePreset[] = [
-  { id: "call-my-bluff", label: "Call my bluff", emoji: "🤥" },
-  { id: "my-condolences", label: "My condolences", emoji: "🕊️" },
-  { id: "shots-on-me", label: "Shots on me", emoji: "🥃" },
-  { id: "oops", label: "Oops", emoji: "😬" },
-  { id: "trust-me", label: "Trust me", emoji: "😇" },
-  { id: "snake", label: "Snake", emoji: "🐍" },
-  { id: "skull", label: "Skull", emoji: "💀" },
-  { id: "laugh", label: "Laugh", emoji: "😂" },
-  { id: "clap", label: "Clap", emoji: "👏" },
-  { id: "pray", label: "Pray", emoji: "🙏" },
-] as const;
+export { EMOTE_PRESETS } from "@liars-game/shared";
 
 export const EMOTE_COOLDOWN_MS = 3000;

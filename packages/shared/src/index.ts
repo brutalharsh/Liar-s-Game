@@ -7,6 +7,7 @@
  */
 export * from './types.js';
 export * from './events.js';
+export * from './emotes.js';
 export * from './room-code.js';
 export * from './sanitizer.js';
 export * from './timers.js';

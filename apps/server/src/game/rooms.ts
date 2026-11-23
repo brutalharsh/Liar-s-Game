@@ -29,6 +29,7 @@
 import { DEFAULT_MATCH_CONFIG, turnTimerMs } from '@liars-game/rules-engine';
 import type { MatchConfig, RosterEntry } from '@liars-game/rules-engine';
 import {
+  EMOTE_IDS,
   generateRoomCode,
   sanitizeRoomName,
   type PlayerState,
@@ -58,19 +59,12 @@ export const FREE_THEMES: readonly string[] = Object.freeze(['saloon', 'house-ta
 /** Big Table entitlement pin (entitlement key shape as in routes/shop.ts). */
 export const BIG_TABLE_ENTITLEMENT = Object.freeze({ kind: 'capacity', key: 'big-table' });
 
-/** The 10 preset emotes (STR/02) — opaque, blocklist-safe slugs. */
-export const EMOTE_CATALOG: readonly string[] = Object.freeze([
-  'tipping-hat',
-  'laugh',
-  'gasp',
-  'angry',
-  'sweat',
-  'cry',
-  'cheer',
-  'shush',
-  'thinking',
-  'wink',
-]);
+/**
+ * The 10 preset emotes (STR/02, STR/05 §6) — derived from the canonical
+ * `EMOTE_IDS` in @liars-game/shared, so the relay whitelist can never drift
+ * from the wire enum.
+ */
+export const EMOTE_CATALOG: readonly string[] = Object.freeze(EMOTE_IDS);
 
 const MIN_CAPACITY = 2;
 const MAX_CAPACITY = 10;

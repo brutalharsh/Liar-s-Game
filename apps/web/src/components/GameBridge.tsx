@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { socket, type SocketStatus } from "@/lib/socket";
 import { useGameStore, type GameStore } from "@/store/game";
 import { useUiStore, type ToastTone } from "@/store/ui";
-import { useIdentityStore, ensureGuestToken } from "@/store/identity";
+import { useIdentityStore } from "@/store/identity";
 import { avatarSpecToWire, type ClientAction, type EmitResult, type ServerEvent } from "@/lib/wire";
 
 /**
@@ -146,9 +146,10 @@ export function GameBridge() {
     const off = socket.on(handleEvent);
 
     const identity = useIdentityStore.getState();
+    // The wire has no handshake tokens (STR/07 §0 — cookie carries the
+    // session); connect takes only the local identity the mock adapter scripts.
     void socket
       .connect({
-        guestToken: identity.guestToken || ensureGuestToken(),
         nickname: identity.nickname || undefined,
         avatarSpec: avatarSpecToWire(identity.avatar) ?? undefined,
       })

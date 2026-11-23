@@ -4,6 +4,8 @@ import { JoinView } from "@/components/join/JoinView";
 
 export const metadata: Metadata = {
   title: "Join with code",
+  description:
+    "Got an invite? Punch in the 5-character room code and take your seat at a Liar's Game table.",
 };
 
 export default function JoinPage() {

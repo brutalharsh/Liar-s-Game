@@ -30,6 +30,7 @@ import {
   type Card,
   type ClientAction,
   type EmitResult,
+  type EmoteId,
   type MatchRecord,
   type MatchReward,
   type PlayerState,
@@ -54,7 +55,7 @@ export interface MockPlayerView {
 }
 
 const RANKS: Card["rank"][] = ["K", "Q", "A", "J"];
-const BOT_EMOTES = ["trust-me", "laugh", "snake", "oops", "clap"] as const;
+const BOT_EMOTES = ["tipping-hat", "laugh", "shush", "wink", "cheer"] as const;
 
 const sleep = (ms: number) => new Promise<void>((res) => setTimeout(res, ms));
 
@@ -402,7 +403,9 @@ export class MockRoom {
           return { ok: false, errorCode: ERROR_CODES.RATE_LIMITED, errorMessage: "Emotes cool down for 3 seconds." };
         }
         this.lastEmoteAt = Date.now();
-        this.push("emote:broadcast", { seat: 0, emoteId: action.emoteId });
+        // The adapter zod-validated the enum before handle(); the cast just
+        // re-narrows the string the wire schema already accepted.
+        this.push("emote:broadcast", { seat: 0, emoteId: action.emoteId as EmoteId });
         return { ok: true };
       }
       case "profile:tts-say": {
@@ -634,7 +637,7 @@ export class MockRoom {
       this.push("window:open", { playSeat: seat, closesAtTs: this.window.closesAtTs });
 
       if (seat !== 0 && rng() < 0.12) {
-        const emoteId = BOT_EMOTES[Math.floor(rng() * BOT_EMOTES.length)] ?? "trust-me";
+        const emoteId = BOT_EMOTES[Math.floor(rng() * BOT_EMOTES.length)] ?? "laugh";
         this.push("emote:broadcast", { seat, emoteId });
       }
 

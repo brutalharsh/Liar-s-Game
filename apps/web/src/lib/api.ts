@@ -28,6 +28,7 @@ import {
 } from "@/lib/mock/admin-fixtures";
 import { mockLeaderboard, mockProfile } from "@/lib/mock/profile-fixtures";
 import { makePublicRooms } from "@/lib/mock/rooms";
+import { mockFetch } from "@/lib/mock/api";
 
 // ══════════════════════════════ wire types ══════════════════════════════════
 
@@ -125,7 +126,7 @@ export interface AdminCatalogItem {
   category: string;
   name: string;
   price: number;
-  tier: "common" | "fine" | "rare" | "cursed";
+  tier: "common" | "rare" | "epic";
   free?: boolean;
   active: boolean;
   levelReq?: number;
@@ -725,12 +726,17 @@ export async function getRooms(params: { page?: number; perPage?: number } = {})
         idleMinutes: r.idleMinutes,
       }),
     );
-    return {
-      rooms: rooms.slice((page - 1) * perPage, page * perPage),
-      page,
-      perPage,
-      total: rooms.length,
-    };
+    // Through mockFetch so ?mock=loading|empty|error exercises the rooms
+    // page states exactly like every other mocked screen.
+    return mockFetch<RoomsPage>(
+      {
+        rooms: rooms.slice((page - 1) * perPage, page * perPage),
+        page,
+        perPage,
+        total: rooms.length,
+      },
+      { emptyValue: { rooms: [], page, perPage, total: 0 } },
+    );
   }
   return apiFetch<RoomsPage>(`/api/rooms${qs({ page, perPage })}`);
 }

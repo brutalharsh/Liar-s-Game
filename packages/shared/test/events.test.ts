@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   clientEventSchemas,
-  HandshakeSchema,
   parseClientEvent,
   parseServerEvent,
   RoomCreatePayloadSchema,
@@ -9,6 +8,7 @@ import {
   TtsSayPayloadSchema,
 } from '../src/events.js';
 import type { ClientEventName, ServerEventName } from '../src/events.js';
+import { EMOTE_PRESETS } from '../src/emotes.js';
 import { CardSchema, ViewPlayerStateSchema } from '../src/types.js';
 import { makeMatchRecord, makeRoomState, makeViewPlayer } from './fixtures.js';
 
@@ -112,18 +112,21 @@ describe('client event schemas (STR/07 §1)', () => {
     expect(schema.safeParse({ code: 'AB2C9' }).success).toBe(true);
   });
 
-  it('handshake covers guest/reconnect tokens + optional identity', () => {
-    expect(HandshakeSchema.safeParse({ guestToken: 'a'.repeat(32) }).success).toBe(true);
-    expect(
-      HandshakeSchema.safeParse({
-        guestToken: 'a'.repeat(32),
-        reconnectToken: 'b'.repeat(32),
-        nickname: 'Foxy',
-        avatarSpec: { base: 'fox' },
-      }).success,
-    ).toBe(true);
-    expect(HandshakeSchema.safeParse({}).success).toBe(false);
-    expect(HandshakeSchema.safeParse({ guestToken: 'short' }).success).toBe(false);
+  it('emote ids ARE the shared catalog — retired web-era ids reject', () => {
+    for (const preset of EMOTE_PRESETS) {
+      expect(
+        clientEventSchemas['emote:send'].safeParse({ emoteId: preset.id }).success,
+        preset.id,
+      ).toBe(true);
+      expect(
+        serverEventSchemas['emote:broadcast'].safeParse({ seq: 1, seat: 0, emoteId: preset.id })
+          .success,
+        preset.id,
+      ).toBe(true);
+    }
+    expect(clientEventSchemas['emote:send'].safeParse({ emoteId: 'call-my-bluff' }).success).toBe(false);
+    expect(clientEventSchemas['emote:send'].safeParse({ emoteId: 'snake' }).success).toBe(false);
+    expect(serverEventSchemas['emote:broadcast'].safeParse({ seq: 1, seat: 0, emoteId: 'party-parrot' }).success).toBe(false);
   });
 
   it('profile:tts-say never accepts an audio field', () => {

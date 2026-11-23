@@ -58,7 +58,7 @@ const CAST: readonly {
   banned?: string;
   spec?: Partial<AdminUser["avatarSpec"]>;
 }[] = [
-  { id: "u-me", nick: "YOU", animal: "fox", provider: "google", spec: { hat: "hat-stetson", shirt: "shirt-vest" } },
+  { id: "u-me", nick: "MAVERICK", animal: "fox", provider: "google", spec: { hat: "hat-stetson", shirt: "shirt-vest" } },
   { id: "u-scubb", nick: "SCUBB", animal: "raccoon", provider: "discord", spec: { hat: "hat-bowler", glasses: "glasses-shades" } },
   { id: "u-sue", nick: "SUE", animal: "owl", provider: "discord", spec: { glasses: "glasses-monocle", shirt: "shirt-stringtie" } },
   { id: "u-toar", nick: "TOAR", animal: "wolf", provider: "google", spec: { beard: "beard-dock", shirt: "shirt-denim" } },
@@ -176,7 +176,7 @@ const CATALOG: AdminCatalogItem[] = SHOP_ITEMS.map((item, i) => ({
   category: item.category,
   name: item.name,
   price: item.price,
-  tier: item.price === 0 ? "common" : item.price > 300 ? "rare" : "fine",
+  tier: item.price === 0 ? "common" : item.price > 300 ? "epic" : "rare",
   free: item.price === 0 && !item.levelReq,
   active: true,
   levelReq: item.levelReq,
@@ -356,7 +356,7 @@ export const mockAdmin = {
       category: input.category,
       name: input.name,
       price: input.price,
-      tier: input.price === 0 ? "common" : "fine",
+      tier: input.price === 0 ? "common" : "rare",
       free: input.price === 0,
       active: true,
       sort: CATALOG.length,
