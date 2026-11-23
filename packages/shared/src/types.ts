@@ -81,6 +81,43 @@ export const AvatarSpecSchema = z.strictObject({
 });
 export type AvatarSpec = z.infer<typeof AvatarSpecSchema>;
 
+/**
+ * The 7 canonical avatar bodies (owner-dictated 2026-11-23): humans cross
+ * sex (male/female) × build (thin/gym; `human-male-thin` is the DEFAULT) plus
+ * upright humanoid species (dog/cat/horse — two arms, species head, NOT
+ * feral quadrupeds). `base` stays a single combined slug so every existing
+ * consumer (tables, admin chips, wire payloads) stays byte-compatible.
+ */
+export const AVATAR_BASE_IDS = [
+  'human-male-thin',
+  'human-female-thin',
+  'human-male-gym',
+  'human-female-gym',
+  'dog',
+  'cat',
+  'horse',
+] as const;
+export type AvatarBaseId = (typeof AVATAR_BASE_IDS)[number];
+
+/** Wire-safe enum of the 7 canonical bases — the server's equip-side gate. */
+export const AVATAR_BASE_IDS_SCHEMA = z.enum(AVATAR_BASE_IDS);
+
+/** The base every new/blank spec falls back to. */
+export const DEFAULT_AVATAR_BASE: AvatarBaseId = 'human-male-thin';
+
+/**
+ * Slots a paper-doll part attaches to. Slot strings in `AvatarSpecSchema`
+ * stay open strings (catalog-validated server-side, STR/08 §7); THIS union
+ * is the typed surface for equip endpoints and the web avatar engine.
+ * `base` is deliberately NOT attachable — it joins via `AVATAR_BASE_IDS`.
+ */
+export const AttachableSlotsSchema = z.enum(['hair', 'beard', 'hat', 'shirt', 'glasses']);
+export type AttachableSlot = z.infer<typeof AttachableSlotsSchema>;
+
+/** Long-name aliases for the equip surface (owner-mission contract). */
+export const AvatarAttachableSlotSchema = AttachableSlotsSchema;
+export type AvatarAttachableSlot = AttachableSlot;
+
 // ---------------------------------------------------------------------------
 // Seats & players (per-viewer — this is the anti-cheat surface)
 // ---------------------------------------------------------------------------

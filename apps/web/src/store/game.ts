@@ -690,7 +690,7 @@ export function createGameStore(
               ? {
                   ...s,
                   nickname: botName,
-                  avatar: { animal: animals[Math.floor(s.seat % animals.length)] },
+                  avatar: { base: animals[Math.floor(s.seat % animals.length)] },
                   connected: true,
                   isBot: true,
                 }

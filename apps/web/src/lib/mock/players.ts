@@ -9,15 +9,15 @@ export interface MockPlayer {
 }
 
 export const MOCK_PLAYERS: readonly MockPlayer[] = [
-  { id: "p-scubb", nickname: "SCUBB", avatar: { animal: "raccoon", hat: "hat-stetson" } },
-  { id: "p-sue", nickname: "SUE", avatar: { animal: "owl", glasses: "glasses-shades" } },
-  { id: "p-toar", nickname: "TOAR", avatar: { animal: "wolf" } },
-  { id: "p-fox", nickname: "FOX", avatar: { animal: "fox" } },
-  { id: "p-bris", nickname: "BRIS", avatar: { animal: "bear", hat: "hat-bowler" } },
-  { id: "p-migo", nickname: "MIGO", avatar: { animal: "deer" } },
-  { id: "p-lblanc", nickname: "LBLANC", avatar: { animal: "gator" } },
-  { id: "p-rex", nickname: "REX", avatar: { animal: "boar" } },
-  { id: "p-mia", nickname: "MIA", avatar: { animal: "cat", glasses: "glasses-monocle" } },
+  { id: "p-scubb", nickname: "SCUBB", avatar: { base: "raccoon", hat: "hat:cowboy" } },
+  { id: "p-sue", nickname: "SUE", avatar: { base: "owl", glasses: "glasses:round" } },
+  { id: "p-toar", nickname: "TOAR", avatar: { base: "wolf" } },
+  { id: "p-fox", nickname: "FOX", avatar: { base: "fox" } },
+  { id: "p-bris", nickname: "BRIS", avatar: { base: "bear", hat: "hat:bowler" } },
+  { id: "p-migo", nickname: "MIGO", avatar: { base: "deer" } },
+  { id: "p-lblanc", nickname: "LBLANC", avatar: { base: "gator" } },
+  { id: "p-rex", nickname: "REX", avatar: { base: "boar" } },
+  { id: "p-mia", nickname: "MIA", avatar: { base: "cat", glasses: "glasses:monocle" } },
 ] as const;
 
 export function extraPlayer(seed: string): MockPlayer {

@@ -1,4 +1,4 @@
-import type { AvatarAnimal, LobbySnapshot, SeatView, ThemeId, Visibility } from "@/lib/wire";
+import type { AvatarSpec, LobbySnapshot, SeatView, ThemeId, Visibility } from "@/lib/wire";
 import { generateRoomCode } from "@/lib/wire";
 import { MOCK_PLAYERS } from "@/lib/mock/players";
 import { themeMeta, DEFAULT_THEME } from "@/lib/mock/themes";
@@ -30,7 +30,7 @@ function seat(seatNo: number, nickname: string | null, extra?: Partial<SeatView>
   };
 }
 
-const HERO_PLAYER = { animal: "fox" } as const;
+const HERO_PLAYER = { base: "fox" } as const;
 
 /** Builds a fresh demo lobby for any code (DEV ONLY — mirrors a server snapshot). */
 export function makeDemoLobby(opts: {
@@ -50,7 +50,7 @@ export function makeDemoLobby(opts: {
       connected: true,
     }),
     seat(1, "SCUBB", {
-      avatar: { animal: "raccoon", hat: "hat-stetson" },
+      avatar: { base: "raccoon", hat: "hat:cowboy" },
       connected: true,
       isBot: true,
     }),
@@ -74,7 +74,7 @@ export interface PublicRoomCard {
   code: string;
   name: string;
   hostName: string;
-  hostAvatar: { animal: AvatarAnimal };
+  hostAvatar: AvatarSpec;
   theme: ThemeId;
   seats: number;
   capacity: number;
@@ -106,7 +106,7 @@ export function makePublicRooms(): PublicRoomCard[] {
       code: generateRoomCode((max) => Math.floor(rng() * max)),
       name: names[i] ?? `TABLE ${i + 1}`,
       hostName: host.nickname,
-      hostAvatar: { animal: host.avatar.animal },
+      hostAvatar: { ...host.avatar },
       theme: themeIds[Math.floor(rng() * themeIds.length)] ?? "saloon",
       seats: Math.min(seats, 7),
       capacity: 7,

@@ -1,4 +1,4 @@
-import type { AvatarAnimal, AvatarSpec } from "@/lib/wire";
+import type { AvatarAnimal } from "@/lib/wire";
 import { COSMETIC_OVERLAYS } from "@/lib/mock/catalog";
 
 /** 12 starter animal avatars (research/09 §1 — nickname + 12 animal presets). */
@@ -28,11 +28,6 @@ export function animalLabel(animal: AvatarAnimal): string {
 export function randomAnimal(rng: () => number): AvatarAnimal {
   const idx = Math.floor(rng() * ANIMALS.length);
   return ANIMALS[Math.min(idx, ANIMALS.length - 1)]?.id ?? "fox";
-}
-
-export function emojiForSpec(spec: AvatarSpec | null | undefined): string {
-  if (!spec) return "🪑";
-  return animalEmoji(spec.animal);
 }
 
 /** Overlay emoji for an equipped cosmetic id (mock preview art). */

@@ -11,6 +11,8 @@
  *  - hair 6 (2 free) · beard 4 (1 free) · hat 5 · shirt 6 (2 free) ·
  *    glasses 3 · frames 8 (2 free, 4 level-locked) · anims 4 (1 free) ·
  *    voice packs 2 · themes 2 free + 6 premium
+ *  - bodies 5 (the gated non-thin paper-doll builds: gym builds + dog/cat/
+ *    horse; the human-*-thin bases are equip-free and never sold)
  */
 import { loadConfig } from '@liars-game/shared/server';
 import mongoose from 'mongoose';
@@ -28,7 +30,8 @@ interface ItemSeed {
     | 'frame'
     | 'anim'
     | 'voicePack'
-    | 'theme';
+    | 'theme'
+    | 'body';
   name: string;
   price: number;
   free?: boolean;
@@ -101,6 +104,21 @@ const VOICE_PACKS: ItemSeed[] = [
   { _id: 'voicePack:robot', category: 'voicePack', name: 'Robotic Voice', price: 500, tier: 'epic', sort: 2 },
 ];
 
+/**
+ * The GATED paper-doll bodies (/api/me/equip charges nothing — but a base
+ * outside the two free thin builds requires the matching owned `body:*`
+ * item; `_id` suffix MUST equal the canonical base slug in
+ * @liars-game/shared AVATAR_BASE_IDS). The human-*-thin bases are free to
+ * equip for every account and are deliberately NOT seeded as items.
+ */
+const BODIES: ItemSeed[] = [
+  { _id: 'body:human-male-gym', category: 'body', name: 'Gym Build (Male)', price: 250, sort: 1 },
+  { _id: 'body:human-female-gym', category: 'body', name: 'Gym Build (Female)', price: 250, sort: 2 },
+  { _id: 'body:dog', category: 'body', name: 'Dog', price: 400, tier: 'rare', sort: 3 },
+  { _id: 'body:cat', category: 'body', name: 'Cat', price: 400, tier: 'rare', sort: 4 },
+  { _id: 'body:horse', category: 'body', name: 'Horse', price: 500, tier: 'rare', sort: 5 },
+];
+
 function theme(slug: string, name: string, price: number, sort: number, tier: 'rare' | 'epic' = 'rare'): ItemSeed {
   return {
     _id: `theme:${slug}`,
@@ -139,6 +157,7 @@ const CATALOG: ItemSeed[] = [
   ...ANIMS,
   ...VOICE_PACKS,
   ...THEMES,
+  ...BODIES,
 ];
 
 const PACKS = [

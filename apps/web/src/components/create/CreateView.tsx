@@ -120,7 +120,7 @@ export function CreateView() {
                 <button
                   onClick={() => {
                     const next = ANIMALS[Math.floor(Math.random() * ANIMALS.length)]?.id;
-                    if (next) setAvatar({ ...avatar, animal: next });
+                    if (next) setAvatar({ ...avatar, base: next });
                   }}
                   className="inline-flex min-h-12 items-center font-body text-xs text-brass underline"
                 >
@@ -161,11 +161,11 @@ export function CreateView() {
                   {ANIMALS.map((animal) => (
                     <button
                       key={animal.id}
-                      onClick={() => setAvatar({ ...avatar, animal: animal.id })}
+                      onClick={() => setAvatar({ ...avatar, base: animal.id })}
                       aria-label={animal.label}
-                      aria-pressed={avatar.animal === animal.id}
+                      aria-pressed={avatar.base === animal.id}
                       className={`flex h-12 w-12 items-center justify-center rounded-full border-2 text-xl ${
-                        avatar.animal === animal.id ? "border-brass bg-brass/15" : "border-wood-mid bg-wood-deep hover:border-brass"
+                        avatar.base === animal.id ? "border-brass bg-brass/15" : "border-wood-mid bg-wood-deep hover:border-brass"
                       }`}
                     >
                       {animal.emoji}

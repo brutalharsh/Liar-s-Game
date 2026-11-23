@@ -6,7 +6,7 @@ import { useGameStore } from "@/store/game";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { vibrate } from "@/lib/haptics";
 import { playSfx } from "@/lib/sfx";
-import { emojiForSpec } from "@/lib/mock/avatar";
+import { Avatar } from "@/components/ui/Avatar";
 import { nicknameOfStore } from "@/components/game/shot/shotView";
 import {
   blankSchedule,
@@ -93,8 +93,8 @@ export function ShotCinematic() {
   const phase = useGameStore((s) => s.phase);
   const roundNo = useGameStore((s) => s.roundNo);
   const heroSeat = useGameStore((s) => s.heroSeat);
-  const loserEmoji = useGameStore((s) =>
-    s.shot ? emojiForSpec(s.seatByNumber(s.shot.loserSeat)?.avatar ?? null) : "🔫",
+  const loserAvatar = useGameStore((s) =>
+    s.shot ? s.seatByNumber(s.shot.loserSeat)?.avatar ?? null : null,
   );
   const reduced = usePrefersReducedMotion();
   const [beat, setBeat] = useState<ShotBeat | null>(null);
@@ -248,9 +248,7 @@ export function ShotCinematic() {
               animate={nameplateAnimate}
               transition={nameplateTransition}
             >
-              <span className="text-4xl" aria-hidden>
-                {loserEmoji}
-              </span>
+              <Avatar spec={loserAvatar} size="lg" />
               <span className="font-display text-lg tracking-wider text-ivory">{loserName}</span>
               <span className="font-body text-xs text-ink-dim">
                 {isExecute && !cocked

@@ -20,6 +20,7 @@ export const CATALOG_CATEGORIES = [
   'anim',
   'voicePack',
   'theme',
+  'body',
 ] as const;
 export type CatalogCategory = (typeof CATALOG_CATEGORIES)[number];
 

@@ -163,7 +163,7 @@ describe("applyEvent — lobby:state (snapshot + catch-up)", () => {
     expect(s.roundNo).toBe(2);
     expect(s.lastSeq).toBe(0);
     expect(s.needsSnapshot).toBe(false);
-    expect(s.lobby?.seats[1]?.avatar?.animal).toBe("raccoon"); // wire → app avatar mapping
+    expect(s.lobby?.seats[1]?.avatar?.base).toBe("raccoon"); // wire → app avatar mapping
   });
 
   it("maps every shared RoomPhase to an app phase", () => {

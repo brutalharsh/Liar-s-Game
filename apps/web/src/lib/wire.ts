@@ -41,6 +41,12 @@ export type Verdict = RevealShowPayload["verdict"]; // 'TRUTH' | 'LIE' — from 
 export type Visibility = RoomVisibility;
 
 // ── app-side avatar view-model ↔ wire avatarSpec mapping ──────────────────
+//
+// The paper-doll engine (components/avatar) renders the WIRE spec directly;
+// this view-model carries its VISUAL slots (anim/voicePack never reach the
+// store — they're data, not display). Legacy starter "animal" ids (the old
+// emoji model) ride as plain base strings: the engine bridges them onto the
+// nearest canonical body, so pre-editors specs never degrade.
 
 export type AvatarAnimal =
   | "fox"
@@ -56,30 +62,38 @@ export type AvatarAnimal =
   | "gator"
   | "snake";
 
-/** App-side avatar (starter animals + equipped cosmetic ids — UI rendering model). */
+/** App-side avatar (display view-model — the wire spec's visual slots). */
 export interface AvatarSpec {
-  animal: AvatarAnimal;
+  base: string;
+  hair?: string;
+  beard?: string;
   hat?: string;
+  shirt?: string;
   glasses?: string;
   frame?: string;
 }
 
-/** App avatar → wire avatarSpec (`animal` rides as `base`; shared validates slugs server-side). */
+/** App avatar → wire avatarSpec (visual slots only; base rides as-is). */
 export function avatarSpecToWire(spec: AvatarSpec | null | undefined): WireAvatarSpec | null {
   if (!spec) return null;
-  const wire: WireAvatarSpec = { base: spec.animal };
+  const wire: WireAvatarSpec = { base: spec.base };
+  if (spec.hair) wire.hair = spec.hair;
+  if (spec.beard) wire.beard = spec.beard;
   if (spec.hat) wire.hat = spec.hat;
+  if (spec.shirt) wire.shirt = spec.shirt;
   if (spec.glasses) wire.glasses = spec.glasses;
   if (spec.frame) wire.frame = spec.frame;
   return wire;
 }
 
-/** Wire avatarSpec → app avatar (unknown bases render as the placeholder chair). */
+/** Wire avatarSpec → app avatar (unknown bases render as the placeholder). */
 export function avatarSpecFromWire(spec: WireAvatarSpec | null | undefined): AvatarSpec | null {
   if (!spec) return null;
-  const animal = spec.base as AvatarAnimal;
-  const out: AvatarSpec = { animal };
+  const out: AvatarSpec = { base: spec.base };
+  if (spec.hair) out.hair = spec.hair;
+  if (spec.beard) out.beard = spec.beard;
   if (spec.hat) out.hat = spec.hat;
+  if (spec.shirt) out.shirt = spec.shirt;
   if (spec.glasses) out.glasses = spec.glasses;
   if (spec.frame) out.frame = spec.frame;
   return out;

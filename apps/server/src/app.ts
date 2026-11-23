@@ -25,6 +25,7 @@ import { createBillingRouter } from './routes/billing.js';
 import { createShopRouter } from './routes/shop.js';
 import { createRoomsRouter } from './routes/rooms.js';
 import { createEconomyRouter } from './routes/economy.js';
+import { createMeRouter } from './routes/me.js';
 import { collectRoutes, printRoutes, type RouteInfo } from './lib/printRoutes.js';
 import { jsonError } from './lib/api.js';
 
@@ -118,6 +119,7 @@ export function createApp(config: AppConfig, deps: AppDeps = {}): Express {
     ['/api/billing', billingRouter],
     ['/api', shopRouter],
     ['/api', economyRouter],
+    ['/api', createMeRouter(config)],
     ['/api', roomsRouter],
   ];
   const routes: RouteInfo[] = [

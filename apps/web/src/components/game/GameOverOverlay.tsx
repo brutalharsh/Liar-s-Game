@@ -8,7 +8,7 @@ import { socket } from "@/lib/socket";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { vibrate } from "@/lib/haptics";
 import { playSfx } from "@/lib/sfx";
-import { emojiForSpec } from "@/lib/mock/avatar";
+import { Avatar } from "@/components/ui/Avatar";
 import { crownTransition, crownVariants, winnerCardVariants, winnerTransition } from "@/motion/table";
 import { useCountUp } from "@/motion/useCountUp";
 import { Button } from "@/components/ui/Button";
@@ -71,7 +71,7 @@ export function GameOverOverlay() {
   const nobodySurvived = winnerSeat === null; // zero-survivor abort (STR/01 §7)
   const winnerName = nobodySurvived ? null : nicknameOf(winnerSeat);
   const iWon = !nobodySurvived && winnerSeat === heroSeat;
-  const winnerAvatar = nobodySurvived ? null : emojiForSpec(seatByNumber(winnerSeat)?.avatar ?? null);
+  const winnerAvatar = nobodySurvived ? null : seatByNumber(winnerSeat)?.avatar ?? null;
 
   return (
     <AnimatePresence>
@@ -113,7 +113,7 @@ export function GameOverOverlay() {
               {nobodySurvived ? (
                 <SkullIcon size={28} className="text-ivory" />
               ) : (
-                <span aria-hidden>{winnerAvatar}</span>
+                <Avatar spec={winnerAvatar} size="lg" className="shrink-0" />
               )}{" "}
               {nobodySurvived ? "NOBODY SURVIVED" : iWon ? "YOU WIN" : `${winnerName} WINS`}
             </h2>

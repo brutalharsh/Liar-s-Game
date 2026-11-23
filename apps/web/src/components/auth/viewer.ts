@@ -1,21 +1,20 @@
 /**
  * Display helpers shared by the auth-facing screens: maps the STR/09
- * `avatarSpec` ({base, hair?, beard?, …}) onto the game UI's Avatar spec
- * ({animal, hat?, glasses?, frame?}). Pure display — the server validates
- * specs, categories and ownership (STR/08 §7).
+ * `avatarSpec` ({base, hair?, beard?, …}) onto the UI's display spec (the
+ * same flat shape — the paper-doll renders it directly). Pure display — the
+ * server validates specs, categories and ownership (STR/08 §7).
  */
 import type { AdminAvatarSpec } from "@/lib/api";
-import type { AvatarAnimal, AvatarSpec } from "@/lib/wire";
-import { ANIMALS } from "@/lib/mock/avatar";
+import type { AvatarSpec } from "@/lib/wire";
 
-const VALID_ANIMALS: readonly string[] = ANIMALS.map((a) => a.id);
-
-export function toDisplaySpec(spec: AdminAvatarSpec | null | undefined): AvatarSpec {
-  if (!spec) return { animal: "fox" };
-  const animal = (VALID_ANIMALS.includes(spec.base) ? spec.base : "fox") as AvatarAnimal;
+export function toDisplaySpec(spec: AdminAvatarSpec | null | undefined): AvatarSpec | null {
+  if (!spec) return null;
   return {
-    animal,
+    base: spec.base,
+    hair: spec.hair,
+    beard: spec.beard,
     hat: spec.hat,
+    shirt: spec.shirt,
     glasses: spec.glasses,
     frame: spec.frame,
   };

@@ -577,6 +577,27 @@ here receives the directive before any further work.
   LandingView committed here carrying T2's held color edits. Gates:
   tsc clean · 63/63 · build 22 routes. emojiForSpec down to 2 consumers
   (GameOverOverlay, ShotCinematic) — avatar wave's to replace.
+- **T3** ✅ avatar paper-doll engine + /api/me: 7 canonical bases (AVATAR_
+  BASE_IDS: human-{male,female}-{thin,gym} + dog/cat/horse, default
+  human-male-thin) + attachable slot schema; renderer = layered 100x100
+  SVG (body→shirt→beard→hair→hat→glasses→frame), zero deps, deterministic,
+  with `preview` merge for live try-on; 31/38 seed items drawn faithfully
+  + 19 legacy aliases bridged + per-slot placeholders for future admin
+  items. FROZEN ENDPOINT CONTRACTS (wave 2 builds on them): PUT
+  /api/me/profile {nickname 1..18} (400/401/403/404/422 NICKNAME_REJECTED,
+  audit profile.update) · POST /api/me/equip {slot|'base', itemId|null} →
+  flat $Set merge into user.avatarSpec (400 bad-slot/invalid-base/
+  ITEM_SLOT_MISMATCH, 403 EQUIPMENT_NOT_OWNED, 404 ITEM_NOT_FOUND);
+  human-*-thin free, gym/dog/cat/horse = owned body-catalog items (seed:
+  gym 250 coins, dog/cat 400, horse 500); 30/min limiter, ban-guarded.
+  emojiForSpec deleted — winner portrait, shot target, seat chips, lobby,
+  profile, leaderboard all render the doll via ui/Avatar bubble; identity
+  store migrated (persist v1 animal→base). Suites: shared 97/97 (+32),
+  server 322/322 (+26 me tests), web 63/63, all tsc + builds clean —
+  orchestrator re-verified all gates personally. Flags: legacy animal
+  bases ride as display strings until wave-2 editor re-saves; wearables
+  must be shop-CLAIMED once before equip (by design); mock shop still on
+  hyphen-catalog (aliases keep previews faithful) — wave 2 aligns.
 - **T2** ✅ noir re-theme: token VALUES remapped under their historical
   names (compile-compat alias map in globals.css) — black/white/gray
   surfaces (#0a0a0a–#1c1c1c, ivory/ink → #f5f5f5/#a3a3a3), brass* =
