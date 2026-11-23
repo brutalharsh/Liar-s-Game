@@ -13,8 +13,10 @@
 | Players | 2–7 per room (free) · 8–10 "Big Table" (premium host perk) |
 | Stack | **Full TypeScript**: Next.js 16.4 App Router + Express 5 + Socket.IO 4.8 + framer-motion + Tailwind + MongoDB Atlas |
 | Scale target | ~1K concurrent users on one VPS (owner-provisioned) |
-| Payments | **MOCK stub** (Buy → `POST /api/payments/create-order`) until owner names the provider |
-| DB | MongoDB Atlas via `.env` only (`MONGODB_URI`; rotate password before launch — it was shared in chat) |
+| Auth | **Discord + Google OAuth required to play** — JWT cookie sessions; `/admindashboard` (env-credential login) |
+| Payments | **Hosted payment proxy** (Razorpay behind it) — integration BUILT, activation blocked on project registration; mock fallback credits nothing. Service identity + full API: private gitignored `docs/` |
+| Assets | **Hosted image server** — project registered; entities store `{imageId, imageUrl}`. Identity + full API: private `docs/` |
+| DB | MongoDB Atlas via env files only (`MONGODB_URI`; rotate password before launch — it was shared in chat) |
 | Name | "Liar's Game" — trademark clearance pending pre-launch (Curve Animation holds "LIAR's Bar"; Japan has "Liar Game" manga IP) |
 
 ## The STR docs
@@ -37,6 +39,10 @@
 `research/00-SUMMARY.md` → index of 12 deep-dive docs (rules, probability, IP/legal,
 networking, hosting, monetization, UI, assets, stack, security) + `13-locked-design-spec.md`
 (owner's decisions verbatim) + `14-build-plan.md` (22 missions, 159 tasks).
+
+> **Private:** `docs/` (gitignored, never committed) holds the hosted-services
+> ops references — payment proxy + image server full APIs, keys, recipes.
+> Public files refer to them only as "the payment proxy" / "the image server".
 
 ## Rules of the folder
 

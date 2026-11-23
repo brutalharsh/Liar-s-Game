@@ -19,7 +19,7 @@
 - **TTS voice lines** (no voice chat ever): spoken claims ("Two Aces!", "LIAR!"),
   kill/death/win stings, random mid-game barks (≈5% of throws); 4 voice themes
   (Villain, Chipper, Robot, Drunk) as pitch/rate/voice presets; captions toggle
-- Profiles: guest identity (localStorage), nickname + avatar; claim-to-account later
+- Profiles: **Discord/Google login identity** (login required to play), nickname + avatar — persistent in MongoDB
 - Stats: kills (headline), catches, wins, matches, deaths, pulls survived
 - **Titles** ("Best Liar" etc., full list STR/04 §6): earned server-side, 1 equipped
 - **Leaderboard**: global all-time, metrics wins | kills | XP | titles; top 100
@@ -32,19 +32,35 @@
 - Settings: voice theme + TTS preview, volumes, captions, emote mute, reduced-motion
 - Security & anti-cheat per STR/08 (server-authoritative, zero hidden data)
 
-## v1 — Payments (MOCK until owner picks provider)
+## v1 — Auth (login REQUIRED), Admin dashboard & Payments
 
-- Coin packs: ₹49/₹99/₹199/₹399 (500/1200/2500/5500 coins)
-- **Buy button → `POST /api/payments/create-order`** → mock response →
-  "Payment gateway coming soon" modal. Provider seam interface ready
-  (`payments/provider.ts`: `createOrder`, `verifyWebhook`; MockProvider now,
-  Razorpay/whatever later, zero UI change)
+- **Login gate**: users sign in with **Discord or Google OAuth** before creating,
+  joining or playing. JWT httpOnly cookie sessions (7-day). No guest play.
+- **Admin dashboard `/admindashboard`** (env credentials `ADMIN_USERNAME` /
+  `ADMIN_PASSWORD`, timing-safe compare): full user management — searchable user
+  list (avatar, level, coins, titles), profile drill-down (character/avatar spec,
+  wallet ledger, payment history, match records), grant/adjust coins with reason,
+  ban/unban, **catalog editing — change item name & price, toggle active** —
+  coin-pack price editing, payment records browser, image uploads for catalog art
+  (to the hosted image server). Every admin mutation lands in `admin_audit`.
+- **Payments: hosted payment proxy** (Razorpay behind it — identity + full
+  API live in the PRIVATE gitignored `docs/` folder):
+  `POST /api/billing/checkout {packId}` → price read SERVER-SIDE from the
+  `coin_packs` DB table → proxy returns a hosted `checkoutUrl` → user pays there →
+  returns to `/billing/return` → **backend re-verifies** status with the proxy →
+  grants coins ONLY on `status === 'paid'` + exact `amountMinor` match,
+  idempotent by token. Packs: ₹49/₹99/₹199/₹399 → 500/1200/2500/5500 coins.
+  BLOCKED only on project registration (owner: `td_setup_…` key, or manual
+  creation on the provider dashboard — see private `docs/payments-api.md` —
+  then paste key+id into env). Mock
+  fallback until then — mock never credits anything.
 
 ## v1.x — Fast follow
 
 - **Big Table 8–10p** premium host perk (deck m=3, window rules auto-extend)
-- Coin pack top-ups live (real provider wiring when owner says go)
-- Claim-account (email magic link): keeps wallet/XP safe across devices
+- Payments go LIVE: flip `PAYMENTS_PROVIDER=proxy` in env after project
+  registration (the backend ships fully built for the proxy)
+- Session options: remember-me duration + sign-out-everywhere
 - Public room moderation tools (report, auto-expire tuning)
 - Match history archive (last 20 on profile), title-unlock moments polish
 - Quick Draw variant toggle (2 bullets/6 chambers for long 8–10p games)

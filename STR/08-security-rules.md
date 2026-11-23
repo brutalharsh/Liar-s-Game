@@ -38,6 +38,23 @@
     any disputed round reconstructs deterministically (seed + events in the log).
 12. **Logs minimal PII.** Store IDs + counts — not IPs beyond ops needs; no voice/
     text content ever (none exists).
+13. **Auth.** OAuth `state` param checked on every callback (CSRF); JWT cookies
+    `httpOnly` + `sameSite=lax`; `AUTH_SECRET` env-only; a valid session is
+    REQUIRED for every play action (`AUTH_REQUIRED` error otherwise — STR/07 §0);
+    admin = env credentials via timing-safe compare, 8h cookie, every
+    `/api/admin/*` route behind `requireAdmin` + rate-limit.
+14. **Payments (hosted proxy).** `PAYMENT_API_KEY` server-only (never in client
+    bundles, URLs, or logs); amounts come ONLY from the server-side `coin_packs`
+    DB table; a grant is impossible unless the backend status read returns `paid`
+    AND `amountMinor` matches the record saved at creation; grants idempotent
+    (`txId = checkout:<token>`); failed/expired/erroring checks NEVER grant;
+    `PROJECT_SETUP_KEY` is never stored in this repo (single-use, belongs to the
+    proxy owner); no Razorpay SDK — the proxy owns the gateway. Tests must prove
+    the return handler doesn't grant on non-`paid` or amount mismatch.
+15. **Image server.** Key server-only (env); the browser never calls the image API
+    directly — uploads go through our backend; presigned PUTs carry no key;
+    entities store BOTH `{imageId, imageUrl}` (never URL-only); deletes clear
+    both atomically; 401 = surface loudly, never swallow.
 
 ## Threat model summary (what we accept)
 

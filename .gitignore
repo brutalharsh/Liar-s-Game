@@ -1,8 +1,12 @@
 # ── Secrets & environment ─────────────────────────────
-.env
-.env.local
-.env.*.local
+# Real env files stay on the machine — only the template is committed.
+.env*
 !.env.example
+
+# ── Private integration references (hosted services) ──
+# Full API docs + key recipes for the payment proxy & image server.
+# NEVER commit or push this folder.
+/docs/
 
 # ── Dependencies ──────────────────────────────────────
 node_modules/

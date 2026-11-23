@@ -5,12 +5,13 @@
 
 ## Collections
 
-### accounts
+### users (Discord/Google identity — login REQUIRED to play)
 ```ts
-{ _id, guestToken, claimedAt?, email?, authHash?, nickname, isGuest,
+{ _id, provider: 'discord'|'google', providerId, email?, name, avatarUrl?,
+  nickname, role: 'user'|'admin', banned: false, banReason?,
   avatarSpec: {base, hair?, beard?, hat?, shirt?, glasses?, frame?, anim?, voicePack?},
   activeTitle?, xp, level, createdAt, lastSeenAt }
-// idx: guestToken unique, email sparse-unique, level (leaderboard)
+// idx: (provider, providerId) unique, email sparse-unique, level, banned
 ```
 
 ### wallet_ledger (append-only)
@@ -31,6 +32,25 @@
 { _id: 'hair:mohawk', category: 'hair', price: 120, tier: 'common',
   free?: false, active: true, artSlug, sort }
 // themes same collection, kind 'theme' {bg, felt, cardBack, ambience}
+```
+
+### coin_packs (pricing lives in DB → admin-editable; checkout ALWAYS prices from here)
+```ts
+{ _id: 'starter'|'popular'|'big-bag'|'whale', name, priceMajor (INR), coins, bonus,
+  active: true, sortOrder }
+```
+
+### checkouts (payment records — hosted payment proxy)
+```ts
+{ _id, token UNIQUE, userId, packId, productName, amountMinor, currency,
+  status: 'created'|'paid'|'failed'|'expired', providerOrderId?, providerPaymentId?,
+  paidAt?, grantedAt?, createdAt }
+// grant idempotent — grantedAt set exactly once, only after backend status verify
+```
+
+### admin_audit (every admin dashboard mutation)
+```ts
+{ _id, actor, action, targetType, targetId, details, at }
 ```
 
 ### match_records
@@ -67,11 +87,13 @@
 - **Leaderboard** `GET /api/leaderboard?metric=wins|kills|xp|titles`:
   aggregation pipeline over `match_records` (sum per account), cached 60s.
 - **Profile** `GET /api/me`: account + balance + title_progress + last 5 match_records.
-- **Guest → claim merge**: accountId stays; email attaches; guestToken rotates;
-  one atomic update; wallet/entitlements unaffected (all keyed by accountId).
+- **No guest merge** — Discord/Google is the identity from the first login; all
+  economy rows are keyed to the user from day one.
 
 ## Notes
 
 - Atlas M0 free tier suffices to ~200K docs; monitor, not guess.
+- Databases: dev `liars-game`, production `liars-game-prod` (same Atlas cluster for
+  now; dedicated prod user + rotated password before launch — STR/10 open items).
 - Never query Mongo inside the socket event path (stats write async at round/game end).
 - Collections above = v1; leaderboard_period variants land in v1.x.

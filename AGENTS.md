@@ -23,6 +23,10 @@ research/          deep research archive (cite-able background)
    (`STR/06`, `STR/07`, `STR/08`, `STR/09`), and flow/UI for frontend work
    (`STR/03`, `STR/05`, and ASCII wireframes in `research/09`)
 4. `STR/10-build-progress.md` — current status; don't redo finished work
+5. `docs/` — **PRIVATE (gitignored; never commit, push, or quote it)**: full API
+   references for the two hosted services. Read ONLY if your mission touches
+   payments or images. Public files never name those services — say "the
+   payment proxy" / "the image server"; identities live in env + docs/.
 
 ## Non-negotiables (violating any of these = work rejected)
 
@@ -34,12 +38,18 @@ research/          deep research archive (cite-able background)
    Server imports them; web NEVER implements rules logic.
 4. `@liars-game/shared` is the only wire-contract source — no duplicate event
    definitions in apps (temporary local mocks must be marked `TODO-sync-with-shared`).
-5. **Never hardcode secrets** — `.env` + `process.env` only. The Atlas password is
-   already in `.env`; rotate-before-launch is tracked in STR/10 Open items.
+5. **Never hardcode secrets** — env files + `process.env` only. Convention:
+   `NODE_ENV=production` → `.env.production`; dev → `.env.local` (falls back to
+   `.env`); only `.env.example` is committed. Rotate-before-launch items are
+   tracked in STR/10 Open items.
 6. TypeScript strict everywhere; no `any` in exported signatures; no new deps
    without a one-line justification in your report.
 7. Visual defaults live in tokens/CSS variables (STR/05 §2) — no hardcoded hex soups.
-8. Payments are `PAYMENTS_PROVIDER=mock` — build the seam (STR/02), credit nothing.
+8. Payments run through the **hosted payment proxy** (server-only key in env;
+   amounts always read from the `coin_packs` DB table; grant ONLY after backend
+   status verify returns `paid` AND `amountMinor` matches; idempotent per token).
+   Until registration, `PAYMENTS_PROVIDER=mock` credits nothing. NEVER store
+   `PROJECT_SETUP_KEY` in this repo, and never add a Razorpay SDK.
 9. PG-13: no gore, no adult content, no real-money redemption (coins are cosmetic-only).
 10. Match the file's existing style; don't reformat untouched code; conventional
     commits (`feat:`, `fix:`, `chore:`) if you commit at all (repo may not be git yet).

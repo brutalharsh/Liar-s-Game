@@ -3,23 +3,34 @@
 > All cosmetic. No power, no odds, no XP for money. Coins are non-redeemable soft
 > currency (gambling-law distance). Source: research/08 + owner addenda 2026-11-23.
 
-## 1. Coin packs (payments = MOCK until provider chosen)
+## 1. Coin packs (hosted payment proxy — Razorpay behind it; identity + full
+## API in the private gitignored `docs/` folder)
 
-| Pack | Price (₹) | Coins | Bonus |
+| key | Price (₹, MAJOR units) | Coins | Bonus |
 |---|---|---|---|
-| Starter | 49 | 500 | — |
-| Popular | 99 | 1,200 | +100 |
-| Big Bag | 199 | 2,500 | +350 |
-| Whale | 399 | 5,500 | +1,000 |
+| starter | 49 | 500 | — |
+| popular | 99 | 1,200 | +100 |
+| big-bag | 199 | 2,500 | +350 |
+| whale | 399 | 5,500 | +1,000 |
 
-Buy → `POST /api/payments/create-order {packId}` → `{provider:"mock", status:"coming_soon"}`
-→ friendly modal. First-purchase offer surfaces ₹49 with bonus coins when live.
+Prices live in the `coin_packs` DB collection (admin-editable via dashboard). Flow
+(backend truth only): `POST /api/billing/checkout {packId}` → price read from DB,
+NEVER from the request → proxy `POST /api/v1/checkout` with `amount` in MAJOR
+units (49, never paise), `returnUrl = ${APP_URL}/billing/return`, `metadata
+{packId}` → user pays at the hosted `checkoutUrl` → returns with
+`?payment=paid&token=` → backend re-verifies `GET /api/v1/checkout/<token>` →
+grant ONLY when `status === 'paid'` AND `amountMinor` matches the saved record →
+idempotent wallet credit (`txId = checkout:<token>`). Checkouts expire after 30
+minutes; `failed` can flip to `paid` on retry — believe only the status endpoint,
+never the redirect. BLOCKED only on project registration (owner: `td_setup_…`
+  key OR manual creation on the provider dashboard — see private docs/payments-api.md); until then
+`PAYMENTS_PROVIDER=mock` → informational modal, credits nothing, ever.
 
 ## 2. Earning coins (no farming)
 
 - Match **win**: `randInt(2..7)` coins (server crypto RNG at match end)
 - Everyone: **+1 coin per round survived** (was alive when the round ended)
-- Cap: 3 earn-events/hour/account; guests keyed to guestId (merge on claim-account)
+- Cap: 3 earn-events/hour/user (login identity from the start — no guest accounts)
 - All grants idempotent (matchId + playerId unique index)
 
 ## 3. Spending — catalog (server-validated prices, tiers)

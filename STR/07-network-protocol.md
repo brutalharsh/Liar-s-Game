@@ -3,14 +3,26 @@
 > Exact names + payloads; `packages/shared` encodes these as zod (single source).
 > Deep rationale: research/06. Transport: Socket.IO over WebSocket (auto-fallback).
 
-## 0. Handshake
+## 0. Handshake & auth (login REQUIRED to play)
 
-- Client connects with `{ guestToken, nickname?, avatarSpec? }`.
-- Reconnect: same token + `reconnectToken` (issued per room join) → server restores
+- **Web session first**: Discord/Google OAuth → JWT httpOnly cookie
+  (`lg_session`, 7-day). The Socket.IO handshake carries the cookie; the server
+  resolves the user. No session → play events (`room:create`, `room:join`,
+  `game:start`, in-round actions) are denied with `error AUTH_REQUIRED`.
+- Reconnect: same session + `reconnectToken` (issued per room join) → server restores
   seat; 60s grace with round-pause; expired → spectator view + "seat lost" toast.
-- REST stays for: `GET /api/rooms` (public list), `GET /api/leaderboard`,
-  `GET /api/me` (profile+wallet), `POST /api/payments/create-order` (mock),
-  `GET /api/catalog`.
+- REST surface:
+  - **Auth**: `GET /api/auth/discord` (+ `/callback`), `GET /api/auth/google`
+    (+ `/callback`), `GET /api/auth/me`, `POST /api/auth/logout`
+  - **Admin** (env-credential login → `lg_admin` cookie, 8h):
+    `/api/admin/login`, `GET /api/admin/users`, `GET /api/admin/users/:id`,
+    `POST /api/admin/users/:id/coins`, `POST /api/admin/users/:id/ban`,
+    `GET /api/admin/payments`, `GET/POST/PATCH /api/admin/catalog` (name +
+    price edits), `PATCH /api/admin/packs/:key`, `POST /api/admin/upload`
+  - **Billing**: `POST /api/billing/checkout {packId}` → `{checkoutUrl}`;
+    `POST /api/billing/verify {token}` → status (server grants on paid+match)
+  - **Game/store**: `GET /api/rooms` (public list), `GET /api/leaderboard`,
+    `GET /api/me` (profile+wallet), `GET /api/catalog`
 
 ## 1. Client → Server (all zod-validated; all answered by state or error)
 
@@ -67,7 +79,7 @@ One catch-up snapshot on (re)join; then deltas with monotonic `seq` per room.
 ## 5. Room codes
 
 5 chars, charset `ABCDEFGHJKMNPQRSTUVWXYZ23456789` (no I/L/O/0/1) =
-**25^5 ≈ 9.7M** codes; join rate-limit: 10 tries/IP/10min → brute-force dead end.
+**31^5 ≈ 28.6M** codes (31-char confusable-free set — count verified by F1; my original 25^5 was a miscount); join rate-limit: 10 tries/IP/10min → brute-force dead end.
 Code is also the room's authority secret (knowing code = seat rights).
 
 ## 6. Race & atomicity rulings

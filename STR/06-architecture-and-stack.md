@@ -49,9 +49,13 @@ liars-game/
 
 ## 5. Deploy (Ubuntu VPS — per research/07)
 
+- **Production domain: `https://liarsgame.thedevs.org`** (DNS on the VPS).
 - Caddy (auto-TLS) → reverse proxy: `/` → Next static (apps/web `next build`
-  standalone out), `/socket.io/` → Node server (PM2, `pm2 reload` safe).
-- `.env` on VPS only (never committed; rotate Mongo password — it was chat-shared).
+  standalone out), `/socket.io/` + `/api` → Node server (PM2, `pm2 reload` safe),
+  `NODE_ENV=production`.
+- Env files: `.env.local` (dev machine) / `.env.production` (copy-paste ready for
+  the VPS, domain already set inside); both gitignored — only `.env.example` is
+  committed. Rotate Mongo password before launch; dedicated prod Atlas user + IP lock.
 - MongoDB Atlas free M0 (512MB ≈ 200K user docs) — upgrade M10 when needed.
 - Dev loop: `npm run dev -w apps/web` + `npm run dev -w apps/server` (tsx watch);
   friend playtests via cloudflared tunnel before VPS.
