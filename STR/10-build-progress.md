@@ -456,6 +456,24 @@ server. The chain itself was never broken — verified twice independently.
   LeaderboardView mid-edit 500s (settled); TimerArc call sites should
   pass contextual labels; lab bar pointer-occluded during overlays
   (dev tool, fine). Lighthouse /motion-lab: perf 95 · a11y 100.
+- **U5** ✅ table layout (the last agent of the 22-agent mega-wave):
+  independently REPRODUCED U7's shot:assign hooks P0 at 8/8 viewports, then
+  RE-VERIFIED the fix through full 7-round matches at 1440 + 375 with zero
+  console errors. Fixes: top-arc chips rode 25–38px above the stage into
+  the context ribbon → `top: max(y%, 88px)` floor (clock contract re-
+  verified exact: next 3:00 / prev 9:00 / hero 6:00, arc symmetric ≥1024);
+  mobile hero-starter ★ was missing entirely → "★ YOU THROW FIRST" pill;
+  SeatChip aria (label-in-name "5c, 0/6", pips role=img). Re-verified U4's
+  radius-44→38 aside fix (independent math predicted the same 24px
+  collision). Mobile rail+wings verified 375–900 (no h-scroll), dead-seat
+  gray-out, chamber tints, 64px THROW/CHECK with live claim text, brass
+  focus rings, reduced-motion honored. Lighthouse mobile (dev): a11y 100 ·
+  BP 100 · SEO 100. Flags: landscape 667×375 collapses (research/09 §7
+  redesign = owner-question debt); pile `totalPile` never rendered (store
+  drops it — fix wave); spectator heroSeat falls back to host (fix wave);
+  MotionLab ghost fixture; HandFan aria/desktop overlap — all queued.
+  **U4's held commit releases with this entry — both waves touched the
+  same three files coherently (U5 re-verified U4's edits live).**
 - **U12** ✅ design-system cross-audit: "coherent and genuinely good — one
   design language, not AI slop; structure/states/a11y skeleton/tokens
   production-grade", ZERO P0s. In-scope token fixes landed (globals.css):
