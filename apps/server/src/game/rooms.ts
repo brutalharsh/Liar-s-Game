@@ -150,6 +150,8 @@ class Room {
   private _lastActivity: number;
   private _hostUserId: string;
   private matchRuntime: MatchRuntime | null = null;
+  /** True while a start is parked on profile loads (double-tap guard). */
+  private startingMatch = false;
   /** engine seat → room seat (built at game:start; null while in lobby). */
   private engineToRoomSeat: number[] | null = null;
   /** room seat → engine seat (-1 when not seated for the match). */
@@ -512,7 +514,13 @@ class Room {
   // ── match lifecycle ──────────────────────────────────────────────────────
 
   async startMatch(): Promise<ActionResult<null>> {
-    if (this.isMatchLive) return errAction('ILLEGAL_MOVE', 'match already in progress');
+    // `startingMatch` is set synchronously BEFORE the first await below:
+    // a second game:start landing in the profile-load window bounces here
+    // (isMatchLive stays false until the runtime is installed, so the old
+    // guard alone let two starts through → two deals, two seeds on the wire).
+    if (this.startingMatch || this.isMatchLive) {
+      return errAction('ILLEGAL_MOVE', 'match already in progress');
+    }
     const occupied: number[] = [];
     for (let seat = 0; seat < this.capacity; seat += 1) {
       if (this.seats[seat]) occupied.push(seat);
@@ -520,84 +528,123 @@ class Room {
     if (occupied.length < 2) {
       return errAction('INSUFFICIENT_PLAYERS', 'need at least 2 seated players');
     }
+    // Seat membership is frozen at entry. A leave/kick/grace-expiry/bot-fill
+    // or a late join that lands in an await window below makes the post-await
+    // equality check abort the start instead of seating a half-roster (or
+    // dereferencing a freed seat).
+    const seatUserIds: (string | null)[] = this.seats.map((m) => m?.userId ?? null);
 
-    if (this.matchRuntime) this.matchRuntime.dispose();
-    // Recycle match slots; seat-grace + GC timers outlive matches.
-    this.wheel.cancelExcept([GRACE_KEY_PREFIX, GC_KEY]);
-    this.engineToRoomSeat = occupied;
-    this.roomToEngineSeat = new Array<number>(this.capacity).fill(-1);
-    occupied.forEach((rs, engineSeat) => {
-      this.roomToEngineSeat![rs] = engineSeat;
-    });
+    this.startingMatch = true;
+    try {
+      const abortStart = (): ActionResult<null> => {
+        this.engineToRoomSeat = null;
+        this.roomToEngineSeat = null;
+        return errAction('ILLEGAL_MOVE', 'seating changed while starting the match');
+      };
 
-    const roster: RosterEntry[] = [];
-    const isBots: boolean[] = [];
-    for (let engineSeat = 0; engineSeat < occupied.length; engineSeat += 1) {
-      const rs = occupied[engineSeat]!;
-      const member = this.seats[rs]!;
-      let avatarSpec: unknown = member.avatarSpec;
-      let titleAtPlay: string | null = member.activeTitle;
-      if (!member.isBot) {
-        const profile = await this.manager.deps.userProfile(member.userId);
-        avatarSpec = profile?.avatarSpec ?? member.avatarSpec;
-        titleAtPlay = profile?.activeTitle ?? member.activeTitle;
-      }
-      isBots.push(member.isBot);
-      roster.push({
-        seat: engineSeat,
-        accountId: member.userId,
-        nickname: member.nickname,
-        avatarSpec,
-        titleAtPlay: titleAtPlay ?? undefined,
+      if (this.matchRuntime) this.matchRuntime.dispose();
+      // Recycle match slots; seat-grace + GC timers outlive matches.
+      this.wheel.cancelExcept([GRACE_KEY_PREFIX, GC_KEY]);
+      this.engineToRoomSeat = occupied;
+      this.roomToEngineSeat = new Array<number>(this.capacity).fill(-1);
+      occupied.forEach((rs, engineSeat) => {
+        this.roomToEngineSeat![rs] = engineSeat;
       });
-    }
 
-    const runtime = new MatchRuntime({
-      matchId: this.manager.deps.randomUuid(),
-      // Crypto-minted once per match (R1 pattern); (seed, log) replays exact.
-      // node:crypto caps the range at 2^48 (exclusive max), and the port's
-      // default adapter bridges inclusive->exclusive with +1 — so the safe
-      // inclusive ceiling for the port is 2^48 - 2. Still 2.8e14 states.
-      seed: this.manager.deps.randomInt(0, 2 ** 48 - 2),
-      roster,
-      isBotSeats: isBots,
-      config: this.manager.configuredMatchConfig,
-      roomCode: this.code,
-      theme: this.theme,
-      wheel: this.wheel,
-      timing: this.timing,
-      host: {
-        emitEvent: (event, payload) => {
-          this.emitEvent(event, payload);
-        },
-        emitToSeat: (engineSeat, event, payload) => {
-          this.emitToEngineSeat(engineSeat, event, payload);
-        },
-        seatSocketIds: (engineSeat) => this.seatSocketIdsByEngine(engineSeat),
-        isBotSeat: (engineSeat) => this.isBotEngineSeat(engineSeat),
-        onPresenceChanged: () => {
-          this.emitPresence();
-          if (this.matchRuntime?.isOver) this.scheduleGcIfEmpty();
-        },
-        onMatchEnd: (payload) => {
-          this.manager.handleMatchEnd(payload);
-        },
-        now: () => this.manager.now(),
-      },
-    });
-    this.matchRuntime = runtime;
-    runtime.start();
-
-    // Seat-holders with zero live sockets at kickoff begin disconnected and
-    // get their own grace clocks (they are still part of the fixed roster).
-    for (let engineSeat = 0; engineSeat < occupied.length; engineSeat += 1) {
-      const rs = occupied[engineSeat]!;
-      const member = this.seats[rs]!;
-      if (!member.isBot && member.socketIds.size === 0) {
-        runtime.applyEvent({ type: 'DISCONNECT', seat: engineSeat, at: this.manager.now() });
+      const roster: RosterEntry[] = [];
+      const isBots: boolean[] = [];
+      for (let engineSeat = 0; engineSeat < occupied.length; engineSeat += 1) {
+        const rs = occupied[engineSeat]!;
+        const member = this.seats[rs];
+        if (!member) return abortStart(); // freed mid-await in an earlier iteration
+        let avatarSpec: unknown = member.avatarSpec;
+        let titleAtPlay: string | null = member.activeTitle;
+        if (!member.isBot) {
+          const profile = await this.manager.deps.userProfile(member.userId);
+          avatarSpec = profile?.avatarSpec ?? member.avatarSpec;
+          titleAtPlay = profile?.activeTitle ?? member.activeTitle;
+        }
+        isBots.push(member.isBot);
+        roster.push({
+          seat: engineSeat,
+          accountId: member.userId,
+          nickname: member.nickname,
+          avatarSpec,
+          titleAtPlay: titleAtPlay ?? undefined,
+        });
       }
+
+      // Revalidation after the last await: exact seat→user equality or no match.
+      for (let seat = 0; seat < this.capacity; seat += 1) {
+        if ((this.seats[seat]?.userId ?? null) !== seatUserIds[seat]) {
+          return abortStart();
+        }
+      }
+
+      const runtime = new MatchRuntime({
+        matchId: this.manager.deps.randomUuid(),
+        // Crypto-minted once per match (R1 pattern); (seed, log) replays exact.
+        // node:crypto caps the range at 2^48 (exclusive max), and the port's
+        // default adapter bridges inclusive->exclusive with +1 — so the safe
+        // inclusive ceiling for the port is 2^48 - 2. Still 2.8e14 states.
+        seed: this.manager.deps.randomInt(0, 2 ** 48 - 2),
+        roster,
+        isBotSeats: isBots,
+        config: this.manager.configuredMatchConfig,
+        roomCode: this.code,
+        theme: this.theme,
+        wheel: this.wheel,
+        timing: this.timing,
+        host: {
+          emitEvent: (event, payload) => {
+            this.emitEvent(event, payload);
+          },
+          emitToSeat: (engineSeat, event, payload) => {
+            this.emitToEngineSeat(engineSeat, event, payload);
+          },
+          seatSocketIds: (engineSeat) => this.seatSocketIdsByEngine(engineSeat),
+          isBotSeat: (engineSeat) => this.isBotEngineSeat(engineSeat),
+          onPresenceChanged: () => {
+            this.emitPresence();
+            if (this.matchRuntime?.isOver) this.scheduleGcIfEmpty();
+          },
+          onMatchEnd: (payload) => {
+            this.manager.handleMatchEnd(payload);
+          },
+          now: () => this.manager.now(),
+        },
+      });
+      this.matchRuntime = runtime;
+      runtime.start();
+
+      // Seat-holders with zero live sockets at kickoff begin disconnected and
+      // get their own grace clocks (they are still part of the fixed roster).
+      // The slot is (re)armed from the ENGINE's grace deadline: it replaces
+      // any lobby-era slot (armed at lobby-drop time), which would otherwise
+      // fire early, get rejected by ERR_TOO_EARLY, and lose the ABANDON.
+      for (let engineSeat = 0; engineSeat < occupied.length; engineSeat += 1) {
+        const rs = occupied[engineSeat]!;
+        const member = this.seats[rs]!;
+        if (!member.isBot && member.socketIds.size === 0) {
+          runtime.applyEvent({ type: 'DISCONNECT', seat: engineSeat, at: this.manager.now() });
+          this.armGraceTimer(member.userId, engineSeat);
+        }
+      }
+      return okAction(null);
+    } catch {
+      // A rejected profile load (or any other mid-start throw) must never
+      // strand a half-started room: roll the mappings back, keep the room in
+      // the lobby, and let the host simply start again.
+      if (this.matchRuntime) {
+        this.matchRuntime.dispose();
+        this.matchRuntime = null;
+      }
+      this.engineToRoomSeat = null;
+      this.roomToEngineSeat = null;
+      return errAction('INTERNAL', 'match start failed');
+    } finally {
+      this.startingMatch = false;
     }
-    return okAction(null);
   }
 
   // ── disconnect grace (engine clock fields are the authority) ─────────────
@@ -659,6 +706,16 @@ class Room {
       this.manager.mirrorRoom(this);
       this.scheduleGcIfEmpty();
     }
+  }
+
+  /**
+   * Fresh-seat sitter claims host when the room has NO seated host at all.
+   * A lobby grace cascade can free every seat — promotion passing through
+   * doomed members (their own slots expire moments later) used to leave the
+   * room pointing at a departed host → NOT_HOST forever, an unstartable room.
+   */
+  claimHostIfVacant(userId: string): void {
+    if (this.seatOfUser(this.hostUserId) === -1) this._hostUserId = userId;
   }
 
   // ── host controls ────────────────────────────────────────────────────────
@@ -773,8 +830,15 @@ export class RoomManager {
   }
 
   handleMatchEnd(payload: MatchEndPayload): void {
-    const viaDeps = this.deps.onMatchEnd?.(payload);
-    if (viaDeps instanceof Promise) viaDeps.catch(() => undefined);
+    // Seam isolation: a hook that THROWS synchronously (instead of returning
+    // a rejected promise) must not blow up the game:over wire path from inside
+    // the wheel callback — both failure flavors are swallowed here.
+    try {
+      const viaDeps = this.deps.onMatchEnd?.(payload);
+      if (viaDeps instanceof Promise) viaDeps.catch(() => undefined);
+    } catch {
+      /* the economy's own retry path owns persistence; play must continue */
+    }
     for (const fn of this.matchListeners) fn(payload);
   }
 
@@ -883,7 +947,12 @@ export class RoomManager {
   private detachSocketFromCurrentRoom(socketId: string): void {
     const priorCode = this.socketRoom.get(socketId);
     if (priorCode === undefined) return;
-    this.rooms.get(priorCode)?.unbindSocket(socketId);
+    const priorRoom = this.rooms.get(priorCode);
+    priorRoom?.unbindSocket(socketId);
+    // The vacated room may have just lost its last live socket in this rebind
+    // (e.g. a second room:create from the same socket) — nothing else in the
+    // rebind path arms its idle GC, so it must happen here or the room leaks.
+    priorRoom?.scheduleGcIfEmpty();
   }
 
   /** Called by rooms when they drop a socket (reverse-map hygiene). */
@@ -953,6 +1022,8 @@ export class RoomManager {
         socketIds: new Set<string>(),
         lastEmoteAt: 0,
       };
+      // Host vacancy self-heals at the next fresh seat (see claimHostIfVacant).
+      room.claimHostIfVacant(input.userId);
       if (this.bindSocketToSeat(room, input.socketId, seat)) {
         room.emitSnapshotToAll();
         this.mirrorRoom(room);
