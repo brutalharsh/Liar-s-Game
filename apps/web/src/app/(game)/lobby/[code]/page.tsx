@@ -12,8 +12,8 @@ export default async function LobbyPage({
 }) {
   const { code } = await params;
   return (
-    <div className="h-[100dvh] overflow-hidden">
+    <main className="h-[100dvh] overflow-hidden">
       <LobbyClient code={code.toUpperCase()} />
-    </div>
+    </main>
   );
 }

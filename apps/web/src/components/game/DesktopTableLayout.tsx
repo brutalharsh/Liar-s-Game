@@ -15,10 +15,16 @@ function opponentAngles(n: number): number[] {
   return Array.from({ length: n }, (_, i) => (180 * i) / (n - 1));
 }
 
+/**
+ * Opponents spread across the arc — x amplitude keeps the 9:00/3:00 chips
+ * inside the felt at the tight `lg` layout (stage = viewport − 320px aside);
+ * at 1024px that stage is 704px wide, so a 132px chip at x=6% (44 radius)
+ * hung 24px off-screen, silently clipped by the route's overflow-hidden.
+ */
 function polarToPercent(angleDeg: number): { x: number; y: number } {
   const rad = (angleDeg * Math.PI) / 180;
   return {
-    x: 50 + 44 * Math.cos(rad),
+    x: 50 + 38 * Math.cos(rad),
     y: 46 - 42 * Math.sin(rad),
   };
 }
@@ -70,7 +76,9 @@ export function DesktopTableLayout({
             <div className="absolute inset-x-0 top-1 z-20 flex justify-center">{banner}</div>
           )}
 
-          {/* opponents around the rim */}
+          {/* opponents around the rim — column centers floored at 88px so the
+              ~142px-tall chip columns can never ride above the stage into the
+              context ribbon (298px stage tops overlapped it 25–38px) */}
           {opponents.map((seat, i) => {
             const angle = angles[i] ?? 90;
             const pos = polarToPercent(angle);
@@ -78,7 +86,7 @@ export function DesktopTableLayout({
               <div
                 key={seat.seat}
                 className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-                style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                style={{ left: `${pos.x}%`, top: `max(${pos.y}%, 88px)` }}
               >
                 <SeatChip seat={seat} place="oval" relation={seat.seat === nextSeat?.seat ? "next" : undefined} />
               </div>
@@ -89,7 +97,7 @@ export function DesktopTableLayout({
           {hero && (
             <div
               className="absolute z-10 -translate-x-1/2 -translate-y-1/2"
-              style={{ left: `${heroPos.x}%`, top: `${heroPos.y}%` }}
+              style={{ left: `${heroPos.x}%`, top: `max(${heroPos.y}%, 88px)` }}
             >
               <SeatChip seat={hero} place="oval" relation={undefined} />
             </div>

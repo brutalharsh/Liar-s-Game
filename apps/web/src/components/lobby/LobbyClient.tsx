@@ -142,7 +142,7 @@ export function LobbyClient({ code }: { code: string }) {
             >
               ←
             </button>
-            <span className="truncate font-display text-sm tracking-wider text-ivory">{lobby.name}</span>
+            <h1 className="truncate font-display text-sm tracking-wider text-ivory">{lobby.name}</h1>
             <span className="ml-auto rounded-full border border-brass-deep bg-wood-deep px-2 py-0.5 font-body text-[10px] uppercase text-brass">
               {lobby.visibility}
             </span>
@@ -239,7 +239,8 @@ export function LobbyClient({ code }: { code: string }) {
             {/* meta chips + host controls */}
             <div className="flex flex-wrap items-center justify-center gap-2">
               <span className="rounded-full border border-lamp/50 bg-lamp/10 px-3 py-1 font-body text-xs text-lamp">
-                ~{lobby.estMatchMinutes} min at {seated.length} players
+                ~{lobby.estMatchMinutes} min at {seated.length}
+                {seated.length === 1 ? " player" : " players"}
               </span>
               {!live && (
                 <Button variant="outline" size="sm" onClick={() => useGameStore.getState().fillSeatWithBot()}>

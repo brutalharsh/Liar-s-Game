@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useGameTable } from "@/components/game/gameTableContext";
 import { SeatChip } from "@/components/game/SeatChip";
+import { useGameStore } from "@/store/game";
 
 /**
  * MOBILE PORTRAIT TABLE (research/09 §2.2a):
@@ -21,7 +22,8 @@ export function MobileTableLayout({
   bottomBar?: ReactNode;
   aside?: ReactNode; // desktop-only panel; intentionally unused on mobile
 }) {
-  const { orderedSeats, prevSeat, nextSeat } = useGameTable();
+  const { orderedSeats, prevSeat, nextSeat, variant, heroSeat: heroSeatNo } = useGameTable();
+  const starterSeat = useGameStore((s) => s.starterSeat);
   const hero = orderedSeats[0] ?? null;
   const others = orderedSeats.slice(1);
   // rail: everyone except the two wings, laid out right-to-left per the
@@ -77,7 +79,22 @@ export function MobileTableLayout({
       )}
 
       {/* bottom bar: hero strip + hand + action buttons (props-driven) */}
-      {bottomBar && <div className="px-safe pb-safe">{bottomBar}</div>}
+      {bottomBar && (
+        <div className="relative px-safe pb-safe">
+          {/* hero's round-starter marker — the hero has no seat chip on
+              mobile, so the ★ first-throw badge (research/09 §2 seat cells)
+              gets no surface from the shell; sink it onto the bottom bar */}
+          {variant === "table" && heroSeatNo !== null && starterSeat === heroSeatNo && (
+            <span
+              aria-hidden="true"
+              className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-1.5 font-body text-[10px] uppercase tracking-widest text-brass shadow-panel"
+            >
+              ★ you throw first
+            </span>
+          )}
+          {bottomBar}
+        </div>
+      )}
     </div>
   );
 }

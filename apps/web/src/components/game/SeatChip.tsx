@@ -100,8 +100,8 @@ export function SeatChip({
           onClick={() => onSeatTap?.(seat)}
           aria-label={
             empty
-              ? `seat ${seat.seat + 1} empty`
-              : `${seat.nickname}, seat ${seat.seat + 1}${dead ? ", eliminated" : ""}${isStarter ? ", round starter" : ""}`
+              ? `seat ${seat.seat + 1} empty${seat.locked ? " (locked)" : " — tap to copy invite link"}`
+              : `${seat.nickname}, seat ${seat.seat + 1}, ${seat.cardCount ?? 0}c, ${seat.pulled}/6${dead ? ", eliminated" : ""}${isStarter ? ", round starter" : ""}`
           }
           className={`relative flex flex-col items-center gap-1 rounded-btn border-2 px-1 pb-1 pt-2 transition-transform active:scale-95 ${
             empty
@@ -191,7 +191,7 @@ export function SeatChip({
 
 function ChamberPipsCompact({ pulled }: { pulled: number }) {
   return (
-    <span className="flex gap-[3px]" aria-label={`${pulled} of 6 chambers used`}>
+    <span role="img" className="flex gap-[3px]" aria-label={`${pulled} of 6 chambers used`}>
       {[0, 1, 2, 3, 4, 5].map((i) => (
         <span
           key={i}
