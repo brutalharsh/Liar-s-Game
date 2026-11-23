@@ -47,26 +47,35 @@
 | W-AUTH | Login gate (Discord/Google), `/admindashboard` UI, billing return + shop wiring | `apps/web` auth/admin/shop/api | ✅ done — tsc-clean in territory (residual app errors are W2's in-flight files); routes 200 in mock mode |
 | R1 | Rules engine: complete pure-TS Liar's Deck per STR/01 + 30+ vitest cases | `packages/rules-engine` | ✅ done — 132/132 green (vitest ^5.1.1), tsc clean, replay + leak tripwires verified by orchestrator |
 | W1 | Web shell: 15 routes mock-first + two-mode GameTableShell | `apps/web` | ✅ done — build green; orchestrator re-verified (build + privacy scan) |
-| W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | 🏃 running |
+| W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | ✅ done — 23/23 store tests, tsc clean, app-wide build green; orchestrator re-verified |
+| S1 | Game rooms: RoomManager + STR/07 event router on the rules engine + timer wheel + reconnect + bots | `apps/server/src/game` + one index.ts block | 🏃 running |
+| E1 | Economy services: grantMatchRewards seam, levels 1–100, titles, anti-farm caps, leaderboard + profile REST | `apps/server/src/economy` + routes/economy + mounts line | ✅ done — 187/187 green; 10-lakh curve verified; PII projection tested |
 
 ## Next up (queue — dispatch as prerequisites land)
 
 1. **S1 — Game rooms wave** (`apps/server/src/game`): RoomManager + event router
    wired to `packages/rules-engine` + timer wheel + reconnection — 🏃 dispatched
    2026-11-23 night (gates R1 ✓ and S-A1's io mount ✓; registers via index.ts)
-2. **E1 — Economy services** (`apps/server/src/economy`): grantMatchRewards
-   (XP/coins/titles from the MatchRecord), levels 1–100, anti-farm caps,
-   leaderboard + profile endpoints, match_records persistence — 🏃 dispatched
-   (registers via app.ts mounts)
-3. **W3 — Shop/profile/leaderboard wiring** to real APIs — after E1 lands (its
-   endpoint report becomes W3's contract)
-4. **Integration pass**: web ↔ server smoke over real sockets (after S1 + W2);
+2. **E1 — Economy services** (`apps/server/src/economy`) — ✅ completed 2026-11-23
+   night; orchestrator re-verified: 187/187 green, tsc clean with S1's in-flight
+   layer present, fences held (app.ts = 3 lines, wallet union = 1 reason),
+   PII projection + idempotence + cap tests green. Curve: K=733·1.0721^(L-1) →
+   10,000,496 XP to L100 ≈ the 10-lakh grind (supported; K = recalibration
+   constant). Deviations accepted: match_replay_seeds economy-owned col;
+   pre-summed coin rows (reason `match_reward`); "House Always Wins" title
+   deferred (MatchRecord lacks executor→victim — queued as R1 follow-up);
+   add @liars-game/rules-engine to apps/server deps at integration
+3. **W3 — Leaderboard + profile wiring** to E1's real endpoints — 🏃 dispatched
+   2026-11-23 night (contract: GET /api/leaderboard + GET /api/me[/profile]
+   per E1's report)
+4. **Integration pass**: web ↔ server smoke over real sockets (after S1 lands);
    pin catalog item id format (`category:slug` per STR/09 — S-A1 + W-AUTH
    aligned; W1-era dash-format fixtures to reconcile); reconcile the auth
    callback default target (`/` — no code-less lobby route exists); fold
    lib/oauth.ts's 4 process.env reads into the shared config; wire S1's
-   onMatchEnd hook to E1's grantMatchRewards. App-wide web build goes green at
-   W2's landing (all current errors are W2's in-flight seq migration)
+   onMatchEnd hook to E1's grantMatchRewards in index.ts; add
+   rules-engine dep to apps/server + keep dist built; rooms/lobby live
+   socket wiring after S1's contract lands
 5. *(M1 motion pass absorbed into W2's mission)*
 
 ## Open items (owner, no rush)
@@ -133,8 +142,16 @@
   (W-AUTH built the page); lib/oauth.ts keeps 4 OAuth creds via process.env
   (TODO-sync-with-shared → integration pass)
 - W-AUTH — ✅ completed 2026-11-23 night incl. the `/auth/callback` supplement;
-  orchestrator re-verified: all 91 residual tsc errors attribute to W2's
+  orchestrator re-verified: all 91 residual tsc errors attributed to W2's
   in-flight seq-migration files (zero in W-AUTH territory), privacy + secrets
   + cookie-only session scans clean, routes 200 in mock mode, no new deps.
   Catalog id format `category:slug` aligned with S-A1 + STR/09 (pin at
-  integration pass)
+  integration pass). Follow-through commit 0fdbc18 captured its two stranded
+  files (components/shop/ShopView + lib/payments seam)
+- W2 — ✅ completed 2026-11-23 night; orchestrator re-verified ALL gates
+  personally: tsc clean, 23/23 store vitest, app-wide `npm run build` green,
+  privacy + secrets scans clean, pile renders counts only (no hidden ranks),
+  deps within allowlist (socket.io-client, canvas-confetti+types, vitest).
+  Deviations accepted: legacy {type} ClientAction adapter (TODO-sync-with-shared
+  at integration), mock room code DUMMY (charset fix), two disclosed copy
+  strings in create/JoinView, components/table/** claimed

@@ -6,7 +6,16 @@
  */
 import { Schema, model } from 'mongoose';
 
-export const LEDGER_REASONS = ['win', 'survived_round', 'purchase', 'spend', 'adjust'] as const;
+// 'match_reward' = coins granted at game:over (rounds-survived + win bonus,
+// pre-summed by the rules engine — grant.ts applies the record's number).
+export const LEDGER_REASONS = [
+  'win',
+  'survived_round',
+  'purchase',
+  'spend',
+  'adjust',
+  'match_reward',
+] as const;
 export type LedgerReason = (typeof LEDGER_REASONS)[number];
 
 export interface LedgerFields {
