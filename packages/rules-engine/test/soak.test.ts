@@ -210,7 +210,8 @@ describe('Soak: randomized full matches across 2/3/4/5/7/10 players', () => {
 
   it('containsLie equals the engine verdict semantics used in 1)', () => {
     expect(containsLie([{ id: 'a', rank: 'K' }], 'K')).toBe(false);
-    expect(containsLie([{ id: 'a', rank: 'K' }, { id: 'b', rank: 'JOKER' }], 'Q')).toBe(false);
+    expect(containsLie([{ id: 'a', rank: 'K' }, { id: 'b', rank: 'JOKER' }], 'Q')).toBe(true); // K is off-table on Q
+    expect(containsLie([{ id: 'a', rank: 'Q' }, { id: 'b', rank: 'JOKER' }], 'Q')).toBe(false);
     expect(containsLie([{ id: 'a', rank: 'K' }], 'Q')).toBe(true);
   });
 });

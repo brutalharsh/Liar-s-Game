@@ -124,10 +124,21 @@ describe('STAGE (pre-staging selection, A4 source)', () => {
     expect(s.players[(A + 1) % 3].staged).toHaveLength(2);
     s = ok(s, { type: 'STAGE', seat: (A + 1) % 3, cardIds: [], at: T0 + 4 }).s;
     expect(s.players[(A + 1) % 3].staged).toHaveLength(0);
-    for (const bad of [['x'], handOf(s, (A + 2) % 3).slice(0, 2), [...ids.slice(0, 1), ...ids.slice(0, 1)]] as string[][]) {
-      const r = apply(s, { type: 'STAGE', seat: (A + 2) % 3, cardIds: bad, at: T0 + 5 });
+    for (const bad of [
+      ['x'],                                     // garbage id
+      [...ids.slice(0, 1), ...ids.slice(0, 1)],  // same card twice
+    ] as string[][]) {
+      const r = apply(s, { type: 'STAGE', seat: (A + 1) % 3, cardIds: bad, at: T0 + 6 });
       expect(r.err?.code).toMatch(/ERR_(NOT_OWNED_CARD|DUPLICATE_CARD)/);
     }
+    // staging some OTHER player's cards from your seat is foreign:
+    const foreign = apply(s, {
+      type: 'STAGE',
+      seat: (A + 1) % 3,
+      cardIds: handOf(s, (A + 2) % 3).slice(0, 2),
+      at: T0 + 7,
+    });
+    expect(foreign.err?.code).toBe('ERR_NOT_OWNED_CARD');
   });
 
   it('staged selection is cleared on play and on redeal', () => {

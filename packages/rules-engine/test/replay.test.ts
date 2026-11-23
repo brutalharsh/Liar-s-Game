@@ -13,20 +13,20 @@ const handOf = (s: GameState, seat: number): string[] =>
  * rejected events too. Returns the final state + all effects.
  */
 function driveEventPure(seed: number) {
-  let s = apply(
-    createMatch({ roster: roster(3), seed, matchId: 'm-replay' }),
-    { type: 'MATCH_START', at: T0 },
-  ).state;
-  s = apply(s, { type: 'BEGIN_TURNS', at: T0 + 1 }).state;
   const effects: Effect[] = [];
   const errors: string[] = [];
+  let s = createMatch({ roster: roster(3), seed, matchId: 'm-replay' });
   const push = (r: { state: GameState; effects: Effect[]; err?: { code: string } }) => {
     effects.push(...r.effects);
     if (r.err) errors.push(r.err.code);
     s = r.state;
   };
+  // Boot events run through the same capture so the effects stream is complete:
+  push(apply(s, { type: 'MATCH_START', at: T0 }));
+  push(apply(s, { type: 'BEGIN_TURNS', at: T0 + 1 }));
   let now = T0 + 2;
   let steps = 0;
+  let injected = false;
   while (s.phase !== 'GAME_END' && steps++ < 500) {
     switch (s.phase) {
       case 'ROUND_NEW':
@@ -44,12 +44,16 @@ function driveEventPure(seed: number) {
       case 'TURN':
       case 'WINDOW': {
         const seat = s.turn!.seat;
-        const roll = steps % 7;
-        if (roll === 0 && s.phase === 'TURN' && s.round!.pile.length > 0) {
-          // deliberate ILLEGAL call every so often (window closed / no window): recorded as rejected
+        // One-shot pair of DELIBERATE rejections (both are pure no-ops on
+        // state; their rejection-shaped log entries must replay identically):
+        if (!injected && s.phase === 'TURN' && s.round!.pile.length > 0) {
+          injected = true;
           const nonHolder = s.players.find((p) => p.alive && p.seat !== seat)!;
-          push(apply(s, { type: 'LIAR', seat: nonHolder.seat, at: ++now }));
-        } else if (roll === 1) {
+          push(apply(s, { type: 'LIAR', seat: nonHolder.seat, at: ++now })); // ERR_NOT_YOUR_TURN (next-only)
+          push(apply(s, { type: 'STAGE', seat, cardIds: ['ghost-card'], at: ++now })); // ERR_NOT_OWNED_CARD
+        }
+        const roll = steps % 7;
+        if (roll === 1) {
           // timeout at the legal clock
           const at = Math.max(s.turn!.deadline, now) + 1;
           push(apply(s, { type: 'TURN_TIMEOUT', seat, at }));
@@ -67,10 +71,6 @@ function driveEventPure(seed: number) {
           const ids = handOf(s, seat);
           const count = Math.min(ids.length, 1 + (steps % 3));
           push(apply(s, { type: 'PLAY', seat, cardIds: ids.slice(0, count), at: ++now }));
-          // occasional deliberate rejection too (foreign card id):
-          if (steps % 11 === 0) {
-            push(apply(s, { type: 'PLAY', seat, cardIds: ['ghost-card'], at: ++now }));
-          }
         }
         break;
       }

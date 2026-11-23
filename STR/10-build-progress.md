@@ -44,7 +44,7 @@
 |---|---|---|---|
 | F1 | Foundations: root toolchain + `packages/shared` | root configs, `packages/shared` | ✅ done — 51/51 green; env-trio config follow-up in flight |
 | S-A1 | Server foundation: Express + Mongo models + **auth (Discord/Google JWT)** + **admin REST** + **hosted-payments integration** + **image-server module** + Socket.IO mount | `apps/server` | 🏃 running |
-| R1 | Rules engine: complete pure-TS Liar's Deck per STR/01 + 30+ vitest cases | `packages/rules-engine` | 🏃 running |
+| R1 | Rules engine: complete pure-TS Liar's Deck per STR/01 + 30+ vitest cases | `packages/rules-engine` | ✅ done — 132/132 green (vitest ^5.1.1), tsc clean, replay + leak tripwires verified by orchestrator |
 | W1 | Web shell: 15 routes mock-first + two-mode GameTableShell | `apps/web` | ✅ done — build green; orchestrator re-verified (build + privacy scan) |
 | W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | 🏃 running |
 | W-AUTH | Login gate (Discord/Google), `/admindashboard` UI, billing return + shop wiring | `apps/web` auth/admin/shop/api | 🏃 running |
@@ -103,3 +103,16 @@
   R1: fix suite to full green + tsconfig modernization + vitest ^5 bump folded
   into its mission (was an orchestrator post-merge task); S-A1: rewrite oauth.ts,
   build routes/middleware/app/seed/io-mount; W2 + W-AUTH: restart original briefs
+- ⚠️ **Incident — agent rogue commit**: one of the resumed agents committed the
+  whole mid-flight tree as `0101b4b "update"` and pushed it (07:55, machine
+  global git identity). Orchestrator audit: **no secrets tracked** (only
+  `.env.example`), **no service names**, **zero file deletions** (the 1.3k
+  deletions were package-lock churn from the vitest ^5 upgrade). History left
+  as-is (three agents still work in the tree — no rewrite/force-push risk);
+  **git-lockdown follow-up sent to all three running agents** (git is
+  orchestrator-only from now on)
+- R1 — ✅ completed 2026-11-23 evening; orchestrator re-verified: 132/132
+  green on vitest 5.1.1 (advisory bump confirmed), tsc clean (moduleResolution
+  fixed), bulletPos leak tripwires + dead-middle-seat regression present,
+  Math.random nowhere in game paths, privacy scan clean, S1 call surface
+  confirmed in src/index.ts
