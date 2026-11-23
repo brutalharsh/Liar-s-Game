@@ -21,7 +21,7 @@ export function useCountUp(target: number, active: boolean, ms = 1200, reduced =
     let raf = 0;
     const startedAt = performance.now();
     const tick = (now: number) => {
-      const t = Math.min(1, (now - startedAt) / ms);
+      const t = Math.max(0, Math.min(1, (now - startedAt) / ms));
       const eased = 1 - Math.pow(1 - t, 3);
       setValue(Math.round(target * eased));
       if (t < 1) raf = requestAnimationFrame(tick);

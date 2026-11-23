@@ -32,7 +32,7 @@ export function Button({ variant = "primary", size = "md", className = "", child
   return (
     <button
       {...rest}
-      className={`inline-flex touch-manipulation items-center justify-center gap-2 rounded-btn border-2 font-display tracking-wide disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`}
+      className={`inline-flex touch-manipulation items-center justify-center gap-2 rounded-btn border-2 font-display tracking-wide disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>

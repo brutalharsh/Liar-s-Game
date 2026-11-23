@@ -266,6 +266,7 @@ describe("applyEvent — play:accept + challenge window", () => {
     const s = f.store.getState();
     expect(s.hand.map((c) => c.id)).toEqual(["h2", "h4", "h5"]);
     expect(s.pile).toEqual([{ seat: 0, count: 2 }]);
+    expect(s.totalPile).toBe(2); // the wire's pile total lands with the play
     expect(s.lastPlay).toEqual({ seat: 0, count: 2 });
     expect(s.pendingThrow).toBe(false);
     expect(s.selectedCardIds).toEqual([]);
@@ -295,6 +296,21 @@ describe("applyEvent — play:accept + challenge window", () => {
     f.send("play:accept", { seat: 1, count: 1, totalPile: 3 });
     expect(f.store.getState().forcedCall).toBe(true);
     expect(at(f, 1)?.cardCount).toBe(0);
+  });
+
+  it("plumbs wire totalPile through snapshot and play, resetting each round", () => {
+    const f = fresh();
+    const midMatch = lobbyState();
+    Object.assign(midMatch.payload, { pileTotal: 7 });
+    f.store.getState().applyEvent(midMatch);
+    expect(f.store.getState().totalPile).toBe(7); // lobby:state carries the authoritative total
+
+    f.send("play:accept", { seat: 1, count: 3, totalPile: 10 });
+    expect(f.store.getState().totalPile).toBe(10); // play:accept updates it
+
+    f.send("round:new", { roundNo: 4, tableCard: "Q", dealtCounts: [] });
+    expect(f.store.getState().pile).toEqual([]);
+    expect(f.store.getState().totalPile).toBe(0); // a fresh round starts the count over
   });
 
   it("computeForcedCall needs a standing play AND exactly one holder", () => {
@@ -464,15 +480,15 @@ describe("applyEvent — presence / emotes / errors", () => {
 
   it("sendEmote routes through the emitter seam", async () => {
     const f = fresh();
-    await f.store.getState().sendEmote("snake");
-    expect(f.sent).toEqual([{ type: "emote:send", emoteId: "snake" }]);
+    await f.store.getState().sendEmote("wink");
+    expect(f.sent).toEqual([{ type: "emote:send", emoteId: "wink" }]);
   });
 
   it("emote cooldown stamps only on the server's accept (a reject never burns it)", async () => {
     const f = fresh();
     f.store.getState().applyEvent(lobbyState());
     f.emitterResults.push({ ok: false, errorCode: "RATE_LIMITED", errorMessage: "Emotes cool down for 3 seconds." });
-    const rejected = await f.store.getState().sendEmote("snake");
+    const rejected = await f.store.getState().sendEmote("wink");
     expect(rejected.ok).toBe(false);
     expect(f.store.getState().lastEmoteSentAt).toBe(0); // unchanged — retry is free
 
@@ -484,7 +500,7 @@ describe("applyEvent — presence / emotes / errors", () => {
   it("rapid emote taps collapse into one emote:send while the first is in flight", async () => {
     const f = fresh();
     f.store.getState().applyEvent(lobbyState());
-    const [a, b] = await Promise.all([f.store.getState().sendEmote("laugh"), f.store.getState().sendEmote("clap")]);
+    const [a, b] = await Promise.all([f.store.getState().sendEmote("laugh"), f.store.getState().sendEmote("cheer")]);
     expect(a.ok && b.ok).toBe(true);
     expect(f.sent).toHaveLength(1); // deduped — the second tap reuses the same emit
   });

@@ -19,7 +19,7 @@ export function useCountdown(deadlineTs: number | null): { secondsLeft: number; 
   const secondsLeft = deadlineTs === null ? 0 : Math.max(0, (deadlineTs - now) / 1000);
   return {
     secondsLeft,
-    urgent: deadlineTs !== null && secondsLeft < 10,
+    urgent: deadlineTs !== null && secondsLeft <= 3,
     expired: deadlineTs !== null && secondsLeft <= 0,
   };
 }

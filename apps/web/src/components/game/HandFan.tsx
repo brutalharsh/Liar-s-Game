@@ -6,6 +6,7 @@ import { useGameTable } from "@/components/game/gameTableContext";
 import { useGameStore, type HandCard } from "@/store/game";
 import { GameCard } from "@/components/game/GameCard";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { rankWord } from "@/lib/format";
 import { dealStaggerMs, dealTransition, dealVariants } from "@/motion/table";
 
 /**
@@ -88,7 +89,7 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
               key={card.id}
               type="button"
               aria-pressed={isSelected}
-              aria-label={`Card ${i + 1}${isSelected ? ", selected" : ""}`}
+              aria-label={`Card ${i + 1}: ${rankWord(card.rank)}${isSelected ? ", selected" : ""}`}
               onClick={() => onCardTap(card)}
               initial="shoe"
               animate="hand"
@@ -106,7 +107,7 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
                   faceUp
                   size={size}
                   selected={isSelected}
-                  label={card.rank === "J" ? "joker" : card.rank}
+                  label={rankWord(card.rank)}
                 />
               </motion.span>
               {isSelected && (

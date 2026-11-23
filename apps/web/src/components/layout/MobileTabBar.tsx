@@ -33,7 +33,7 @@ export function MobileTabBar() {
             <span aria-hidden className="text-lg leading-none">
               {tab.emoji}
             </span>
-            <span className="font-body text-[9px] tracking-widest">{tab.label}</span>
+            <span className="font-body text-xs tracking-widest">{tab.label}</span>
           </Link>
         );
       })}

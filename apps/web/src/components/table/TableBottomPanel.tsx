@@ -87,12 +87,13 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       const s = useGameStore.getState();
       const w = s.window;
-      const armedNow = w !== null && w.playSeat !== s.heroSeat && Date.now() - w.openedAt >= WINDOW_ARM_MS;
-      const judgeNow = s.turnSeat === s.heroSeat && w === null && s.lastPlay !== null && s.lastPlay.seat !== s.heroSeat;
+      const ghostNow = s.spectator || s.seatByNumber(s.heroSeat)?.alive === false; // ghosts are emote-only — no THROW/CHECK keys (U8)
+      const armedNow = w !== null && w.playSeat !== s.heroSeat && Date.now() - w.openedAt >= WINDOW_ARM_MS && !ghostNow;
+      const judgeNow = s.turnSeat === s.heroSeat && w === null && s.lastPlay !== null && s.lastPlay.seat !== s.heroSeat && !ghostNow;
       if (e.key >= "1" && e.key <= "3") {
         const card = s.hand[Number(e.key) - 1];
         if (card) s.toggleCardSelection(card.id);
-      } else if (e.key.toLowerCase() === "e") {
+      } else if (e.key.toLowerCase() === "e" && !ghostNow) {
         void doThrow();
       } else if (e.key.toLowerCase() === "x") {
         if (armedNow || judgeNow) {
@@ -153,8 +154,10 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
       {/* fanned hand — dead input when it's not your call or you're spectating */}
       <HandFan disabled={!myTurn || pendingThrow} />
 
-      {/* action row */}
-      <div className="flex items-stretch justify-center gap-3 pb-2">
+      {/* action row — ghosts are emote-only: no gray THROW stub rides the
+          felt for the dead (U8 spec) */}
+      {!ghost && (
+        <div className="flex items-stretch justify-center gap-3 pb-2">
         <Button
           variant="brass"
           size="big"
@@ -209,7 +212,7 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
             {/* the 10s countdown ring rides the button's shoulder */}
             {armed && window_ && (
               <span className="pointer-events-none absolute -right-2 -top-2">
-                <TimerArc deadlineTs={window_.closesAtTs} size={34} width={3} className="drop-shadow" />
+                <TimerArc deadlineTs={window_.closesAtTs} size={34} width={3} className="drop-shadow" label="challenge window" />
               </span>
             )}
             {/* arm-delay representation — thin rail filling over 2s after the play */}
@@ -226,7 +229,8 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
             )}
           </motion.div>
         )}
-      </div>
+        </div>
+      )}
 
       <EmoteWheel open={emoteOpen} onClose={() => setEmoteOpen(false)} />
     </div>

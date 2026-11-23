@@ -1,6 +1,7 @@
 "use client";
 
 import type { CardRank } from "@/lib/wire";
+import { rankWord } from "@/lib/format";
 
 const RANK_SUIT: Record<string, { glyph: string; color: string; word: string }> = {
   K: { glyph: "♠", color: "text-wood-deep", word: "K" },
@@ -32,11 +33,14 @@ export function GameCard({
   } as const;
 
   const rankInfo = rank ? RANK_SUIT[rank] : undefined;
+  // face-up cards self-describe with their visible rank (label-in-name);
+  // an explicit label (reveal stages) still wins
+  const accessibleName = label ?? (faceUp && rank ? rankWord(rank) : undefined);
 
   return (
     <span
-      role={label ? "img" : undefined}
-      aria-label={label}
+      role={accessibleName ? "img" : undefined}
+      aria-label={accessibleName}
       className={`relative inline-flex shrink-0 select-none items-center justify-center rounded-card border-2 ${dims[size]} ${
         faceUp
           ? "border-wood-mid bg-ivory"

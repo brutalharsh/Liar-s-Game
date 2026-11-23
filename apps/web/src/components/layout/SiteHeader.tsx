@@ -63,12 +63,15 @@ export function SiteHeader() {
             );
           })}
         </nav>
-        <div className="ml-auto flex items-center gap-2">
+        {/* auth cluster — fixed-height slot: the cluster is 52px in EVERY
+            session state (48px locals center inside it), so the header never
+            shifts when the session resolves */}
+        <div className="ml-auto flex h-13 items-center gap-2">
           <CoinBadge amount={coins} />
           <Link
             href="/settings"
             aria-label="Settings"
-            className="flex h-12 w-12 items-center justify-center rounded-full text-xl hover:bg-wood"
+            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl hover:bg-wood"
           >
             ⚙️
           </Link>
@@ -76,7 +79,7 @@ export function SiteHeader() {
             <Link
               href={loginHref}
               aria-label="Sign in"
-              className="flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs tracking-wider text-ink-dim hover:border-brass hover:text-brass md:text-sm"
+              className="flex min-h-12 shrink-0 items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs tracking-wider text-ink-dim hover:border-brass hover:text-brass md:text-sm"
             >
               SIGN IN
             </Link>
@@ -85,7 +88,7 @@ export function SiteHeader() {
               <Link
                 href="/profile"
                 aria-label={`Profile — ${user.nickname}`}
-                className="flex min-h-12 items-center gap-2 rounded-full border-2 border-transparent px-1 hover:border-wood-mid"
+                className="flex min-h-12 shrink-0 items-center gap-2 rounded-full border-2 border-transparent px-1 hover:border-wood-mid"
               >
                 <Avatar spec={toDisplaySpec(user.avatarSpec)} size="md" />
                 <span className="hidden max-w-24 truncate font-display text-sm text-ivory md:block">
@@ -96,13 +99,13 @@ export function SiteHeader() {
                 type="button"
                 onClick={() => void handleSignOut()}
                 aria-label="Sign out"
-                className="flex h-12 w-12 items-center justify-center rounded-full text-xl text-ink-dim hover:bg-wood hover:text-blood-bright"
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl text-ink-dim hover:bg-wood hover:text-blood-bright"
               >
                 🚪
               </button>
             </>
           ) : (
-            <Link href="/profile" aria-label="Profile" className="p-1 opacity-60">
+            <Link href="/profile" aria-label="Profile" className="shrink-0 p-1 opacity-60">
               <Avatar spec={guestAvatar} size="md" />
             </Link>
           )}

@@ -17,6 +17,7 @@ import { pluralClaim } from "@/lib/format";
  */
 export function PlayedPile() {
   const pile = useGameStore((s) => s.pile);
+  const totalPile = useGameStore((s) => s.totalPile);
   const tableCard = useGameStore((s) => s.tableCard);
   const lastPlay = useGameStore((s) => s.lastPlay);
   const phase = useGameStore((s) => s.phase);
@@ -88,6 +89,14 @@ export function PlayedPile() {
       {lastSeat !== null && tableCard && sorted.length > 0 && (
         <span className="rounded-full border border-brass-deep bg-wood-deep/90 px-2 py-0.5 font-body text-[11px] text-lamp">
           claims {lastPlay?.count} as {pluralClaim(tableCard, lastPlay?.count ?? 1)}
+        </span>
+      )}
+
+      {/* table-wide total — the wire's authoritative pile count (never a
+          locally-summed guess; rendered as a count chip like the stacks) */}
+      {totalPile > 0 && (
+        <span className="rounded-full border border-brass-deep bg-wood-deep/90 px-2 py-0.5 font-body text-[11px] text-lamp">
+          on the table: {totalPile}
         </span>
       )}
 

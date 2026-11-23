@@ -67,6 +67,8 @@ interface GameStoreState {
   window: { playSeat: number; closesAtTs: number; openedAt: number } | null;
   lastPlay: { seat: number; count: number } | null;
   pile: PlayedStack[];
+  /** Table-wide face-down count — the wire's authoritative pile total (STR/07 §2). */
+  totalPile: number;
   reveal: RevealState | null;
   shot: ShotState | null;
   roundEnd: RoundEndState | null;
@@ -139,6 +141,7 @@ const initialState: GameStoreState = {
   window: null,
   lastPlay: null,
   pile: [],
+  totalPile: 0,
   reveal: null,
   shot: null,
   roundEnd: null,
@@ -265,6 +268,7 @@ export function createGameStore(
             ? { playSeat: room.challengeWindow.playSeat, closesAtTs: room.challengeWindow.closesAtTs, openedAt: Date.now() }
             : null,
           hand: room.you ? room.you.hand.map((c) => ({ id: c.id, rank: c.rank })) : prev.hand,
+          totalPile: room.pileTotal ?? prev.totalPile,
           forcedCall: computeForcedCall(lobby.seats, prev.pile),
         });
         return;
@@ -298,6 +302,7 @@ export function createGameStore(
             roundNo: ev.payload.roundNo,
             tableCard: ev.payload.tableCard,
             pile: [],
+            totalPile: 0,
             reveal: null,
             shot: null,
             roundEnd: null,
@@ -373,6 +378,7 @@ export function createGameStore(
           const pile = mixPile(prev.pile, ev.payload.seat, ev.payload.count);
           set({
             pile,
+            totalPile: ev.payload.totalPile,
             lastPlay: { seat: ev.payload.seat, count: ev.payload.count },
             turnSeat: null,
             deadlineTs: null,

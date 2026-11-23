@@ -48,8 +48,21 @@ export function isValidRoomCode(code: string): boolean {
 /** Extract a valid code from pasted text or an invite link (e.g. /r/ABCDE). */
 export function parseCodeFromPasted(text: string): string | null {
   const upper = text.toUpperCase();
-  const chars = upper.split("").filter((ch) => ROOM_CODE_CHARSET.includes(ch)).join("");
-  const direct = sanitizeRoomCode(upper).slice(0, 5);
-  if (isValidRoomCode(direct) && (chars.length === 5 || upper.includes(direct))) return direct;
-  return null;
+
+  // invite links embed the code in the /r/ route segment — prefer it, or the
+  // protocol's own letters ("HTTPS…") can masquerade as a code
+  const route = /\/R\/([^/?#]*)/.exec(upper);
+  if (route?.[1]) {
+    const code = sanitizeRoomCode(route[1]);
+    if (isValidRoomCode(code)) return code;
+  }
+
+  // else: the LAST ≥5-char run of charset-valid characters — messy pastes
+  // append the code ("join me: ABC7E"), so the later run wins; anything
+  // shorter than 5 can never be a code
+  const runs = upper.split(new RegExp(`[^${ROOM_CODE_CHARSET}]`)).filter((run) => run.length >= 5);
+  const last = runs.at(-1);
+  if (last === undefined) return null;
+  const code = sanitizeRoomCode(last);
+  return isValidRoomCode(code) ? code : null;
 }

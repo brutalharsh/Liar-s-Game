@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useGameStore } from "@/store/game";
+import { socket } from "@/lib/socket";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { vibrate } from "@/lib/haptics";
 import { playSfx } from "@/lib/sfx";
@@ -108,7 +110,7 @@ export function GameOverOverlay() {
             </p>
             <h2 className="flex items-center gap-2 font-display text-3xl tracking-wider text-ivory">
               <span aria-hidden>{winnerEmoji}</span>{" "}
-              {nobodySurvived ? "NOBODY SURVIVED" : `${winnerName} WINS`}
+              {nobodySurvived ? "NOBODY SURVIVED" : iWon ? "YOU WIN" : `${winnerName} WINS`}
             </h2>
             {iWon && <p className="font-display text-sm text-brass">the table is yours — 🪙 {coinsShown} in your pocket</p>}
 
@@ -163,13 +165,24 @@ export function GameOverOverlay() {
               {gameOver.matchRecord.summary.rounds} rounds · {gameOver.matchRecord.summary.totalPulls} trigger pulls
             </p>
 
-            {/* rematch CTA — host re-lobby flow (STR/03 §4) */}
+            {/* rematch CTA — host re-lobby flow (STR/03 §4); Leave breaks the
+                seat — the same exit path TableClient's confirm sheet runs */}
             <div className="mt-1 flex w-full flex-col gap-2">
               <Button variant="brass" size="big" className="w-full text-xl" onClick={() => void rematch()}>
                 ⟳ REMATCH — BACK TO THE FELT
               </Button>
+              <Link
+                href="/rooms"
+                onClick={() => {
+                  void socket.emit({ type: "room:leave" });
+                  useGameStore.getState().reset();
+                }}
+                className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ink-dim hover:border-brass hover:text-brass"
+              >
+                LEAVE THE TABLE
+              </Link>
               <p className="font-body text-[10px] text-ink-dim">
-                rematch re-lobbies the same roster — everyone one-tap accepts
+                rematch re-lobbies the same roster — everyone one-tap accepts · leave frees your seat
               </p>
             </div>
           </motion.div>

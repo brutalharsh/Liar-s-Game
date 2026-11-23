@@ -185,14 +185,23 @@ export function ProfileView() {
               </section>
 
               <div className="flex flex-wrap justify-center gap-3">
-                <Link href="/shop">
-                  <Button variant="brass">🛍 VISIT THE SHOP</Button>
+                <Link
+                  href="/shop"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-5 font-display text-base tracking-wide text-wood-deep hover:brightness-110"
+                >
+                  🛍 VISIT THE SHOP
                 </Link>
-                <Link href="/leaderboard">
-                  <Button variant="outline">🏆 SEE THE RANKS</Button>
+                <Link
+                  href="/leaderboard"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
+                >
+                  🏆 SEE THE RANKS
                 </Link>
-                <Link href="/settings">
-                  <Button variant="outline">⚙️ SETTINGS</Button>
+                <Link
+                  href="/settings"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
+                >
+                  ⚙️ SETTINGS
                 </Link>
               </div>
             </>

@@ -10,16 +10,28 @@ export function SiteFooter() {
         LIAR's BAR.
       </p>
       <nav className="mt-4 flex flex-wrap justify-center gap-4" aria-label="Footer">
-        <Link href="/how-to-play" className="font-body text-xs text-ink-dim underline hover:text-ivory">
+        <Link
+          href="/how-to-play"
+          className="inline-flex min-h-12 items-center font-body text-xs text-ink-dim underline hover:text-ivory"
+        >
           How to play
         </Link>
-        <Link href="/shop" className="font-body text-xs text-ink-dim underline hover:text-ivory">
+        <Link
+          href="/shop"
+          className="inline-flex min-h-12 items-center font-body text-xs text-ink-dim underline hover:text-ivory"
+        >
           Shop
         </Link>
-        <Link href="/leaderboard" className="font-body text-xs text-ink-dim underline hover:text-ivory">
+        <Link
+          href="/leaderboard"
+          className="inline-flex min-h-12 items-center font-body text-xs text-ink-dim underline hover:text-ivory"
+        >
           Leaderboard
         </Link>
-        <Link href="/settings" className="font-body text-xs text-ink-dim underline hover:text-ivory">
+        <Link
+          href="/settings"
+          className="inline-flex min-h-12 items-center font-body text-xs text-ink-dim underline hover:text-ivory"
+        >
           Settings
         </Link>
       </nav>

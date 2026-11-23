@@ -34,7 +34,9 @@ function labLobby(overrides: { heroAlive?: boolean } = {}): ServerEvent {
     isHost: seat === 0,
     handCount: seat === 3 ? 0 : seat === 0 ? 4 : 2,
     pulls: seat === 3 ? 6 : seat === 0 ? (alive ? 2 : 4) : seat === 2 ? 3 : 0,
-    alive: seat !== 3,
+    // the hero seat mirrors you.alive — otherwise ghost mode (which reads the
+    // SEAT view) never activates in the lab (U8 fixture invariant)
+    alive: seat !== 3 && (seat !== 0 || alive),
     activeTitle: null,
   }));
   return labEvent("lobby:state", 0, {
@@ -141,9 +143,12 @@ export function MotionLab() {
   };
 
   return (
-    <div className="flex h-[100dvh] flex-col overflow-hidden">
+    <div className="relative flex h-[100dvh] flex-col overflow-hidden">
+      {/* one scrollable row, never a wrap stack — a wrapped bar eats the
+          viewport and pushes THROW off an 812px screen; the table below
+          shrinks to the space the bar leaves so the panel always fits */}
       <motion.div
-        className="z-[80] flex flex-wrap items-center gap-1 border-b-2 border-brass-deep bg-wood-deep px-2 py-1.5 pt-safe"
+        className="z-[80] flex items-center gap-1 overflow-x-auto border-b-2 border-brass-deep bg-wood-deep px-2 py-1.5 pt-safe [&>button]:shrink-0 [&>button]:whitespace-nowrap"
         initial={{ y: -8, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
@@ -240,7 +245,10 @@ export function MotionLab() {
         </button>
       </motion.div>
 
-      <div className="min-h-0 flex-1">
+      {/* the production TableView renders itself h-[100dvh]; in the lab it
+          must fill the space UNDER the bar instead, or the bottom panel
+          (THROW/CHECK) clips below the fold */}
+      <div className="min-h-0 flex-1 [&>div]:h-full">
         <TableView
           code={LAB_CODE}
           roomId={LAB_CODE}
