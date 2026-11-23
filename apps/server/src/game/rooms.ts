@@ -555,7 +555,10 @@ class Room {
     const runtime = new MatchRuntime({
       matchId: this.manager.deps.randomUuid(),
       // Crypto-minted once per match (R1 pattern); (seed, log) replays exact.
-      seed: this.manager.deps.randomInt(0, Number.MAX_SAFE_INTEGER - 1),
+      // node:crypto caps the range at 2^48 (exclusive max), and the port's
+      // default adapter bridges inclusive->exclusive with +1 — so the safe
+      // inclusive ceiling for the port is 2^48 - 2. Still 2.8e14 states.
+      seed: this.manager.deps.randomInt(0, 2 ** 48 - 2),
       roster,
       isBotSeats: isBots,
       config: this.manager.configuredMatchConfig,

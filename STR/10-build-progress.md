@@ -52,6 +52,7 @@
 | E1 | Economy services: grantMatchRewards seam, levels 1–100, titles, anti-farm caps, leaderboard + profile REST | `apps/server/src/economy` + routes/economy + mounts line | ✅ done — 187/187 green; 10-lakh curve verified; PII projection tested |
 | W3 | Leaderboard + profile pages wired to E1's real endpoints (typed 1:1, curve-matched fixtures) | `apps/web` leaderboard/profile/api/fixtures | ✅ done — tsc, build, 23/23, scans clean; 4-metric board + full profile against the real contract |
 | S1 | Game rooms: RoomManager, 15-event router on the rules engine, timer wheel, reconnect/grace, bots, per-seat snapshots | `apps/server/src/game` + index.ts block | ✅ done — 238/238 green; every payload strides shared schemas; (seed,log) bit-exact replay asserted |
+| W4 | Live rooms/create/join/lobby flows + full-stack smoke script | `apps/web` rooms/create/join/lobby + live-smoke.mjs | ✅ done — found the game:start P0; live smoke 8/8 sections, 54 checks after orchestrator's seed/port fix |
 
 ## Next up (queue — dispatch as prerequisites land)
 
@@ -185,7 +186,33 @@
   `capacity:big-table`; lock/kick/bot programmatic (no wire events by design);
   room code = seat authority (no reconnectToken, STR/07 §5)
 
-## Wave 1 COMPLETE — all 10 agent waves landed, verified, committed, pushed.
+## Wave 1 COMPLETE — all 11 agent waves landed, verified, committed, pushed.
 
-Integration pass begins (orchestrator-owned): hook wiring, shared schema
-patch, rooms REST mount, web live wiring (W4), socket smoke.
+**Integration pass done — the game is END-TO-END PLAYABLE over real transport.**
+`live-smoke.mjs`: 8/8 sections, 54 checks — scripted match over real sockets →
+strict-zod + seq + chamber tripwires on every frame → hands/spectator privacy →
+mid-match reconnect (`reconnected:true` catch-up) → /api/rooms mid-match →
+game:over → grantMatchRewards → Mongo → leaderboard shows the XP.
+
+- ⚠️ **P0 incident (found by live smoke only — unit tests inject the port,
+  so the crash was invisible to every suite)**: the match-seed mint asked
+  node:crypto for a 2^53 range (hard cap 2^48) → uncaught ERR_OUT_OF_RANGE
+  killed the process mid-ack at game:start. First fix (call site 2^48-1)
+  revealed an inclusive→exclusive bridge off-by-one in the crypto-port shim
+  (+1 → 2^48, one over). Final fix: call site 2^48-2 + shim Math.min clamp
+  (protects every future caller). W4 diagnosed the bridge from read-only
+  discipline; orchestrator landed the fix + re-ran the smoke to 8/8.
+- Deferred to the hardening/deploy wave: router-wide async catch (engine
+  bugs currently crash the process rather than emitting error events —
+  rejected as late-night surgery on S1's dispatch paths; the seed class is
+  fully neutralized at the port, engine is 132-test deterministic).
+
+## Remaining polish (small, next session)
+
+- lib/oauth.ts: fold 4 OAuth process.env reads into the shared config
+- Dead mocks: lib/mock/{leaderboard,profile}.ts unread (store/economy still
+  imports MOCK_WALLET for the shop balance path) — delete or wire consciously
+- Titles registry reconcile: web mock/titles.ts has 12 (nine-lives,
+  house-wins) vs E1's 11 (cat-with-nine-lives; House Always Wins deferred)
+- Catalog id pin: `category:slug` everywhere (W1-era dash-format fixtures)
+- Theme slug normalize at the store level (house vs house-table adapter seam)

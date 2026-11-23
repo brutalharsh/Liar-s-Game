@@ -98,7 +98,11 @@ export function registerGame(io: IOServer, deps: GameDeps): GameLayer {
     publicRoomStore: deps.publicRoomStore ?? defaultPublicRoomStore,
     randomInt:
       deps.randomInt ??
-      ((minInclusive, maxInclusive) => cryptoRandomInt(minInclusive, maxInclusive + 1)),
+      // Inclusive->exclusive bridge. node:crypto caps (max-min) at 2^48-1,
+      // so clamp the exclusive bound: any caller passing within the port's
+      // documented range is translated to the largest legal crypto range.
+      ((minInclusive, maxInclusive) =>
+        cryptoRandomInt(minInclusive, Math.min(maxInclusive + 1, 2 ** 48 - 1))),
     randomUuid: deps.randomUuid ?? randomUUID,
     now: deps.now ?? Date.now,
     timing: { ...DEFAULT_GAME_TIMING, ...(deps.timing ?? {}) } as Required<GameTiming>,
