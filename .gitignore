@@ -1,0 +1,38 @@
+# ── Secrets & environment ─────────────────────────────
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# ── Dependencies ──────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Builds & output ───────────────────────────────────
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+.turbo/
+.next-env.d.ts
+
+# ── Testing ───────────────────────────────────────────
+coverage/
+
+# ── Logs ──────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── OS / editor junk ──────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.pem
+*.swp

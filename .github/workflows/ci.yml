@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: typecheck + lint + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Lockfile lands with the first code wave; stay tolerant until then.
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then npm ci; else npm install; fi
+
+      - name: Typecheck all workspaces
+        run: npm run typecheck --if-present --workspaces
+
+      - name: Lint all workspaces
+        run: npm run lint --if-present --workspaces
+
+      - name: Test all workspaces
+        run: npm test --if-present --workspaces
+
+      - name: Build web app
+        run: npm run build --if-present -w apps/web
