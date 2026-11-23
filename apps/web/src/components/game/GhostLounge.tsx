@@ -24,12 +24,19 @@ export function useGhostMode(): boolean {
 
 export function GhostLounge() {
   const ghost = useGhostMode();
+  const spectator = useGameStore((s) => s.spectator);
   const reduced = usePrefersReducedMotion();
   const [minimized, setMinimized] = useState(false);
 
   useEffect(() => {
     if (ghost) setMinimized(false);
   }, [ghost]);
+
+  // dead hero vs table-viewer: a spectator was never "out" — different frame.
+  const title = spectator ? "SPECTATING THE TABLE" : "YOU'RE OUT — SPECTATING";
+  const sub = spectator
+    ? "Watching from the rails — no seat, no hand, no says."
+    : "Ghost lounge: watch the table, roast the living. Emotes only.";
 
   return (
     <AnimatePresence>
@@ -43,17 +50,22 @@ export function GhostLounge() {
           aria-live="assertive"
         >
           {minimized ? (
-            <span className="rounded-full border border-brass-deep bg-wood-deep/80 px-3 py-0.5 font-body text-[10px] text-ink-dim">
+            <button
+              type="button"
+              onClick={() => setMinimized(false)}
+              className="min-h-12 rounded-full border border-brass-deep bg-wood-deep/80 px-3 py-0.5 font-body text-[10px] text-ink-dim hover:text-ivory"
+              aria-label="Reopen ghost lounge banner"
+            >
               👻 ghost lounge — spectating · emotes only
-            </span>
+            </button>
           ) : (
             <div className="pointer-events-auto flex items-center gap-3 rounded-card border-2 border-brass-deep bg-wood-deep/95 px-4 py-2 shadow-panel">
               <span className="text-xl" aria-hidden>
                 👻
               </span>
               <div className="font-body text-xs text-ink-dim">
-                <p className="font-display text-sm tracking-wider text-brass">YOU'RE OUT — SPECTATING</p>
-                <p className="mt-0.5">Ghost lounge: watch the table, roast the living. Emotes only.</p>
+                <p className="font-display text-sm tracking-wider text-brass">{title}</p>
+                <p className="mt-0.5">{sub}</p>
               </div>
               <button
                 type="button"
