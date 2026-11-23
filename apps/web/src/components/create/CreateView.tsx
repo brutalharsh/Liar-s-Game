@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
@@ -30,6 +30,7 @@ export function CreateView() {
   const live = socketMode() === "live";
 
   const [draft, setDraft] = useState(nickname);
+  const [draftTouched, setDraftTouched] = useState(false);
   const [capacity, setCapacity] = useState<number>(7);
   const [theme, setTheme] = useState<ThemeId>("saloon");
   const [visibility, setVisibility] = useState<Visibility>("private");
@@ -52,6 +53,30 @@ export function CreateView() {
   }, [live]);
 
   const sanitized = sanitizeNickname(draft);
+
+  // Radiogroup keyboard law (WAI-ARIA): role="radio" promises arrow-key focus
+  // moves + roving tabindex — Tab lands on the checked tile only, arrows move
+  // selection and skip locked Big Table tiles. Pointer behavior unchanged.
+  const capRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const isLockedCap = (cap: number): boolean => cap >= 8 && !(live && bigTableUnlocked);
+  const ALL_CAPS: readonly number[] = [...CAPACITIES, ...BIG_TABLES];
+
+  const onCapacityKeys = (e: React.KeyboardEvent<HTMLDivElement>): void => {
+    const delta = e.key === "ArrowRight" || e.key === "ArrowDown" ? 1 : e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 0;
+    if (delta === 0) return;
+    e.preventDefault();
+    const current = ALL_CAPS.indexOf(capacity);
+    for (let step = 0; step < ALL_CAPS.length; step++) {
+      const i = (current + delta * (step + 1) + ALL_CAPS.length) % ALL_CAPS.length;
+      const cap = ALL_CAPS[i];
+      if (cap !== undefined && !isLockedCap(cap)) {
+        setCapacity(cap);
+        const btn = capRefs.current[i];
+        if (btn) btn.focus();
+        break;
+      }
+    }
+  };
 
   const create = async () => {
     if (sanitized.error) {
@@ -97,7 +122,7 @@ export function CreateView() {
                     const next = ANIMALS[Math.floor(Math.random() * ANIMALS.length)]?.id;
                     if (next) setAvatar({ ...avatar, animal: next });
                   }}
-                  className="font-body text-xs text-brass underline"
+                  className="inline-flex min-h-12 items-center font-body text-xs text-brass underline"
                 >
                   shuffle starter animal
                 </button>
@@ -116,15 +141,21 @@ export function CreateView() {
                   id="nickname"
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  onBlur={() => setDraft(sanitizeNickname(draft).value || draft)}
+                  onBlur={() => {
+                    // validation surfaces on blur, never mid-typing (STR/05 §1)
+                    setDraftTouched(true);
+                    setDraft(sanitizeNickname(draft).value || draft);
+                  }}
                   placeholder="SHELF-MINDED SAM"
                   maxLength={12}
                   autoComplete="off"
-                  className="mt-1 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-4 py-3 font-display text-xl tracking-wide text-ivory placeholder:text-ink-dim/40 focus:border-brass"
+                  className="mt-1 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-4 py-3 font-display text-xl tracking-wide text-ivory placeholder:text-ink-dim/70 focus:border-brass"
+                  autoCapitalize="characters"
+                  spellCheck={false}
                 />
                 <p className="mt-1 font-body text-[11px] text-ink-dim">
                   2–12 characters. Sanitized live — control characters get brushed off.{" "}
-                  {sanitized.error && <strong className="text-blood-bright">{sanitized.error}</strong>}
+                  {draftTouched && sanitized.error && <strong className="text-blood-bright">{sanitized.error}</strong>}
                 </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {ANIMALS.map((animal) => (
@@ -148,12 +179,21 @@ export function CreateView() {
           {/* capacity */}
           <section>
             <SectionTitle kicker="seats">Table capacity</SectionTitle>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Capacity">
-              {CAPACITIES.map((cap) => (
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label="Capacity"
+              onKeyDown={onCapacityKeys}
+            >
+              {CAPACITIES.map((cap, i) => (
                 <button
                   key={cap}
+                  ref={(el) => {
+                    capRefs.current[i] = el;
+                  }}
                   role="radio"
                   aria-checked={capacity === cap}
+                  tabIndex={capacity === cap ? 0 : -1}
                   onClick={() => setCapacity(cap)}
                   className={`flex h-14 w-14 items-center justify-center rounded-btn border-2 font-display text-lg ${
                     capacity === cap ? "border-brass bg-brass/15 text-brass" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
@@ -162,14 +202,19 @@ export function CreateView() {
                   {cap}
                 </button>
               ))}
-              {BIG_TABLES.map((cap) => {
+              {BIG_TABLES.map((cap, bigIdx) => {
                 const unlocked = live && bigTableUnlocked;
                 const selected = capacity === cap;
+                const i = CAPACITIES.length + bigIdx;
                 return (
                   <button
                     key={cap}
+                    ref={(el) => {
+                      capRefs.current[i] = el;
+                    }}
                     role="radio"
                     aria-checked={selected}
+                    tabIndex={selected ? 0 : -1}
                     aria-label={`Big Table capacity ${cap}${unlocked ? "" : " — locked"}`}
                     onClick={() => {
                       if (!unlocked) {
@@ -187,7 +232,7 @@ export function CreateView() {
                         ? "border-brass bg-brass/15 text-brass"
                         : unlocked
                           ? "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
-                          : "cursor-not-allowed border-wood-mid/50 bg-wood-deep/60 text-ink-dim/50"
+                          : "cursor-not-allowed border-wood-mid/50 bg-wood-deep/60 text-ink-dim/70"
                     }`}
                   >
                     {cap}
@@ -255,12 +300,26 @@ export function CreateView() {
           {/* visibility */}
           <section>
             <SectionTitle kicker="door policy">Visibility</SectionTitle>
-            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Visibility">
+            <div
+              className="flex flex-wrap gap-2"
+              role="radiogroup"
+              aria-label="Visibility"
+              onKeyDown={(e) => {
+                if (e.key !== "ArrowRight" && e.key !== "ArrowDown" && e.key !== "ArrowLeft" && e.key !== "ArrowUp") return;
+                e.preventDefault();
+                setVisibility(visibility === "private" ? "public" : "private");
+                const btns = e.currentTarget.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+                btns.forEach((b) => {
+                  if (b.getAttribute("aria-checked") !== "true") b.focus();
+                });
+              }}
+            >
               {(["private", "public"] as const).map((v) => (
                 <button
                   key={v}
                   role="radio"
                   aria-checked={visibility === v}
+                  tabIndex={visibility === v ? 0 : -1}
                   onClick={() => setVisibility(v)}
                   className={`flex min-h-12 items-center gap-2 rounded-btn border-2 px-4 font-display text-sm ${
                     visibility === v ? "border-brass bg-brass/15 text-brass" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"

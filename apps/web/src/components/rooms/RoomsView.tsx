@@ -95,11 +95,12 @@ export function RoomsView() {
             }}
             placeholder="ABCDE"
             inputMode="text"
+            autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
             maxLength={5}
             aria-label="Room code"
-            className="min-h-12 flex-1 rounded-btn border-2 border-wood-mid bg-wood-deep px-4 font-display text-xl tracking-[0.25em] text-brass placeholder:text-ink-dim/40 focus:border-brass"
+            className="min-h-12 flex-1 rounded-btn border-2 border-wood-mid bg-wood-deep px-4 font-display text-xl tracking-[0.25em] text-brass placeholder:text-ink-dim/70 focus:border-brass"
           />
           <Button variant="brass" disabled={joinPending || joinCode.length !== 5} onClick={() => void submitJoin(joinCode)}>
             {joinPending ? "JOINING…" : "JOIN"}
@@ -114,7 +115,7 @@ export function RoomsView() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search tables or hosts…"
           aria-label="Search rooms"
-          className="mx-auto w-full max-w-xl rounded-btn border-2 border-wood-mid bg-wood-deep px-4 py-3 font-body text-sm text-ivory placeholder:text-ink-dim/40 focus:border-brass"
+          className="mx-auto w-full max-w-xl rounded-btn border-2 border-wood-mid bg-wood-deep px-4 py-3 font-body text-sm text-ivory placeholder:text-ink-dim/70 focus:border-brass"
         />
         <div className="flex flex-wrap justify-center gap-1.5">
           <button
@@ -153,16 +154,35 @@ export function RoomsView() {
         }
         isEmpty={(page) => page.rooms.filter(visible).length === 0}
         empty={
-          <EmptyState
-            icon="🎪"
-            title="Nothing dealing right now"
-            sub="Every public table vanished while you blinked. Open one!"
-            action={
-              <a href="/create" className="flex min-h-12 items-center rounded-btn border-2 border-brass bg-brass px-5 font-display text-wood-deep">
-                CREATE A TABLE
-              </a>
-            }
-          />
+          search !== "" || themeFilter !== "all" ? (
+            <EmptyState
+              icon="🔍"
+              title="Nothing on the board matches"
+              sub="No public table fits that hunt — clear the filters, or deal your own."
+              action={
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setSearch("");
+                    setThemeFilter("all");
+                  }}
+                >
+                  CLEAR FILTERS
+                </Button>
+              }
+            />
+          ) : (
+            <EmptyState
+              icon="🎪"
+              title="Nothing dealing right now"
+              sub="Every public table vanished while you blinked. Open one!"
+              action={
+                <a href="/create" className="flex min-h-12 items-center rounded-btn border-2 border-brass bg-brass px-5 font-display text-wood-deep">
+                  CREATE A TABLE
+                </a>
+              }
+            />
+          )
         }
       >
         {(page) => (

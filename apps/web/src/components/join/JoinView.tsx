@@ -21,6 +21,7 @@ export function JoinView() {
   const [code, setCode] = useState("");
   const [pasted, setPasted] = useState("");
   const [pending, setPending] = useState(false);
+  const [focused, setFocused] = useState(false);
   const [failed, setFailed] = useState<{ title: string; sub?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -71,10 +72,13 @@ export function JoinView() {
             ref={inputRef}
             value={code}
             onChange={(e) => setCode(sanitizeRoomCode(e.target.value).slice(0, 5))}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
               if (e.key === "Enter") void join(code);
             }}
             inputMode="text"
+            autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
             aria-label="Room code"
@@ -83,6 +87,10 @@ export function JoinView() {
           <div className="pointer-events-none flex justify-center gap-2" aria-hidden>
             {[0, 1, 2, 3, 4].map((i) => {
               const ch = code[i] ?? "";
+              // The lamp border marks the box the caret sits in — but only
+              // while the (invisible) input is focused, so it doubles as a
+              // real focus indicator: opacity-0 hides the input's own outline.
+              const active = focused && code.length === i;
               return (
                 <span
                   key={i}
@@ -90,7 +98,7 @@ export function JoinView() {
                     ch
                       ? "border-brass bg-wood-deep text-brass"
                       : "border-wood-mid bg-wood-deep/60 text-ink-dim"
-                  } ${code.length === i ? "border-lamp" : ""}`}
+                  } ${active ? "border-lamp shadow-spotlight" : ""}`}
                 >
                   {ch || "·"}
                 </span>
@@ -145,7 +153,7 @@ export function JoinView() {
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
             placeholder="https://liars.game/r/DUMMY"
-            className="min-h-12 flex-1 rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/40 focus:border-brass"
+            className="min-h-12 flex-1 rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/70 focus:border-brass"
           />
           <Button
             variant="outline"

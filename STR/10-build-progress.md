@@ -403,6 +403,22 @@ server. The chain itself was never broken — verified twice independently.
   the call sheet (emote-only violated); SeatChip aria on roleless span;
   HandFan ghost cards lack disabled; table route has no landmarks/h1;
   GameOverOverlay blocks the leave CTA at match end (+ "YOU WINS" typo).
+- **U3** ✅ rooms/create/join: Lighthouse /rooms a11y 100 · BP 100 · SEO 100
+  (perf 99 desktop), poll = true stale-while-revalidate (27s observation,
+  zero flash on 10s ticks). Fixes: useRoomsPoll StrictMode deadlock (100%
+  repro — every /rooms visit sat 10s on skeleton: effect cleanup discarded
+  the first fetch + the in-flight guard blocked the remount's; now
+  ref-gated), join caret focus state + autoCapitalize, rooms empty-search
+  split with CLEAR FILTERS, create blur-gated nickname errors + a full
+  roving-tabindex radiogroup (skips locked 8–10), 48px shuffle, contrast
+  upgrades (placeholders 2.40→4.94:1, locked tiles 3.08→4.86:1). Flags:
+  (P1, applied by orchestrator) MobileTabBar fully occluded /join's
+  PARSE & JOIN at 375 — taps hit the SHOP tab (main now pb-16 lg:pb-0);
+  (P1 queue) mock getRooms bypasses mockFetch — ?mock= doors dead on
+  /rooms; (P1 queue) parseCodeFromPasted("https://…/r/ABC7E") returns
+  "HTTPS" — protocol chars survive the charset filter; (P2 queue) mock
+  room codes RM100-107 contain 0/1 outside the advertised charset;
+  SiteHeader Sign-out 1px under target. Emoji house-style left consistent.
 - **U12** ✅ design-system cross-audit: "coherent and genuinely good — one
   design language, not AI slop; structure/states/a11y skeleton/tokens
   production-grade", ZERO P0s. In-scope token fixes landed (globals.css):

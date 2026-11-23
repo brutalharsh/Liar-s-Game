@@ -25,7 +25,6 @@ export function useRoomsPoll(params: { page?: number; perPage?: number } = {}): 
 
   useEffect(() => {
     aliveRef.current = true;
-    let cancelled = false;
 
     const fetchOnce = async (): Promise<void> => {
       if (inFlightRef.current) return; // one poll at a time
@@ -33,13 +32,19 @@ export function useRoomsPoll(params: { page?: number; perPage?: number } = {}): 
       try {
         const page = await getRooms(params);
         hasDataRef.current = true;
-        if (!cancelled && aliveRef.current) {
+        // Commit is gated by the instance ref, not an effect-closure flag:
+        // React StrictMode double-mounts the effect (dev), the first run's
+        // await resolves *after* its own cleanup flipped `cancelled` — a
+        // closure check there would discard the page and freeze the list on
+        // the skeleton until the first poll tick. aliveRef is reset to true
+        // by the remount and only goes false on a real unmount.
+        if (aliveRef.current) {
           setData(page);
           setError(null);
           setLoading(false);
         }
       } catch (err) {
-        if (!cancelled && aliveRef.current) {
+        if (aliveRef.current) {
           if (!hasDataRef.current) {
             // total failure — no list on the wall, surface the error treatment
             setError(err instanceof Error ? err : new Error("Something went wrong"));
@@ -66,7 +71,6 @@ export function useRoomsPoll(params: { page?: number; perPage?: number } = {}): 
     document.addEventListener("visibilitychange", onVisible);
 
     return () => {
-      cancelled = true;
       aliveRef.current = false;
       clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisible);
