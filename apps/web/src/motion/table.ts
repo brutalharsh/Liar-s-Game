@@ -38,12 +38,17 @@ export const roundEndVariants: Variants = {
 };
 export const roundEndTransition: Transition = { duration: 0.35, ease: "easeOut" };
 
-/** Win: crown drop + reward count-up reveals (4s ceremony). */
+/** Win: crown drop + reward count-up reveals (4s ceremony). Gravity fall
+ *  (easeIn) with a small recoil-settle — a physical drop, not a scale-pop. */
 export const crownVariants: Variants = {
   above: { y: -140, opacity: 0, rotate: -18, scale: 1.6 },
-  crowned: { y: 0, opacity: 1, rotate: 0, scale: 1 },
+  crowned: { y: [-140, 0, -10, 0], opacity: [0, 1, 1, 1], rotate: [-18, 0, 0, 0], scale: [1.6, 1, 1, 1] },
 };
-export const crownTransition: Transition = { duration: 0.8, ease: "backOut" };
+export const crownTransition: Transition = {
+  duration: 0.85,
+  times: [0, 0.68, 0.84, 1],
+  ease: ["easeIn", "easeOut", "easeOut"],
+};
 
 export const winnerCardVariants: Variants = {
   off: { scale: 0.8, opacity: 0 },

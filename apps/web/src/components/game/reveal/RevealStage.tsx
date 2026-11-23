@@ -45,7 +45,7 @@ export function RevealStage() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          transition={beatTransition}
+          transition={{ ...beatTransition, duration: reduced ? 0 : 0.3 }}
           className="pointer-events-none fixed inset-x-0 top-[18%] z-50 flex flex-col items-center gap-3 px-4"
           aria-live="assertive"
         >

@@ -34,8 +34,8 @@ export function TimerArc({
       height={size}
       viewBox={`0 0 ${size} ${size}`}
       className={className}
-      role={label ? "timer" : undefined}
-      aria-label={label ? `${label} ${Math.ceil(secondsLeft)}s left` : undefined}
+      role="timer"
+      aria-label={label ? `${label} — ${Math.ceil(secondsLeft)}s left` : `${Math.ceil(secondsLeft)}s left`}
     >
       <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-wood-mid)" strokeWidth={width} opacity={0.55} />
       <circle

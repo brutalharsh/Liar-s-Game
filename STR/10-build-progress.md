@@ -434,6 +434,28 @@ server. The chain itself was never broken — verified twice independently.
   MotionLab ghost invariant; TimerArc hardcoded total=10; lab bar pushes
   THROW at 812px; wheel auto-close-on-send; 42px fan strip at <500px
   (fan-overlap vs target tension — owner verdict).
+- **U7** ✅ cinematics: **P0 FIXED IN PRODUCTION** — ShotCinematic had
+  Rules-of-Hooks violations (3 useMemo after an early return) that crashed
+  EVERY real shot:assign into the error boundary (masked in the lab,
+  proven on /table/DUMMY pre-fix). Also: stale beat flashing the prior
+  shot's stamp, revolver mounted at t=0 (500ms dead gap vs enter@500),
+  air vignette popped at hold, black slab fade → 60ms snap, muzzle flash
+  350ms → 80ms law + reduced skip; crown backOut → gravity fall +
+  recoil-settle; reduced-motion gates for RoundEndBanner/RevealStage/
+  victory/ghost; TimerArc role=timer + fallback label; MotionLab
+  server-paced 3s shot:result + NOBODY-SURVIVED trigger. Every beat
+  measured vs law at 375: reveal 401/400 · build 539/500 · spin 1290/1200
+  · cock 2497/2400 · air 2623/2550 · hold 2940/2900 · lurch 3744/3600 ·
+  EXECUTE reticle 736/700 — all ≤+8% (±20% budget). Drama verified on
+  faithful compositor frames: air holds through the 600ms silence,
+  slam-to-black → 9° grayscale keel-over (slump not splat — PG-13 held),
+  stamps slam, NOBODY SURVIVED reads dire, reduced path meaningful.
+  Median frame 16.7ms, ≤1 frame >50ms per 6.3s beat. aria-live assertive
+  on verdict/shot/round-end/game-over. Flags: PlayedPile pluralClaim
+  mid-flight scare = stale (import verified at :9, gates green);
+  LeaderboardView mid-edit 500s (settled); TimerArc call sites should
+  pass contextual labels; lab bar pointer-occluded during overlays
+  (dev tool, fine). Lighthouse /motion-lab: perf 95 · a11y 100.
 - **U12** ✅ design-system cross-audit: "coherent and genuinely good — one
   design language, not AI slop; structure/states/a11y skeleton/tokens
   production-grade", ZERO P0s. In-scope token fixes landed (globals.css):

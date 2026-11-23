@@ -38,15 +38,25 @@ import { Revolver } from "@/components/game/shot/Revolver";
  */
 
 const AFTER_COCK: ReadonlySet<ShotBeat> = new Set(["cock", "air", "hold", "dryclick", "fake", "settle", "flash", "black", "slump"]);
+/** The revolver lives on stage from the `enter` beat on (B.enter = 500ms). */
+const REVOLVER_ON: ReadonlySet<ShotBeat> = new Set(["enter", "reticle", "spin", "cock", "air", "hold", "dryclick", "fake", "settle", "flash", "black", "slump"]);
+/** Dead-air push holds from `air` through the payoff, releasing on settle/slump. */
+const AIR_ON: ReadonlySet<ShotBeat> = new Set(["air", "hold", "dryclick", "fake", "flash", "black"]);
 
-const CAPTIONS: Partial<Record<ShotBeat, string>> = {
+/** Caption ladder — every beat as text (deaf + reduced-motion text-ladder, §5). */
+const CAPTIONS: Record<ShotBeat, string> = {
+  dim: "the lights go down.",
+  enter: "the revolver comes out.",
+  reticle: "no way out now.",
   spin: "the cylinder spins…",
   cock: "hammer cocked.",
-  air: "…",
+  air: "the room goes still.",
   hold: "…",
   dryclick: "click.",
+  fake: "",
   settle: "PHEW.",
   flash: "BANG.",
+  black: "",
   slump: "it's over.",
 };
 
@@ -111,7 +121,12 @@ export function ShotCinematic() {
         }, s.at),
       );
     }
-    return clearTimers;
+    // reset the ladder between shots — the next overlay must never flash the
+    // previous shot's final frame (stamp/revolver) on its first paint.
+    return () => {
+      clearTimers();
+      setBeat(null);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, shotId, reduced]);
 
@@ -132,17 +147,13 @@ export function ShotCinematic() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase, shot?.outcome, reduced]);
 
-  if (!shot) return null;
+  // NOTE: every hook must run before the `if (!shot) return null` bail below —
+  // a shot:assign landing on a live page must never change the hook count.
 
   const spinning = beat === "spin";
   const cocked = beat !== null && AFTER_COCK.has(beat);
-  const isExecute = shot.kind === "EXECUTE";
+  const isExecute = shot !== null && shot.kind === "EXECUTE";
   const tremor = isExecute && beat !== null && ["reticle", "spin", "cock", "air", "hold"].includes(beat);
-  const isLive = shot.outcome === "LIVE";
-  const heroLoses = shot.loserSeat === heroSeat;
-  const loserName = nicknameOfStore(shot.loserSeat);
-  const executorName = shot.executorSeat !== null ? nicknameOfStore(shot.executorSeat) : "";
-  const active = phase === "shot";
 
   // stage motion: shake (LIVE) · head-fake lurch + relief (BLANK)
   const stageAnimate = useMemo(() => {
@@ -170,6 +181,14 @@ export function ShotCinematic() {
   const nameplateTransition: Transition =
     tremor && !reduced ? { duration: 0.5, repeat: Infinity, repeatDelay: 0.08 } : { duration: 0.6, ease: "easeOut" };
 
+  if (!shot) return null;
+
+  const isLive = shot.outcome === "LIVE";
+  const heroLoses = shot.loserSeat === heroSeat;
+  const loserName = nicknameOfStore(shot.loserSeat);
+  const executorName = shot.executorSeat !== null ? nicknameOfStore(shot.executorSeat) : "";
+  const active = phase === "shot";
+
   return (
     <AnimatePresence>
       {active && (
@@ -194,15 +213,19 @@ export function ShotCinematic() {
             transition={{ duration: 0.35 }}
           />
 
-          {/* dead-air push (t≈2.55) */}
-          {beat === "air" && (
-            <motion.div
-              className="absolute inset-0 bg-black"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: reduced ? 0.15 : 0.25 }}
-              transition={{ duration: 0.35 }}
-            />
-          )}
+          {/* dead-air push (t≈2.55) — holds through the payoff, releases with the settle/slump */}
+          <AnimatePresence>
+            {beat !== null && AIR_ON.has(beat) && (
+              <motion.div
+                key="air-push"
+                className="absolute inset-0 bg-black"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: reduced ? 0.15 : 0.25 }}
+                exit={{ opacity: 0, transition: { duration: reduced ? 0.15 : 0.35, ease: "easeOut" } }}
+                transition={{ duration: 0.35 }}
+              />
+            )}
+          </AnimatePresence>
 
           {/* reduced-motion LIVE: red border flash stands in for shake+bang */}
           {reduced && beat === "flash" && (
@@ -260,11 +283,13 @@ export function ShotCinematic() {
               )}
             </motion.div>
 
-            {/* revolver rises (SELF) or slides in accuser-side (EXECUTE) */}
-            <Revolver spinning={spinning} cocked={cocked} side={isExecute ? "left" : "self"} reduced={reduced} />
+            {/* revolver rises (SELF, at `enter`=500ms) or slides in accuser-side (EXECUTE) */}
+            {beat !== null && REVOLVER_ON.has(beat) && (
+              <Revolver spinning={spinning} cocked={cocked} side={isExecute ? "left" : "self"} reduced={reduced} />
+            )}
 
-            {/* muzzle flash (LIVE, 80ms) */}
-            {beat === "flash" && (
+            {/* muzzle flash (LIVE, 80ms bright + fast decay — §4 law) */}
+            {beat === "flash" && !reduced && (
               <motion.span
                 className="absolute left-1/2 top-[62%] h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full"
                 style={{
@@ -273,7 +298,7 @@ export function ShotCinematic() {
                 }}
                 initial={{ opacity: 1, scale: 0.4 }}
                 animate={{ opacity: [1, 1, 0], scale: [0.4, 1.7, 1.9] }}
-                transition={{ duration: 0.35 }}
+                transition={{ duration: 0.28, times: [0, 0.29, 1], ease: "linear" }}
                 aria-hidden
               />
             )}
@@ -309,21 +334,26 @@ export function ShotCinematic() {
             <span className="h-4 font-body text-xs text-ink-dim">{beat ? (CAPTIONS[beat] ?? "") : ""}</span>
           </motion.div>
 
-          {/* slam to black (LIVE, ~150ms) */}
-          {beat === "black" && (
-            <motion.div
-              className="absolute inset-0 z-20 bg-black"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 0.92 }}
-              transition={{ duration: reduced ? 0.1 : 0.15 }}
-            />
-          )}
+          {/* slam to black (LIVE) — snaps on (~60ms), lifts as the aftermath slumps in */}
+          <AnimatePresence>
+            {beat === "black" && (
+              <motion.div
+                key="slam-black"
+                className="absolute inset-0 z-20 bg-black"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 0.92 }}
+                exit={{ opacity: 0, transition: { duration: reduced ? 0.15 : 0.35, ease: "easeOut" } }}
+                transition={{ duration: reduced ? 0.1 : 0.06, ease: "linear" }}
+              />
+            )}
+          </AnimatePresence>
 
           {/* ghost-lounge handover for the hero */}
           {isLive && heroLoses && (beat === "slump" || beat === "black") && (
             <motion.span
-              initial={{ opacity: 0, y: 8 }}
+              initial={{ opacity: 0, y: reduced ? 0 : 8 }}
               animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: reduced ? 0 : 0.25 }}
               className="absolute bottom-16 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-brass-deep bg-wood-deep/95 px-4 py-1 font-body text-xs text-brass"
             >
               👻 the ghost lounge opens — emotes are yours while you spectate

@@ -89,7 +89,7 @@ export function GameOverOverlay() {
             variants={winnerCardVariants}
             initial="off"
             animate="on"
-            transition={winnerTransition}
+            transition={{ ...winnerTransition, duration: reduced ? 0 : winnerTransition.duration }}
           >
             {/* crown drop (skull when nobody survived) */}
             <motion.span

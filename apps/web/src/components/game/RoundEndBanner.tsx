@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "motion/react";
 import { useGameStore } from "@/store/game";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { roundEndTransition, roundEndVariants } from "@/motion/table";
 
 /**
@@ -16,6 +17,7 @@ export function RoundEndBanner() {
   const reveal = useGameStore((s) => s.reveal);
   const nicknameOf = useGameStore((s) => s.nicknameOf);
   const heroSeat = useGameStore((s) => s.heroSeat);
+  const reduced = usePrefersReducedMotion();
 
   const active = phase === "round-end" && roundEnd !== null;
   if (!roundEnd) return null;
@@ -34,7 +36,7 @@ export function RoundEndBanner() {
           animate="on"
           exit="off"
           variants={roundEndVariants}
-          transition={roundEndTransition}
+          transition={{ ...roundEndTransition, duration: reduced ? 0 : roundEndTransition.duration }}
           className={`pointer-events-none fixed inset-x-0 top-14 z-[55] mx-auto flex w-fit max-w-[92vw] flex-col items-center gap-1 rounded-card border-2 px-6 py-3 text-center shadow-panel ${
             died ? "border-blood-bright bg-wood-deep" : "border-brass-deep bg-wood-deep"
           }`}

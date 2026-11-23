@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { motion } from "motion/react";
 import { useGameStore } from "@/store/game";
 import { useSettingsStore } from "@/store/settings";
@@ -107,17 +107,33 @@ export function MotionLab() {
 
   const bump = (): number => (seqRef.current === -1 || seqRef.current === 0 ? 1 : seqRef.current + 1);
 
-  const shotPair = (kind: "SELF" | "EXECUTE", outcome: "BLANK" | "LIVE", loserSeat: number, executorSeat?: number): ServerEvent[] => {
+  /** Server pacing (STR/05 §4): the build holds at ~2.9s, THEN `shot:result` lands. */
+  const SHOT_RESULT_AFTER_MS = 3000;
+  const pendingResult = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clearPendingResult = () => {
+    if (pendingResult.current !== null) {
+      clearTimeout(pendingResult.current);
+      pendingResult.current = null;
+    }
+  };
+  useEffect(() => clearPendingResult, []);
+
+  const fireShot = (kind: "SELF" | "EXECUTE", outcome: "BLANK" | "LIVE", loserSeat: number, executorSeat?: number) => {
+    clearPendingResult();
     const s1 = bump();
-    return [
+    apply(
       labEvent("shot:assign", s1, { loserSeat, kind, ...(executorSeat !== undefined ? { executorSeat } : {}) }),
-      labEvent("shot:result", s1 + 1, { loserSeat, pulls: outcome === "LIVE" ? 6 : 3, outcome }),
-    ];
+    );
+    pendingResult.current = setTimeout(() => {
+      pendingResult.current = null;
+      apply(labEvent("shot:result", s1 + 1, { loserSeat, pulls: outcome === "LIVE" ? 6 : 3, outcome }));
+    }, SHOT_RESULT_AFTER_MS);
   };
 
   const runFullMockRound = async () => {
     const s = useGameStore.getState();
     if (!s.lobby || s.lobby.code !== LAB_CODE) {
+      clearPendingResult();
       reset();
       await socket.emit({ type: "room:join", code: LAB_CODE });
     }
@@ -133,7 +149,7 @@ export function MotionLab() {
       >
         <span className="mr-2 font-display text-xs tracking-widest text-brass">MOTION LAB</span>
 
-        <button type="button" onClick={() => { reset(); seqRef.current = 0; apply(labLobby()); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
+        <button type="button" onClick={() => { clearPendingResult(); reset(); seqRef.current = 0; apply(labLobby()); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           1 · base table
         </button>
         <button
@@ -169,16 +185,16 @@ export function MotionLab() {
         <button type="button" onClick={() => apply(labEvent("reveal:show", bump(), { cards: [{ id: "r1", rank: "Q" }, { id: "r2", rank: "K" }], verdict: "LIE", loserSeat: 2 }))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           5 · reveal LIE
         </button>
-        <button type="button" onClick={() => apply(...shotPair("SELF", "BLANK", 2))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
+        <button type="button" onClick={() => fireShot("SELF", "BLANK", 2)} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           6 · SELF · BLANK (head-fake)
         </button>
-        <button type="button" onClick={() => apply(...shotPair("SELF", "LIVE", 2))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-blood-bright hover:border-brass">
+        <button type="button" onClick={() => fireShot("SELF", "LIVE", 2)} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-blood-bright hover:border-brass">
           7 · SELF · LIVE (death)
         </button>
-        <button type="button" onClick={() => apply(...shotPair("EXECUTE", "BLANK", 4, 0))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
+        <button type="button" onClick={() => fireShot("EXECUTE", "BLANK", 4, 0)} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           8 · EXECUTE · BLANK
         </button>
-        <button type="button" onClick={() => apply(...shotPair("EXECUTE", "LIVE", 4, 0))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-blood-bright hover:border-brass">
+        <button type="button" onClick={() => fireShot("EXECUTE", "LIVE", 4, 0)} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-blood-bright hover:border-brass">
           9 · EXECUTE · LIVE (you execute)
         </button>
         <button type="button" onClick={() => apply(labEvent("round:end", bump(), { reason: "survived", survivorCoins: 1, xpEarned: [{ seat: 0, xp: 1 }] }))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
@@ -187,7 +203,23 @@ export function MotionLab() {
         <button type="button" onClick={() => apply(labEvent("game:over", bump(), { winnerSeat: 0, matchRecord: labMatchRecord("lab-match"), rewards: [{ seat: 0, coins: 11, xp: 12, unlockedTitles: ["Last One Standing"] }, { seat: 1, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 2, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 3, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 4, coins: 0, xp: 4, unlockedTitles: [] }] }))} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-brass hover:bg-brass/30">
           11 · game over (you win)
         </button>
-        <button type="button" onClick={() => { reset(); seqRef.current = 0; apply(labLobby({ heroAlive: false })); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ink-dim hover:border-brass">
+        <button
+          type="button"
+          onClick={() => {
+            const rec = labMatchRecord("lab-match-nobody");
+            apply(
+              labEvent("game:over", bump(), {
+                winnerSeat: null, // zero-survivor abort (STR/01 §7)
+                matchRecord: { ...rec, players: rec.players.map((p) => ({ ...p, stats: { ...p.stats, won: false } })) },
+                rewards: [{ seat: 0, coins: 3, xp: 6, unlockedTitles: [] }],
+              }),
+            );
+          }}
+          className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ink-dim hover:border-brass"
+        >
+          11b · nobody survived
+        </button>
+        <button type="button" onClick={() => { clearPendingResult(); reset(); seqRef.current = 0; apply(labLobby({ heroAlive: false })); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ink-dim hover:border-brass">
           12 · ghost lounge
         </button>
         <button type="button" onClick={() => void runFullMockRound()} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-brass hover:bg-brass/30">
@@ -203,7 +235,7 @@ export function MotionLab() {
         >
           reduced-motion {reduced ? "ON" : "OFF"}
         </button>
-        <button type="button" onClick={() => { reset(); seqRef.current = 0; }} className="rounded-btn border border-blood-bright px-2 py-1 font-body text-[10px] text-blood-bright">
+        <button type="button" onClick={() => { clearPendingResult(); reset(); seqRef.current = 0; }} className="rounded-btn border border-blood-bright px-2 py-1 font-body text-[10px] text-blood-bright">
           reset
         </button>
       </motion.div>
@@ -213,6 +245,7 @@ export function MotionLab() {
           code={LAB_CODE}
           roomId={LAB_CODE}
           onLeave={() => {
+            clearPendingResult();
             reset();
             seqRef.current = 0;
           }}
