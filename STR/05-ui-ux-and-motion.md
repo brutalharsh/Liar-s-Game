@@ -18,7 +18,10 @@
 
 - Palette: walnut wood `#2a1a12`, felt green `#1d3a2a`, lamp amber `#e8a54b`,
   ivory text `#f2e8d5`, blood red (danger/LIAR) `#b03a2e`, brass gold (coins/wins) `#d4af37`.
-- Fonts: display **Smokum** (alt Rye), body **Special Elite**; system fallbacks.
+- Fonts (owner directive 2026-11-23): classic system stacks — display
+  **Georgia** (Iowan Old Style → Times New Roman → serif; formerly Smokum),
+  body **system sans** (-apple-system stack; formerly Special Elite). Zero
+  font downloads — no font-swap CLS/LCP.
 - Radii: cards 12px, buttons 10px; shadows soft amber glow for spotlight; noise
   texture overlay 4% opacity.
 - Touch targets ≥48px; safe-area insets on mobile; focus rings visible.

@@ -9,9 +9,11 @@
    ============================================================================ */
 
 @theme {
-  /* fonts wired to next/font css variables (app/layout.tsx) */
-  --font-display: var(--font-smokum), "Georgia", serif;
-  --font-body: var(--font-special-elite), "Courier New", monospace;
+  /* Classic typefaces (owner directive): Georgia-series serif for display,
+     clean system sans for body — zero font downloads, no font-swap CLS/LCP. */
+  --font-display: Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
 
   /* palette */
   --color-wood: #2a1a12;
@@ -29,6 +31,9 @@
   --color-blood-deep: #5f1d17;
   --color-brass: #d4af37;
   --color-brass-deep: #8f7420;
+  /* blood-bright raised from #d9574a (U12 audit 2026-11-23): 4.5:1 on felt-deep
+     instead of 3.9:1 — used as text color on felt chips / seat labels. */
+  --color-blood-bright: #e56a59;
   --color-verdict: #3f9e63;
   --color-verdict-deep: #2c6e46;
 
@@ -136,11 +141,15 @@ body {
 }
 
 /* ── theme packs (STR/04 §4 registry; host picks, room renders it) ─────── */
+/* Every pack overrides the full wood chain — inheriting saloon's wood-mid or
+   wood-deep next to a themed wood collapses borders/ground (U12 audit). */
 
 [data-theme="house"] {
   --color-felt: #2c4a33;
   --color-felt-deep: #20371f;
   --color-wood: #3b2a1a;
+  --color-wood-mid: #4a3620;
+  --color-wood-deep: #291a0c;
   --color-lamp: #d9b36a;
 }
 
@@ -161,6 +170,7 @@ body {
   --color-felt-deep: #082018;
   --color-wood: #1a1214;
   --color-wood-mid: #2c1e24;
+  --color-wood-deep: #0e0a0b;
   --color-lamp: #ffd700;
   --color-brass: #ffd700;
 }
@@ -202,6 +212,7 @@ body {
   --color-felt-deep: #200d13;
   --color-wood: #1c1014;
   --color-wood-mid: #3a1c24;
+  --color-wood-deep: #160b0f;
   --color-lamp: #ff6b81;
   --color-lamp-soft: #c94b60;
   --color-brass: #ffb84f;
@@ -214,8 +225,11 @@ body {
   *::before,
   *::after {
     animation-duration: 0.01ms !important;
+    animation-delay: -1ms !important; /* delayed keyframes resolve instantly, no invisible-wait */
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    transition-delay: -1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -223,8 +237,11 @@ html[data-reduced-motion="on"] *,
 html[data-reduced-motion="on"] *::before,
 html[data-reduced-motion="on"] *::after {
   animation-duration: 0.01ms !important;
+  animation-delay: -1ms !important;
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
+  transition-delay: -1ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ── ghost lounge / spectate tint (STR/03 §2 "DEAD" — W2) ─────────────────── */

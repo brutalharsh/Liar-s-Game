@@ -1,22 +1,7 @@
 import type { Metadata, Viewport } from "next";
-import { Smokum, Special_Elite } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
 import { Toaster } from "@/components/ui/Toaster";
-
-const smokum = Smokum({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-smokum",
-  display: "swap",
-});
-
-const elite = Special_Elite({
-  weight: "400",
-  subsets: ["latin"],
-  variable: "--font-special-elite",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: {
@@ -51,7 +36,6 @@ export default function RootLayout({
       data-theme="saloon"
       data-reduced-motion="off"
       suppressHydrationWarning
-      className={`${smokum.variable} ${elite.variable}`}
     >
       <body className="min-h-dvh bg-wood-deep font-body text-ink antialiased">
         <Providers>

@@ -331,15 +331,27 @@ has git-lockdown (orchestrator commits each verified landing).
   added; icons script name fixed; lint is a silent no-op (queued);
   format:check fails on 27 files (deferred until the UI fleet lands to
   avoid mid-edit churn).
+- **A3** ✅ flow-test expansion: 6 new flow suites (11 tests) — window mode
+  (inclusive bounds, first-wins, arm-delay), forced-call empty-hand, bot-fill
+  (every bot id proven grant-immune), spectator-only walls, abandonment
+  (0-round records + zero-winner on the wire), session-expiry blast radius
+  zero. SMOKE_SCENARIO runner + the §8 check FIXED by its owner:
+  clientId-pinned scan (the old nickname scan false-negatived once runs
+  accumulated — the real flake), 80s budget spanning the 60s leaderboard
+  cache, error seq carve-out, 25s connect budget. All four scenarios PASS
+  incl. the full 8/8 54-check regression — re-verified by the orchestrator
+  against the shared server. Suite 296/296, tsc clean. **FLEET A IS NOW
+  FULLY LANDED.**
 
-### Smoke §8 flake — root-caused not a regression
+### Smoke §8 flake — ROOT-CAUSED (by A3) + FIXED + VALIDATED
 
-The failed check (52/53) is the check's own design vs concurrency: §8's
-retry budget (20s) < leaderboard cache TTL (60s), and the 12 UI-audit
-browsers continuously refresh real REST → a pre-grant cache entry can
-outlive the retry window. Chain itself verified green twice (A10 direct +
-orchestrator curl: fresh grants visible). Fix (retry ≥65s + distinct-name
-matching) lands with A3's live-smoke.mjs ownership once A3 reports.
+The check's nickname scan false-negatived once runs accumulated duplicate
+accounts, and its 20s retry budget sat inside the 60s leaderboard cache —
+worse under the audit-fleet's concurrent API reads. A3's fix: clientId-
+pinned matching + 80s budget (spans the cache) + error-seq carve-out;
+all four scenarios (full/window/bots/abandon) now PASS, and the full 8/8
+54-check run was re-verified by the orchestrator against the shared
+server. The chain itself was never broken — verified twice independently.
 
 ### Fleet B landings (browser-verified at 375/768/1024/1440)
 
@@ -380,6 +392,32 @@ matching) lands with A3's live-smoke.mjs ownership once A3 reports.
   flash (needs useSyncExternalStore — fix wave). Incident: broad pkill hit
   U8's running browser — U8 run integrity to re-check on its landing,
   tightened to exact-PID kills after.
+- **U8** ✅ ghost lounge: sepia ghost frame verified atmospheric, hand
+  tap-guarded + CHECK unmounts, emote-only live, exit door clean, dead seats
+  gray-out + 🕯 through all rounds, a11y 95 on the route, axe clean in its
+  components. Fixes: minimized ghost chip → real 48px button with aria-label,
+  spectator-aware copy. Flags: store heroSeat ?? hostSeat non-nullable →
+  spectator inherits the HOST seat (you-state leak — fix wave, store owner);
+  demo-room hardcodes spectator:false (unreachable in dev); MotionLab ghost
+  invariant broken; ghost keeps a disabled THROW stub + keyboard "X" opens
+  the call sheet (emote-only violated); SeatChip aria on roleless span;
+  HandFan ghost cards lack disabled; table route has no landmarks/h1;
+  GameOverOverlay blocks the leave CTA at match end (+ "YOU WINS" typo).
+- **U12** ✅ design-system cross-audit: "coherent and genuinely good — one
+  design language, not AI slop; structure/states/a11y skeleton/tokens
+  production-grade", ZERO P0s. In-scope token fixes landed (globals.css):
+  blood-bright #d9574a→#e56a59 (3.9→4.7:1 on felt), theme-pack wood-chain
+  completion (house/royale/kabuki inherited-mode collapse), reduced-motion
+  hardened (delay neutralization both paths). Master queue (its 19-row
+  table) — top P1s: disabled:opacity-40 renders funnel CTAs at 1.3:1 on
+  first paint (JOIN/DEAL/THROW — one-line Button fix), table a11y 95 via
+  chamber-pip role + card/seat accessible-name embedding, 118× sub-12px
+  text escapes (tab bar 9px), emoji-vs-SVG icon verdict (owner), Sheet focus
+  trap (pending ui-owner fix wave), game-route landmarks, dev-speak in the
+  payments sheet, ProfileView nested Link><Button ×3, PWA service worker +
+  install affordance absent, palette literals in shot/revolver art, robots/
+  sitemap, first-fold tab-bar overlap, navigator.vibrate before gesture.
+  Its font audit (Smokum/Elite) predates the owner's classic-font swap.
 - **U1** ✅ landing + how-to-play: prod-build Lighthouse mobile 89 / desktop
   98 (a11y 100 both; per the code-only policy this pre-directive measurement
   stands as the perf baseline). Fixes: hero CTA nested a/button killed →
@@ -420,4 +458,15 @@ finish as code-level audits (source review + geometry/a11y/target sizes
 from markup + tokens) with code gates only (tsc / tests / build). The
 orchestrator's verification from here is code-only too; live-smoke.mjs
 stays (pure Node REST/sockets, no browser). U2 + U4 had already completed
-with browser evidence before the switch — their findings stand.
+with browser evidence before the switch — their findings stand. Straggler
+automation processes killed at OS level (headless/remote-debugging patterns
+only — the owner's personal Chrome untouched); every agent reporting from
+here receives the directive before any further work.
+
+### Owner directives (second round, 2026-11-23)
+
+- **Classic fonts everywhere** (owner): the themed display/body faces
+  (Smokum western + Special Elite typewriter, both Google-font downloads)
+  are GONE — display is now the classic Georgia serif stack, body is the
+  clean system sans stack. Zero font downloads → the font-swap-bound LCP
+  (U1 measured 3.2s mobile) is dead by construction. STR/05 §2 updated.
