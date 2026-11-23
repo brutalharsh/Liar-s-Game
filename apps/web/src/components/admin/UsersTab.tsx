@@ -53,7 +53,7 @@ export function UsersTab() {
           value={search}
           placeholder="Search nickname, name or email…"
           onChange={(e) => setSearch(e.target.value)}
-          className="min-h-12 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/40 focus:border-brass"
+          className="min-h-12 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/75 focus:border-brass"
         />
       </label>
 

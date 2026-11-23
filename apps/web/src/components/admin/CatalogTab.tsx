@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import { Switch } from "@/components/ui/Switch";
@@ -317,7 +316,7 @@ export function CatalogTab() {
               {rows.map((item) => {
                 const editing = editingId === item._id;
                 return (
-                  <Panel key={item._id} className="p-3">
+                  <div key={item._id} className="rounded-btn border border-wood-mid/60 bg-wood-deep/60 p-3">
                     <div className="flex items-center gap-3">
                       {upload?.rowId === item._id ? (
                         <span className="flex w-24 items-center gap-1">
@@ -397,7 +396,7 @@ export function CatalogTab() {
                       </label>
                     </div>
                     <p className="mt-1 font-body text-[9px] text-ink-dim">id {item._id}{item.imageId ? ` · art ${item.imageId}` : ""}</p>
-                  </Panel>
+                  </div>
                 );
               })}
             </div>

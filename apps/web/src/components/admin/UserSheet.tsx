@@ -167,7 +167,7 @@ export function UserSheet({
                 <p className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">
                   Wallet ledger · newest first
                 </p>
-                <div className="max-h-56 overflow-y-auto rounded-btn border border-wood-mid/50 bg-wood-deep/70">
+                <div className="max-h-56 overflow-y-auto rounded-btn border border-wood-mid/50 bg-wood-deep/70" tabIndex={0} aria-label="Wallet ledger" role="group">
                   {detail.ledger.length === 0 ? (
                     <p className="p-3 font-body text-xs text-ink-dim">No ledger movements yet.</p>
                   ) : (

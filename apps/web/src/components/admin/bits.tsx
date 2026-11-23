@@ -99,7 +99,7 @@ export function Field({
         placeholder={placeholder}
         autoComplete={autoComplete}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-12 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/40 focus:border-brass"
+        className="min-h-12 w-full rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/75 focus:border-brass"
       />
       {hint && <span className="mt-1 block font-body text-[10px] text-ink-dim">{hint}</span>}
     </label>

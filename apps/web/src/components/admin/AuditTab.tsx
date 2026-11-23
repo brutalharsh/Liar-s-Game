@@ -51,7 +51,7 @@ export function AuditTab() {
     >
       {(data) => (
         <div className="flex flex-col gap-2">
-          <div className="max-h-[60vh] overflow-y-auto pr-1">
+          <div className="max-h-[60vh] overflow-y-auto pr-1" tabIndex={0} aria-label="Audit trail" role="group">
             <ul className="flex flex-col gap-1.5">
               {rows.map((entry) => (
                 <li key={entry._id} className="flex flex-wrap items-center gap-2 rounded-btn border border-wood-mid/50 bg-wood/40 px-3 py-2">

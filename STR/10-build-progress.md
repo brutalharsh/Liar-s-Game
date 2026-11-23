@@ -355,6 +355,19 @@ matching) lands with A3's live-smoke.mjs ownership once A3 reports.
   targets, shimmer skeletons, dev-speak → human copy; ?next sanitized,
   keyboard-only journeys verified. Verdict: SHIP.
 
+- **U10** ✅ admindashboard: a11y 100 both modes (pre-directive measurement),
+  all 5 tabs + login at 4 widths, toasts/optimistic+rollback, empty-search,
+  pagers 2/3, currency sanity, 10MB/bad-type upload refusals, blob-preview
+  PATCH, pack SAVE flows — all pass; 0 console errors on its route. Fixes:
+  placeholder contrast 1.05→4.9:1, axe focusable-region ×2 labeled,
+  card-in-card flattened in Catalog/Packs. **P0 OUTSIDE TERRITORY — fixed
+  by orchestrator**: ui/Sheet.tsx desktop dialogs froze mid-entrance
+  (translateY 550–614px, 100% repro ≥1024px; drawer/coin/ban/add-item all
+  half off-screen) — useViewportMode resolves null→mobile→desktop and the
+  desktop animate target dropped the y key mid-spring; every motion branch
+  now carries all keys. P1s queued for the fix wave: Sheet focus trap +
+  restore-on-close, reduced-motion spring, drag-to-dismiss affordance
+  (or remove the grab-bar); favicon.ico 404 (icon.svg already exists).
 - **U1** ✅ landing + how-to-play: prod-build Lighthouse mobile 89 / desktop
   98 (a11y 100 both; per the code-only policy this pre-directive measurement
   stands as the perf baseline). Fixes: hero CTA nested a/button killed →

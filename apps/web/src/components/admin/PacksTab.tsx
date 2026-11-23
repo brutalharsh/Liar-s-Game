@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
 import { Switch } from "@/components/ui/Switch";
 import { AsyncSection, Skeleton } from "@/components/ui/AsyncSection";
@@ -100,7 +99,7 @@ function PackCard({ pack, push }: { pack: CoinPackRecord; push: Push }) {
   };
 
   return (
-    <Panel className="flex flex-col gap-3 p-4">
+    <div className="flex flex-col gap-3 rounded-card border border-wood-mid/50 bg-wood/50 p-4">
       <div className="flex items-center justify-between gap-2">
         <p className="font-body text-[10px] uppercase tracking-widest text-ink-dim">pack key: {pack._id}</p>
         <Switch id={`pack-active-${pack._id}`} label={`${pack.name} active`} checked={draft.active} onChange={(active) => setDraft((d) => ({ ...d, active }))} />
@@ -127,6 +126,6 @@ function PackCard({ pack, push }: { pack: CoinPackRecord; push: Push }) {
       <Button variant="brass" size="sm" disabled={!dirty || busy} onClick={() => void save()}>
         {busy ? "SAVING…" : dirty ? "SAVE PACK" : "UNTOUCHED"}
       </Button>
-    </Panel>
+    </div>
   );
 }
