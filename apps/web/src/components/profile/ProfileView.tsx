@@ -56,6 +56,7 @@ export function ProfileView() {
   if (missing) {
     return (
       <div className="flex flex-col items-center gap-4 py-16">
+        <h1 className="sr-only">Your rack</h1>
         <EmptyState
           icon="🪑"
           title="Your seat vanished"
@@ -315,7 +316,7 @@ function BannedState({ onSignOut }: { onSignOut: () => void }) {
         <span className="text-6xl" aria-hidden>
           🎩🚫
         </span>
-        <h2 className="mt-4 font-display text-3xl text-ivory">The house 86'd you</h2>
+        <h1 className="mt-4 font-display text-3xl text-ivory">The house 86'd you</h1>
         <p className="mt-2 font-body text-sm text-ink-dim">
           This account is barred from the tables. Coins, XP and titles stay on your ledger —
           but the door stays locked until the house says otherwise.

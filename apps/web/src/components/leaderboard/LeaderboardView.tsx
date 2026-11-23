@@ -149,7 +149,10 @@ export function LeaderboardView() {
   );
 }
 
-/** One ranked row — medal styling for ranks 1–3, plain number cell otherwise. */
+/** One ranked row — medal styling for ranks 1–3, plain number cell otherwise.
+ * Highlights ride `ring` (box-shadow), not border classes: Panel's base
+ * bg and border utilities win the cascade over same-property overrides we
+ * append in className, so brass/lamp rings are the conflict-safe channel. */
 function LeaderboardRow({
   row,
   metric,
@@ -170,8 +173,8 @@ function LeaderboardRow({
     >
       <Panel
         className={`flex min-h-16 items-center gap-3 p-3 ${
-          medal ? "border-brass/80 bg-brass/5" : ""
-        } ${me ? "border-lamp" : ""}`}
+          me ? "ring-2 ring-lamp" : medal ? "ring-2 ring-brass/70" : ""
+        }`}
       >
         <span
           className={`flex w-10 shrink-0 flex-col items-center justify-center rounded-btn border-2 py-1 ${

@@ -355,6 +355,19 @@ matching) lands with A3's live-smoke.mjs ownership once A3 reports.
   targets, shimmer skeletons, dev-speak → human copy; ?next sanitized,
   keyboard-only journeys verified. Verdict: SHIP.
 
+- **U11** ✅ profile + leaderboard: XP bar math measured exactly coherent,
+  ?metric/?page survive reloads preserving ?apimode/?mock, 0 console errors,
+  keyboard trace logical, Lighthouse a11y 100 (perf 72m/89d = dev-mode
+  artifacts). Fixes landed: medal/YOU ring-2 treatment (Panel base utilities
+  silently overrode border classes — cascade-order lesson), banned h2→h1,
+  sr-only h1 on USER_NOT_FOUND. Flags: useCountUp unclamped t (negative
+  counts 1-2 frames; drives GameOverOverlay too), profile-fixtures titles
+  rows value 0 vs "25 players", SiteFooter 16px targets, Panel override
+  architecture, Tabs arrow-keys, Recent-empty state, mock YOU|YOU.
+
+### Policy-switch stragglers: U11 finished browser-measured pre-directive
+(evidence archive stands); remaining UI agents close as code-level audits.
+
 ### Owner questions from the UI fleet (taste calls — your pick)
 
 1. U2: allow official brand colors inside the 32px OAuth badge chips, or
