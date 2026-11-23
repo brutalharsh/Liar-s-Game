@@ -14,6 +14,34 @@
  *   2. run the smoke:
  *        cd apps/web && node scripts/live-smoke.mjs
  *   (SMOKE_VERBOSE=1 prints every passing check; defaults print failures only)
+ *   (SMOKE_SCENARIO picks a scenario below; default is the full match)
+ *
+ * SCENARIOS (SMOKE_SCENARIO env flag — every scenario keeps the §numbering /
+ * [PASS] report + exit codes)
+ *   full    (default) — the 8-section full match described below.
+ *   window  — 5 seated players (open-window tier): live arm-delay rejection
+ *             (ERR_WINDOW_NOT_ARMED), a post-arm CHECK closing the window
+ *             {liar_called}, and a reconnect MID-WINDOW (seat held by grace,
+ *             catch-up snapshot carries the open challengeWindow + hand).
+ *   bots    — bot-fill is programmatic-only by design (S1/STR/02: no wire or
+ *             REST surface exists, and none may be invented — AGENTS.md rule
+ *             4), so a client cannot mint a bot seat. This scenario asserts
+ *             that closed surface live (socket probe + REST probes + the
+ *             8-event client catalog), then runs the closest live equivalent
+ *             — a full 2-human match to game:over — and verifies the
+ *             rewards/leaderboard immunity that holds for bot accounts: only
+ *             real ObjectId accounts ever appear on the leaderboard (bot
+ *             ids `bot:<roomCode>:<seat>` fail the grant's ObjectId gate and
+ *             can never accrue XP).
+ *   abandon — 2p disconnect-abandon: both seated humans drop mid-turn, the
+ *             earlier dropper's grace expiry ABANDONs → abort → the later
+ *             dropper wins by default with the 0-round record (abort before
+ *             any roulette). Rewards: winner XP > 0, abandoner 0 — then
+ *             /api/me + leaderboard prove the zero-round rewards path.
+ *
+ * JOIN-RATE BUDGET (server: 10 join attempts / IP / 10 min): full=4 ·
+ * window=5 · bots=1 · abandon=2. Sequential runs fit one bucket together;
+ * restart the server process between heavy runs if RATE_LIMITED appears.
  *
  * ENV
  *   AUTH_SECRET + MONGODB_URI + MONGODB_DB (+ optional PORT, CLIENT_ORIGIN) are
@@ -69,7 +97,7 @@ import { dirname, join, resolve } from 'node:path';
 import sioPkg from 'socket.io-client';
 import jwtPkg from 'jsonwebtoken';
 import { MongoClient } from 'mongodb';
-import { serverEventSchemas } from '@liars-game/shared';
+import { serverEventSchemas, clientEventSchemas } from '@liars-game/shared';
 
 const { io } = sioPkg;
 const jwt = jwtPkg;
@@ -77,10 +105,16 @@ const jwt = jwtPkg;
 // ── server-contract constants (apps/server/src/middleware/auth.ts, STR/07) ──
 const SESSION_COOKIE = 'lg_session';
 const ROOM_CODE_RE = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{5}$/;
-const NICK = { A: 'SMOKE-A', B: 'SMOKE-B', C: 'SMOKE-C', D: 'SMOKE-D' };
 const SESSION_TTL_SECONDS = 15 * 60;
 const MATCH_DEADLINE_MS = 240_000;
-const WATCHDOG_MS = 330_000;
+const WATCHDOG_MS_BY_SCENARIO = {
+  full: 330_000,
+  window: 300_000,
+  bots: 600_000,
+  abandon: 420_000,
+};
+const SCENARIO = (process.env.SMOKE_SCENARIO || 'full').toLowerCase().trim();
+const WATCHDOG_MS = WATCHDOG_MS_BY_SCENARIO[SCENARIO] ?? 330_000;
 const ACK_TIMEOUT_MS = 15_000;
 const RETRY_MS = 1_000;
 
@@ -249,12 +283,14 @@ function makeClient(label, token) {
     }
     const data = parsed.data;
 
-    // §5 monotonic seq — snapshots may replay the current counter unchanged;
-    // every broadcast delta must strictly advance past the last seen value.
+    // §5 monotonic seq — snapshots AND direct `error` replies may replay the
+    // current counter unchanged (they are not room deltas — same carve-out as
+    // the server test-suite audit, STR/07 §4); every broadcast delta must
+    // strictly advance past the last seen value.
     const seq = Number.isInteger(data.seq) ? data.seq : -1;
     if (client.lastSeq !== -1) {
       if (seq < client.lastSeq) bad(`${label}: seq went backwards on ${event} (${client.lastSeq} → ${seq})`);
-      else if (seq === client.lastSeq && event !== 'lobby:state') bad(`${label}: seq did not advance on ${event} (stuck at ${seq})`);
+      else if (seq === client.lastSeq && event !== 'lobby:state' && event !== 'error') bad(`${label}: seq did not advance on ${event} (stuck at ${seq})`);
     }
     client.lastSeq = Math.max(client.lastSeq, seq);
 
@@ -286,7 +322,9 @@ function makeClient(label, token) {
 
   client.connect = () =>
     new Promise((res, rej) => {
-      const timer = setTimeout(() => rej(new Error(`${label}: socket connect timeout`)), 10_000);
+      // generous ceiling: dev machines under parallel agent load can stretch
+      // the five-handshake bursts (normally <1s) well past the default 10s
+      const timer = setTimeout(() => rej(new Error(`${label}: socket connect timeout`)), 25_000);
       socket.once('connect', () => { clearTimeout(timer); res(); });
       socket.once('connect_error', (err) => { clearTimeout(timer); rej(new Error(`${label}: connect_error ${err?.message}`)); });
     });
@@ -341,6 +379,36 @@ function wireActor(client) {
     if (Number(payload?.seat) === client.mySeat && !client.dead) {
       setTimeout(() => void actOnTurn(client), 0);
     }
+  });
+}
+
+/**
+ * Open-window-scenario actor: acts only PAST the production 2s arm delay
+ * (default 2.6s), so challenge windows stay open long enough for the
+ * scenario's probes + a mid-window reconnect to observe them live.
+ */
+function wireWindowActor(client, delayMs = 2_600) {
+  client.socket.on('turn:begin', (payload) => {
+    if (Number(payload?.seat) === client.mySeat && !client.dead) {
+      setTimeout(() => void actOnTurn(client), delayMs);
+    }
+  });
+}
+
+/** Most-recent payload of one event name on a live client (or undefined). */
+function lastEvent(client, name) {
+  for (let i = client.events.length - 1; i >= 0; i -= 1) {
+    if (client.events[i].event === name) return client.events[i].payload;
+  }
+  return undefined;
+}
+
+/** Emits `event` expecting NO listener: resolves {unhandled:true} only when the ack never comes. */
+function emitProbeUnhandled(socket, event, payload, timeoutMs = 1_500) {
+  return new Promise((resolve) => {
+    socket.timeout(timeoutMs).emit(event, payload, (err, ack) => {
+      resolve(err ? { unhandled: true } : { unhandled: false, ack });
+    });
   });
 }
 
@@ -441,9 +509,11 @@ main()
     finish(1);
   });
 
-// ───────────────────────── THE SCENARIO ──────────────────────────────────────
+// ───────────────────────── THE SCENARIOS ─────────────────────────────────────
 
-async function main() {
+async function runFullScenario() {
+  // nickname set pinned to the full-match scenario (§2–§8 reference these)
+  const NICK = { A: 'SMOKE-A', B: 'SMOKE-B', C: 'SMOKE-C', D: 'SMOKE-D' };
   // §1 — env + fake users + session minting ────────────────────────────────
   section('§1 env + fake users + session cookies');
 
@@ -710,12 +780,15 @@ async function main() {
   }
   check(meAll, `GET /api/me shows all three with credited match XP (${meDetail.join(' ')})`, `grantMatchRewards did not reach users (${meDetail.join(' ')})`);
 
-  // GET /api/leaderboard — the public aggregation of the same chain
+  // GET /api/leaderboard — the public aggregation of the same chain.
+  // The server caches pages 60s in-process (economy/leaderboard.ts), so the
+  // retry window must SPAN a cache expiry — a consumer polling <60s before
+  // this run would otherwise poison the page for the whole 20s scan.
   let allThree = null;
   let envelopeSeen = false;
-  const lbUntil = Date.now() + 20_000;
+  const lbUntil = Date.now() + 80_000;
   while (Date.now() < lbUntil && !allThree) {
-    for (let page = 1; page <= 3 && !allThree; page += 1) {
+    for (let page = 1; page <= 10 && !allThree; page += 1) {
       const res = await rest('GET', `/api/leaderboard?metric=xp&page=${page}&perPage=50`);
       const body = res.status === 200 ? res.body : null;
       if (!body || !Array.isArray(body.leaderboard)) break;
@@ -723,8 +796,13 @@ async function main() {
         envelopeSeen = true;
         check(body.metric === 'xp' && Number.isInteger(body.total), `leaderboard envelope {metric=xp, total=${body.total}} (60s cacheable)`);
       }
-      const hits = body.leaderboard.filter((r) => [NICK.A, NICK.B, NICK.C].includes(r.nickname) && r.value > 0);
-      if (hits.length === 3) allThree = hits;
+      // Match by THIS run's accountIds: every smoke run upserts NEW rows with
+      // the SAME SMOKE-A/B/C nicknames, so a nickname-based scan collides with
+      // every prior run's users (runId-keyed providerIds are collision-proof).
+      const wantIds = new Set([userA.id, userB.id, userC.id]);
+      const hits = body.leaderboard.filter((r) => wantIds.has(r.accountId) && r.value > 0);
+      if (new Set(hits.map((r) => r.accountId)).size === wantIds.size) allThree = hits;
+      if (body.leaderboard.length < 50) break; // last page — the whole board was scanned
     }
     if (!allThree) await sleep(2 * RETRY_MS);
   }
@@ -738,4 +816,574 @@ async function main() {
   // teardown
   for (const c of [A, B, C, C2, D]) c.disconnect();
   await mongo.close();
+}
+
+// ───────────────────────── scenario=window ──────────────────────────────────
+
+async function runWindowScenario() {
+  const NICK = { A: 'SMOKE-WA', B: 'SMOKE-WB', C: 'SMOKE-WC', D: 'SMOKE-WD', E: 'SMOKE-WE' };
+
+  // §1 — env + five users + session cookies ──────────────────────────────
+  section('§1 env + five users + session cookies');
+
+  const health = await rest('GET', '/api/health');
+  const up = check(health.status === 200 && health.body?.ok === true, `game server up on :${ENV.port} (/api/health)`, `no server on ${BASE} — boot apps/server first (status ${health.status})`);
+  if (!up) {
+    bad('aborting: the window scenario needs the live server');
+    return;
+  }
+  const runId = `${Date.now().toString(36)}${cryptoRandomInt(0, 999)}`;
+  const mongo = new MongoClient(ENV.mongoUri, { serverSelectionTimeoutMS: 8_000 });
+  await mongo.connect();
+  await mongo.db(ENV.mongoDb).command({ ping: 1 });
+  ok('Mongo reachable (db name checked, never printed)');
+  const usersCollection = mongo.db(ENV.mongoDb).collection('users');
+  const mintUser = async (tag, nickname) => {
+    const doc = await usersCollection.findOneAndUpdate(
+      { provider: 'google', providerId: `liars-smoke-${runId}-${tag}` },
+      {
+        $set: { name: nickname, lastSeenAt: new Date() },
+        $setOnInsert: {
+          nickname,
+          avatarSpec: { base: 'default' },
+          xp: 0,
+          level: 1,
+          banned: false,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true, returnDocument: 'after' },
+    );
+    return { id: String(doc._id), nickname };
+  };
+  const userA = await mintUser('wa', NICK.A);
+  const userB = await mintUser('wb', NICK.B);
+  const userC = await mintUser('wc', NICK.C);
+  const userD = await mintUser('wd', NICK.D);
+  const userE = await mintUser('we', NICK.E);
+  ok('5 fake test users upserted (A..E — the open-window tier)');
+  const cookieA = mintSessionCookie(userA.id);
+  try {
+    check(jwt.verify(cookieA, ENV.authSecret).sub === userA.id, 'short-lived HS256 lg_session cookie mints + verifies');
+  } catch (err) {
+    bad(`session cookie verify threw: ${err?.message}`);
+  }
+
+  // §2 — the five-seat room ───────────────────────────────────────────────
+  section('§2 the room — five seated players (capacity 5, no spectators)');
+
+  const A = makeClient('A', cookieA);
+  const B = makeClient('B', mintSessionCookie(userB.id));
+  const C = makeClient('C', mintSessionCookie(userC.id));
+  const D = makeClient('D', mintSessionCookie(userD.id));
+  const E = makeClient('E', mintSessionCookie(userE.id));
+  let connects = 0;
+  for (const c of [A, B, C, D, E]) {
+    try {
+      await c.connect();
+      connects += 1;
+    } catch (err) {
+      bad(err.message);
+    }
+  }
+  check(connects === 5, '5 socket.io handshakes over websocket carrying session cookies');
+
+  const createAck = await A.emitAck('room:create', {
+    name: `SMOKE WIN ${runId.slice(-3)}`,
+    capacity: 5,
+    theme: 'saloon',
+    visibility: 'public',
+  });
+  if (!check(createAck?.ok === true, 'host room:create ack ok (capacity 5)', `room:create ack failed: ${JSON.stringify(createAck)}`)) {
+    throw new Error('cannot smoke without a room');
+  }
+  const roomCode = createAck.data.roomCode;
+  check(ROOM_CODE_RE.test(roomCode), `room code minted from the 31-char set (${roomCode})`);
+
+  const seated = [B, C, D, E];
+  for (let i = 0; i < seated.length; i += 1) {
+    const ack = await seated[i].emitAck('room:join', { code: roomCode });
+    const seatOk = ack?.ok === true && ack.data?.spectator === false && ack.data?.yourSeat === i + 1;
+    if (ack?.error?.code === 'RATE_LIMITED') {
+      bad(`join RATE_LIMITED — the server join bucket is 10/IP/10min (this scenario: 5 attempts). Restart the server process or wait out the window, then rerun.`);
+    }
+    check(seatOk, `${seated[i].label} joins seated at seat ${i + 1}`, `join ack: ${JSON.stringify(ack)}`);
+    seated[i].mySeat = i + 1;
+  }
+  A.mySeat = 0;
+
+  // §3 — reconnect MID-WINDOW (round 1's window: no roulette has fired yet,
+  //      so the reconnect assertions cannot be disturbed by an elimination) ──
+  section('§3 reconnect mid-window — grace-held seat, catch-up carries the open window');
+
+  for (const c of [A, B, C, D, E]) wireWindowActor(c); // acts only past the 2s arm
+  const startAck = await A.emitAck('game:start', {});
+  check(startAck?.ok === true, 'host game:start ok — 5 seated → open-window mode at 5 alive', `game:start ack failed: ${JSON.stringify(startAck)}`);
+
+  const firstWindow = await waitFor(
+    () => A.events.find((e) => e.event === 'window:open') ?? false,
+    20_000,
+    'the first open challenge window',
+  );
+  check(Number.isInteger(firstWindow.payload.playSeat), `window:open live on the wire (playSeat ${firstWindow.payload.playSeat}, accused of the first play)`);
+  const msLeft = firstWindow.payload.closesAtTs - Date.now();
+  check(msLeft > 5_000 && msLeft < 12_000, `window closesAtTs is a future epoch stamp ~10s out (${Math.round(msLeft / 100) / 10}s)`);
+
+  // arm-delay probe: an IMMEDIATE CHECK from a different seat bounces with the typed engine code
+  const caller = [A, B, C, D, E].find((c) => c.mySeat !== firstWindow.payload.playSeat);
+  const preArm = await caller.emitAck('liar:call', { accusedSeat: firstWindow.payload.playSeat });
+  check(
+    preArm?.ok === false && preArm.error?.code === 'ERR_WINDOW_NOT_ARMED',
+    `pre-arm CHECK rejected ERR_WINDOW_NOT_ARMED (2s arm delay, server-authoritative)`,
+    `pre-arm probe did not bounce with ERR_WINDOW_NOT_ARMED: ${JSON.stringify(preArm)}`,
+  );
+
+  // — D drops while the window is open; the grace clock holds the seat —
+  D.disconnect();
+  const presOut = await waitFor(
+    () => {
+      for (const w of [A, B, C, E]) {
+        const p = lastEvent(w, 'presence:update');
+        const mine = p?.seats?.find((s) => s.seat === D.mySeat);
+        if (mine && mine.connected === false) return p;
+      }
+      return false;
+    },
+    8_000,
+    'presence showing D disconnected',
+  );
+  check(presOut !== false && presOut !== undefined, `presence:update broadcast shows seat ${D.mySeat} disconnected (grace clock holding the seat)`);
+
+  // — D rejoins INTO the still-open window; the catch-up snapshot must carry it —
+  const D2 = makeClient('D-re', mintSessionCookie(userD.id));
+  D2.handDealtIdsByRound = { ...D.handDealtIdsByRound }; // same user — own ids stay own
+  D2.mySeat = D.mySeat;
+  await D2.connect();
+  const ackD2 = await D2.emitAck('room:join', { code: roomCode });
+  if (ackD2?.error?.code === 'RATE_LIMITED') {
+    bad('reconnect join RATE_LIMITED — 10/IP/10min bucket; restart the server process or wait out the window, then rerun.');
+  }
+  check(
+    ackD2?.ok === true && ackD2.data?.spectator === false && ackD2.data?.yourSeat === D.mySeat && ackD2.data?.reconnected === true,
+    `D rejoins INTO the open window (reconnected:true, seat ${ackD2?.data?.yourSeat})`,
+    `reconnect join ack: ${JSON.stringify(ackD2)}`,
+  );
+  const catchUp = await waitFor(
+    () => D2.events.find((e) => e.event === 'lobby:state' && e.payload.phase !== 'lobby') ?? false,
+    10_000,
+    'D-re catch-up snapshot',
+  );
+  check(catchUp.payload.phase === 'playing', 'catch-up snapshot is mid-match (one snapshot, not N replays)');
+  check(
+    catchUp.payload.you?.seat === D.mySeat && Array.isArray(catchUp.payload.you?.hand) && catchUp.payload.you.hand.length > 0,
+    `catch-up restores D's seat + hand (${catchUp.payload.you?.hand?.length} cards)`,
+  );
+  D2.hand = catchUp.payload.you.hand;
+  check(
+    catchUp.payload.challengeWindow?.playSeat === firstWindow.payload.playSeat && catchUp.payload.challengeWindow?.closesAtTs === firstWindow.payload.closesAtTs,
+    `catch-up carries the STILL-OPEN window (challengeWindow playSeat ${catchUp.payload.challengeWindow?.playSeat} === the live window)`,
+    `catch-up challengeWindow ${JSON.stringify(catchUp.payload.challengeWindow)} vs live ${JSON.stringify({ playSeat: firstWindow.payload.playSeat, closesAtTs: firstWindow.payload.closesAtTs })}`,
+  );
+  wireWindowActor(D2);
+  // If D's seat was mid-turn when the socket dropped, its turn:begin already
+  // passed D2 by — resume from the catch-up's currentTurnSeat.
+  if (catchUp.payload.currentTurnSeat === D2.mySeat) {
+    ok(`D's seat held the turn through the reconnect (currentTurnSeat=${D2.mySeat}) — resuming from the catch-up`);
+    setTimeout(() => void actOnTurn(D2), 2_700);
+  }
+  const presBack = await waitFor(
+    () => {
+      for (const w of [A, B, C, E]) {
+        const p = lastEvent(w, 'presence:update');
+        const mine = p?.seats?.find((s) => s.seat === D.mySeat);
+        if (mine && mine.connected === true) return p;
+      }
+      return false;
+    },
+    8_000,
+    'presence showing D back',
+  );
+  check(presBack !== false && presBack !== undefined, 'presence:update shows the rejoined seat connected again');
+
+  // §4 — window discipline: the post-arm CHECK lands and closes liar_called ─
+  section('§4 post-arm CHECK accepted {liar_called} — the challenge resolves on the wire');
+  await sleep(2_200); // past the 2s arm, well inside the 10s window
+  const armed = await caller.emitAck('liar:call', { accusedSeat: firstWindow.payload.playSeat });
+  check(armed?.ok === true, `post-arm CHECK accepted (first-wins)`, `post-arm CHECK failed: ${JSON.stringify(armed)}`);
+  const liarClose = await waitFor(
+    () => A.events.find((e) => e.event === 'window:close' && e.payload.reason === 'liar_called') ?? false,
+    5_000,
+    'window:close {liar_called}',
+  );
+  check(liarClose !== false, `window:close {reason: liar_called} broadcast (seq ${liarClose.payload.seq})`);
+  const revealed = await waitFor(
+    () => A.events.find((e) => e.event === 'reveal:show') ?? false,
+    5_000,
+    'reveal:show',
+  );
+  check(revealed !== false, `reveal:show reached the room (verdict ${revealed.payload.verdict})`);
+  // whatever the honest revolver decides next is fine — the window story is banked
+  await waitFor(() => A.events.some((e) => e.event === 'shot:assign'), 8_000, 'shot:assign');
+
+  // §5 — per-event contract + privacy across the window run ───────────────
+  section('§5 per-event contract + privacy (5-player window run)');
+
+  const allClients = [A, B, C, D, E, D2];
+  for (const c of allClients) {
+    ok(`${c.label}: ${c.events.length} events parsed against serverEventSchemas (strict zod), seq monotonic to ${c.lastSeq}`);
+  }
+  privacyScan([A, B, C, D, D2, E], [A, B, C, E, D2]);
+
+  for (const c of allClients) c.disconnect();
+  await mongo.close();
+}
+
+// ───────────────────────── scenario=bots ────────────────────────────────────
+
+async function runBotsScenario() {
+  const NICK = { A: 'SMOKE-BA', B: 'SMOKE-BB' };
+
+  // §1 — env + two users + session cookies ────────────────────────────────
+  section('§1 env + two users + session cookies');
+
+  const health = await rest('GET', '/api/health');
+  const up = check(health.status === 200 && health.body?.ok === true, `game server up on :${ENV.port} (/api/health)`, `no server on ${BASE} — boot apps/server first (status ${health.status})`);
+  if (!up) {
+    bad('aborting: the bots scenario needs the live server');
+    return;
+  }
+  const runId = `${Date.now().toString(36)}${cryptoRandomInt(0, 999)}`;
+  const mongo = new MongoClient(ENV.mongoUri, { serverSelectionTimeoutMS: 8_000 });
+  await mongo.connect();
+  await mongo.db(ENV.mongoDb).command({ ping: 1 });
+  ok('Mongo reachable (db name checked, never printed)');
+  const usersCollection = mongo.db(ENV.mongoDb).collection('users');
+  const mintUser = async (tag, nickname) => {
+    const doc = await usersCollection.findOneAndUpdate(
+      { provider: 'google', providerId: `liars-smoke-${runId}-${tag}` },
+      {
+        $set: { name: nickname, lastSeenAt: new Date() },
+        $setOnInsert: {
+          nickname,
+          avatarSpec: { base: 'default' },
+          xp: 0,
+          level: 1,
+          banned: false,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true, returnDocument: 'after' },
+    );
+    return { id: String(doc._id), nickname };
+  };
+  const userA = await mintUser('ba', NICK.A);
+  const userB = await mintUser('bb', NICK.B);
+  ok('2 fake test users upserted (host + one human guest)');
+  try {
+    check(jwt.verify(mintSessionCookie(userA.id), ENV.authSecret).sub === userA.id, 'session cookie mints + verifies');
+  } catch (err) {
+    bad(`session cookie verify threw: ${err?.message}`);
+  }
+
+  // §2 — the bot surface is CLOSED on the wire (by design) ─────────────────
+  section('§2 bot-fill surface is programmatic-only: no wire/REST bot surface exists');
+
+  const clientEvents = Object.keys(clientEventSchemas);
+  check(clientEvents.length === 8, `the shared client-event catalog is exactly the 8 contract events (${clientEvents.join(', ')})`);
+  check(!clientEvents.some((e) => /bot/i.test(e)), 'no bot event exists in the client contract (bot-fill is manager-only, S1/STR/02)');
+
+  const A = makeClient('A', mintSessionCookie(userA.id));
+  await A.connect();
+  const createAck = await A.emitAck('room:create', {
+    name: `SMOKE BOT ${runId.slice(-3)}`,
+    capacity: 2,
+    theme: 'saloon',
+    visibility: 'private',
+  });
+  check(createAck?.ok === true, 'host room:create ack ok', `room:create ack failed: ${JSON.stringify(createAck)}`);
+  const roomCode = createAck.data.roomCode;
+  const snapshotsBefore = A.events.filter((e) => e.event === 'lobby:state').length;
+
+  const socketProbe = await emitProbeUnhandled(A.socket, 'bot:add', { seat: 1 });
+  check(socketProbe.unhandled, 'emitting bot:add gets NO handler (unbound client event → no ack, no state change)');
+  const restProbes = ['/api/rooms/bots', `/api/rooms/${roomCode}/bots`, `/api/rooms/${roomCode}/bot-fill`, '/api/game/bots'];
+  for (const p of restProbes) {
+    const res = await rest('POST', p, { cookie: mintSessionCookie(userA.id) });
+    check(res.status === 404, `POST ${p} → 404 (no accidental bot REST surface)`, `POST ${p} answered ${res.status} — a bot route may have been added without the shared contract`);
+  }
+  check(A.events.filter((e) => e.event === 'lobby:state').length === snapshotsBefore, 'the room is unchanged by every probe (no snapshot, no seat change, no state)');
+
+  // §3 — the closest live equivalent match: two humans to game:over ────────
+  section('§3 the match — 2 humans to game:over (bots never pre-empt the pipeline)');
+
+  const B = makeClient('B', mintSessionCookie(userB.id));
+  await B.connect();
+  const ackB = await B.emitAck('room:join', { code: roomCode });
+  if (ackB?.error?.code === 'RATE_LIMITED') {
+    bad('join RATE_LIMITED — 10/IP/10min bucket; restart the server process or wait out the window, then rerun.');
+  }
+  check(ackB?.ok === true && ackB.data?.yourSeat === 1 && ackB.data?.spectator === false, 'B joins seated at seat 1', `B join ack: ${JSON.stringify(ackB)}`);
+  A.mySeat = 0;
+  B.mySeat = 1;
+  for (const c of [A, B]) wireActor(c);
+
+  const startAck = await A.emitAck('game:start', {});
+  check(startAck?.ok === true, 'host game:start ok', `game:start ack failed: ${JSON.stringify(startAck)}`);
+  const over = await waitFor(
+    () => A.gameOver ?? false,
+    MATCH_DEADLINE_MS,
+    'game:over (honest 2p roulette — production pacing)',
+  );
+  check(over !== false && over !== undefined, `game:over landed (winnerSeat ${over?.winnerSeat})`, 'no game:over within the deadline');
+
+  // §4 — game:over integrity ────────────────────────────────────────────────
+  section('§4 game:over integrity (rewards mirror the record; every seat accounted)');
+
+  if (over) {
+    check(Number.isInteger(over.winnerSeat), `winnerSeat carried (${over.winnerSeat})`);
+    check(over.matchRecord?.roomCode === roomCode, 'matchRecord pinned to the room');
+    check((over.matchRecord?.players ?? []).length === 2, 'matchRecord carries both seated players');
+    check(Number.isInteger(over.matchRecord?.summary?.rounds) && over.matchRecord.summary.rounds > 0, `match completed real rounds (${over.matchRecord?.summary?.rounds})`);
+    const xps = (over.rewards ?? []).map((r) => r.xp);
+    check((over.rewards ?? []).length === 2 && xps.every((x) => x > 0), `both humans earned match XP (${xps.join('/')})`);
+  }
+
+  // §5 — rewards/leaderboard immunity for bot accounts (live) ──────────────
+  section('§5 economy: XP landed on real accounts; the leaderboard can only hold ObjectId accounts');
+
+  let meAll = false;
+  const meUntil = Date.now() + 25_000;
+  const meDetail = [];
+  while (Date.now() < meUntil && !meAll) {
+    meDetail.length = 0;
+    let good = 0;
+    for (const user of [userA, userB]) {
+      const res = await rest('GET', '/api/me', { cookie: mintSessionCookie(user.id) });
+      const xp = res.body?.user?.xp;
+      meDetail.push(`${user.nickname}:xp=${String(xp)}`);
+      if (res.status === 200 && typeof xp === 'number' && xp > 0) good += 1;
+    }
+    if (good === 2) meAll = true;
+    else await sleep(2 * RETRY_MS);
+  }
+  check(meAll, `GET /api/me shows both users with credited match XP (${meDetail.join(' ')})`, `grantMatchRewards did not reach users (${meDetail.join(' ')})`);
+
+  let scanned = 0;
+  let botRows = 0;
+  let runRows = 0;
+  let userRows = 0;
+  // The leaderboard caches pages 60s server-side (economy/leaderboard.ts) —
+  // span a cache expiry before giving up (80s > 60s TTL).
+  const lbUntil = Date.now() + 80_000;
+  while (Date.now() < lbUntil && !(userRows === 2 && runRows === 2)) {
+    for (let page = 1; page <= 5; page += 1) {
+      const res = await rest('GET', `/api/leaderboard?metric=xp&page=${page}&perPage=50`);
+      const body = res.status === 200 ? res.body : null;
+      if (!body || !Array.isArray(body.leaderboard)) break;
+      for (const row of body.leaderboard) {
+        scanned += 1;
+        if (typeof row.accountId === 'string' && row.accountId.startsWith('bot:')) botRows += 1;
+        if (row.accountId === userA.id || row.accountId === userB.id) {
+          userRows += 1;
+          if (row.value > 0) runRows += 1;
+        }
+      }
+      if (body.leaderboard.length < 50) break;
+    }
+    if (!(userRows === 2 && runRows === 2)) await sleep(2 * RETRY_MS);
+  }
+  check(botRows === 0, `no bot:<roomCode>:<seat> accountId can ever appear on the leaderboard (0 of ${scanned} rows)`, `${botRows} bot account rows leaked onto the leaderboard`);
+  check(userRows === 2 && runRows === 2, 'the run\'s two real users appear on the board with match XP > 0');
+
+  for (const c of [A, B]) c.disconnect();
+  await mongo.close();
+}
+
+// ───────────────────────── scenario=abandon ────────────────────────────────
+
+async function runAbandonScenario() {
+  const NICK = { A: 'SMOKE-AA', B: 'SMOKE-AB', S: 'SMOKE-AS' };
+
+  // §1 — env + three users (A, B seated + S spectator witness) ────────────
+  section('§1 env + three users (two players + one witness spectator)');
+
+  const health = await rest('GET', '/api/health');
+  const up = check(health.status === 200 && health.body?.ok === true, `game server up on :${ENV.port} (/api/health)`, `no server on ${BASE} — boot apps-server first (status ${health.status})`);
+  if (!up) {
+    bad('aborting: the abandon scenario needs the live server');
+    return;
+  }
+  const runId = `${Date.now().toString(36)}${cryptoRandomInt(0, 999)}`;
+  const mongo = new MongoClient(ENV.mongoUri, { serverSelectionTimeoutMS: 8_000 });
+  await mongo.connect();
+  await mongo.db(ENV.mongoDb).command({ ping: 1 });
+  ok('Mongo reachable (db name checked, never printed)');
+  const usersCollection = mongo.db(ENV.mongoDb).collection('users');
+  const mintUser = async (tag, nickname) => {
+    const doc = await usersCollection.findOneAndUpdate(
+      { provider: 'google', providerId: `liars-smoke-${runId}-${tag}` },
+      {
+        $set: { name: nickname, lastSeenAt: new Date() },
+        $setOnInsert: {
+          nickname,
+          avatarSpec: { base: 'default' },
+          xp: 0,
+          level: 1,
+          banned: false,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true, returnDocument: 'after' },
+    );
+    return { id: String(doc._id), nickname };
+  };
+  const userA = await mintUser('aa', NICK.A);
+  const userB = await mintUser('ab', NICK.B);
+  const userS = await mintUser('as', NICK.S);
+  ok('3 fake test users upserted (A, B + witness S)');
+  try {
+    check(jwt.verify(mintSessionCookie(userA.id), ENV.authSecret).sub === userA.id, 'session cookie mints + verifies');
+  } catch (err) {
+    bad(`session cookie verify threw: ${err?.message}`);
+  }
+
+  // §2 — capacity-2 room: A+B seated, S spectator, match started ───────────
+  section('§2 the room — two seated players + a spectator witness; match started');
+
+  const A = makeClient('A', mintSessionCookie(userA.id));
+  const B = makeClient('B', mintSessionCookie(userB.id));
+  const S = makeClient('S', mintSessionCookie(userS.id));
+  let connects = 0;
+  for (const c of [A, B, S]) {
+    try {
+      await c.connect();
+      connects += 1;
+    } catch (err) {
+      bad(err.message);
+    }
+  }
+  check(connects === 3, '3 socket.io handshakes (A, B, witness S)');
+
+  const createAck = await A.emitAck('room:create', {
+    name: `SMOKE ABN ${runId.slice(-3)}`,
+    capacity: 2,
+    theme: 'saloon',
+    visibility: 'private',
+  });
+  check(createAck?.ok === true, 'host room:create ack ok (capacity 2, private)', `room:create ack failed: ${JSON.stringify(createAck)}`);
+  const roomCode = createAck.data.roomCode;
+  const ackB = await B.emitAck('room:join', { code: roomCode });
+  if (ackB?.error?.code === 'RATE_LIMITED') {
+    bad('join RATE_LIMITED — 10/IP/10min bucket; restart the server process or wait out the window, then rerun.');
+  }
+  check(ackB?.ok === true && ackB.data?.spectator === false && ackB.data?.yourSeat === 1, 'B joins seated (seat 1)', `B join ack: ${JSON.stringify(ackB)}`);
+  A.mySeat = 0;
+  B.mySeat = 1;
+  const ackS = await S.emitAck('room:join', { code: roomCode });
+  check(ackS?.ok === true && ackS.data?.spectator === true && ackS.data?.yourSeat === null, 'S joins the FULL room as the witness spectator', `S join ack: ${JSON.stringify(ackS)}`);
+  S.isSpectator = true;
+
+  const startAck = await A.emitAck('game:start', {});
+  check(startAck?.ok === true, 'host game:start ok (2 seated humans)', `game:start ack failed: ${JSON.stringify(startAck)}`);
+  await waitFor(() => A.events.some((e) => e.event === 'round:new'), 10_000, 'round:new to A');
+  await waitFor(() => B.events.some((e) => e.event === 'hand:deal'), 10_000, 'hand:deal to B');
+  ok('the match is live (round 1 dealt to both players)');
+  check(S.events.filter((e) => e.event === 'hand:deal').length === 0, 'the spectator witness received ZERO hand:deal (privacy holds)');
+
+  // §3 — the double drop ─────────────────────────────────────────────────────
+  section('§3 both players drop mid-turn (A first, B 1.5s later)');
+
+  A.disconnect();
+  const presA = await waitFor(
+    () => {
+      const p = lastEvent(B, 'presence:update') ?? lastEvent(S, 'presence:update');
+      return p?.seats?.find((s) => s.seat === 0 && s.connected === false) ? p : false;
+    },
+    8_000,
+    'presence showing seat 0 disconnected',
+  );
+  check(presA !== false && presA !== undefined, 'presence:update broadcast A disconnected (grace clock armed, 60s)');
+  await sleep(1_500);
+  B.disconnect();
+  const presB = await waitFor(
+    () => {
+      const p = lastEvent(S, 'presence:update');
+      return p?.seats?.find((s) => s.seat === 1 && s.connected === false) ? p : false;
+    },
+    8_000,
+    'presence showing seat 1 disconnected',
+  );
+  check(presB !== false && presB !== undefined, 'presence:update broadcast B disconnected (both seats now grace-held)');
+  ok('nobody is left holding a socket — the match must now decide itself');
+
+  // §4 — grace expiry → abandon → abort → win by default (60s grace) ───────
+  section('§4 grace expiry (60s) → ABANDON → abort → B wins by default, 0-round record');
+
+  const over = await waitFor(
+    () => S.gameOver ?? false,
+    80_000,
+    'game:over on the witness socket (earlier dropper A abandons first → B wins)',
+  );
+  check(Number.isInteger(over?.winnerSeat), `game:over broadcast reached the witness (winnerSeat ${over?.winnerSeat})`, 'no game:over within 60s grace + margin');
+  if (over) {
+    check(over.winnerSeat === B.mySeat, `the LATER dropper (B, seat ${B.mySeat}) wins by default — win-by-default per STR/01 §9`, `winnerSeat was ${over.winnerSeat}`);
+    check(over.matchRecord?.roomCode === roomCode, 'matchRecord pinned to the room');
+    const record = over.matchRecord ?? {};
+    check(record.players?.length === 2, `matchRecord carries both players (${record.players?.length})`);
+    check(Number.isInteger(record.summary?.rounds) && record.summary.rounds === 0, `the record is a 0-ROUND record (summary.rounds = ${record.summary?.rounds} — no roulette ever fired)`);
+    const rewardB = (over.rewards ?? []).find((r) => r.seat === B.mySeat);
+    const rewardA = (over.rewards ?? []).find((r) => r.seat === A.mySeat);
+    check((rewardB?.xp ?? 0) > 0, `winner B's reward carries XP (${rewardB?.xp})`);
+    check((rewardA?.xp ?? -1) === 0, `abandoned A earns 0 XP (${rewardA?.xp}) — no completion credit`);
+  }
+
+  // §5 — the zero-round rewards path through the economy ────────────────────
+  section('§5 zero-round rewards path — aborted win still grants; abandoner gets nothing');
+
+  let bXp = null;
+  let aXp = null;
+  const meUntil = Date.now() + 25_000;
+  while (Date.now() < meUntil && (bXp === null || aXp === null || !(bXp > 0) || aXp !== 0)) {
+    const meB = await rest('GET', '/api/me', { cookie: mintSessionCookie(userB.id) });
+    const meA = await rest('GET', '/api/me', { cookie: mintSessionCookie(userA.id) });
+    if (typeof meB.body?.user?.xp === 'number') bXp = meB.body.user.xp;
+    if (typeof meA.body?.user?.xp === 'number') aXp = meA.body.user.xp;
+    if (bXp > 0 && aXp === 0) break;
+    await sleep(2 * RETRY_MS);
+  }
+  check(typeof bXp === 'number' && bXp > 0, `GET /api/me: B (win by default) shows credited XP (${bXp})`, `aborted-win XP never landed on B (${bXp})`);
+  check(aXp === 0, `GET /api/me: A (abandoned) shows exactly 0 XP (${aXp})`, `A accrued XP from an abandoned match (${aXp})`);
+
+  let bRow = null;
+  // Leaderboard pages cache 60s server-side — span a cache expiry (80s > 60s).
+  const lbUntil = Date.now() + 80_000;
+  while (Date.now() < lbUntil && !bRow) {
+    for (let page = 1; page <= 3 && !bRow; page += 1) {
+      const res = await rest('GET', `/api/leaderboard?metric=xp&page=${page}&perPage=50`);
+      const body = res.status === 200 ? res.body : null;
+      if (!body || !Array.isArray(body.leaderboard)) break;
+      bRow = body.leaderboard.find((r) => r.accountId === userB.id && r.value > 0) ?? null;
+    }
+    if (!bRow) await sleep(2 * RETRY_MS);
+  }
+  check(bRow !== null, `GET /api/leaderboard shows B with the aborted-win XP (${bRow?.value})`, 'B never appeared on the leaderboard with XP');
+
+  for (const c of [A, B, S]) c.disconnect();
+  await mongo.close();
+}
+
+// ───────────────────────── dispatcher ───────────────────────────────────────
+
+async function main() {
+  switch (SCENARIO) {
+    case 'window':
+      return runWindowScenario();
+    case 'bots':
+      return runBotsScenario();
+    case 'abandon':
+      return runAbandonScenario();
+    case 'full':
+    default:
+      return runFullScenario();
+  }
 }
