@@ -45,7 +45,7 @@ export function CallGuardSheet({
 
   const name = accusedSeat === heroSeat ? "YOURSELF" : nicknameOf(accusedSeat);
   const count = lastPlay?.seat === accusedSeat ? lastPlay.count : 1;
-  const claim = tableCard ? `${count} as ${pluralClaim(tableCard, count)}` : `${count} cards`;
+  const claim = tableCard ? `${count} as ${pluralClaim(tableCard, count)}` : `${count} card${count === 1 ? "" : "s"}`;
 
   const confirm = async () => {
     const res = await sendCheck(accusedSeat);
@@ -74,7 +74,7 @@ export function CallGuardSheet({
       <p className="mb-2 font-body text-base text-ivory">
         {name} claims <strong className="text-brass">{claim}</strong>.
         {secondsLeft > 0 && window_ && (
-          <em className="ml-1 not-italic font-body text-xs text-ink-dim">window closes in {secondsLeft}s</em>
+          <em className="ml-1 not-italic font-body text-xs text-ink-dim">window closes in {Math.ceil(secondsLeft)}s</em>
         )}
       </p>
       <p className="mb-4 font-body text-sm text-ink-dim">

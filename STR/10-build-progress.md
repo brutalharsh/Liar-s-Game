@@ -419,6 +419,21 @@ server. The chain itself was never broken — verified twice independently.
   "HTTPS" — protocol chars survive the charset filter; (P2 queue) mock
   room codes RM100-107 contain 0/1 outside the advertised charset;
   SiteHeader Sign-out 1px under target. Emoji house-style left consistent.
+- **U6** ✅ hand + controls: five code-verified fixes — HandFan reject-shake
+  was a framer key-remount that re-dealt the whole fan on every rejected
+  4th tap (future-deal killer) → WAAPI shake on a plain wrapper, reduced-
+  motion guarded; CallGuardSheet live integer seconds + real plurals;
+  A/D card walk wraps instead of dead-ending; PlayedPile dead ternary +
+  shared pluralClaim; EmoteWheel cooldown pill floats above the grid
+  (was covering the mobile bottom row). Genotyped THROW ≥64px + claim text,
+  CHECK visible-but-dead per STR/03 §2, no face glyphs in the pile (DOM +
+  code path — hidden-data law holds). Flags: emote catalog split 9/10 dead
+  on live (third confirmation — shared enum, both trees derive);
+  ShotCinematic hooks-order console spam (U7's in-flight fix landed mid-
+  audit); useCountdown urgent<10 → ring red for life (≤3 per spec);
+  MotionLab ghost invariant; TimerArc hardcoded total=10; lab bar pushes
+  THROW at 812px; wheel auto-close-on-send; 42px fan strip at <500px
+  (fan-overlap vs target tension — owner verdict).
 - **U12** ✅ design-system cross-audit: "coherent and genuinely good — one
   design language, not AI slop; structure/states/a11y skeleton/tokens
   production-grade", ZERO P0s. In-scope token fixes landed (globals.css):

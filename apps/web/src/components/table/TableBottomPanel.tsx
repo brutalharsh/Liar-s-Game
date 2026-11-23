@@ -100,9 +100,20 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
           onCheck();
         }
       } else if (e.key.toLowerCase() === "a" || e.key.toLowerCase() === "d") {
+        // walk-selection (research/09 §7): A/D step the selection through the fan
+        // with wraparound; the move anchors at the trailing/leading selected card
+        // so it never dead-ends at card 1 after the first pick
         const dir = e.key.toLowerCase() === "a" ? -1 : 1;
-        const firstIdx = s.selectedCardIds.length === 0 ? (dir === 1 ? 0 : s.hand.length - 1) : s.hand.findIndex((c) => c.id === s.selectedCardIds[0]);
-        const idx = s.selectedCardIds.length === 0 ? firstIdx : Math.max(0, Math.min(s.hand.length - 1, firstIdx + dir));
+        const idxs = s.selectedCardIds
+          .map((id) => s.hand.findIndex((c) => c.id === id))
+          .filter((i) => i >= 0);
+        let idx: number;
+        if (idxs.length === 0) {
+          idx = dir === 1 ? 0 : s.hand.length - 1;
+        } else {
+          const anchor = dir === 1 ? Math.max(...idxs) : Math.min(...idxs);
+          idx = (anchor + dir + s.hand.length) % s.hand.length;
+        }
         const card = s.hand[idx];
         if (card && !s.selectedCardIds.includes(card.id)) s.toggleCardSelection(card.id);
       } else if (e.key === " ") {

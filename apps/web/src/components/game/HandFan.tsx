@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef } from "react";
 import { motion } from "motion/react";
 import { useGameTable } from "@/components/game/gameTableContext";
 import { useGameStore, type HandCard } from "@/store/game";
@@ -22,17 +22,33 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
   const toggle = useGameStore((s) => s.toggleCardSelection);
   const clear = useGameStore((s) => s.clearSelection);
   const reduced = usePrefersReducedMotion();
-  const [rejectTick, setRejectTick] = useState(0);
+  const shakeRef = useRef<HTMLDivElement>(null);
 
   const desktop = mode === "desktop";
   const size = desktop ? "lg" : "md";
   const overlap = desktop ? "-ml-16" : "-ml-3.5";
   const maxRotate = desktop ? 18 : 16;
 
+  // 4th-card hard reject shake — WAAPI on the wrapper, so no remount: the deal
+  // animation never replays and every reject shakes afresh.
+  const rejectShake = () => {
+    if (reduced || !shakeRef.current) return;
+    shakeRef.current.animate(
+      [
+        { transform: "translateX(0px)" },
+        { transform: "translateX(-6px)" },
+        { transform: "translateX(6px)" },
+        { transform: "translateX(-4px)" },
+        { transform: "translateX(0px)" },
+      ],
+      { duration: 350, easing: "ease-out" },
+    );
+  };
+
   const onCardTap = (card: HandCard) => {
     if (disabled) return;
     const ok = toggle(card.id);
-    if (!ok) setRejectTick((t) => t + 1); // 4th card → hard reject shake
+    if (!ok) rejectShake(); // 4th card → hard reject shake
   };
 
   if (hand.length === 0) {
@@ -63,12 +79,7 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
         </div>
       )}
 
-      <motion.div
-        key={`fan-${rejectTick}`}
-        animate={rejectTick > 0 && !reduced ? { x: [0, -6, 6, -4, 0] } : { x: 0 }}
-        transition={{ duration: 0.35 }}
-        className="flex items-end justify-center pt-3"
-      >
+      <div ref={shakeRef} className="flex items-end justify-center pt-3">
         {hand.map((card, i) => {
           const offset = i - mid;
           const isSelected = selected.includes(card.id);
@@ -111,7 +122,7 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
             </motion.button>
           );
         })}
-      </motion.div>
+      </div>
     </div>
   );
 }

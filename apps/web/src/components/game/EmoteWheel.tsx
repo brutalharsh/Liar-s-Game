@@ -16,6 +16,19 @@ import { playSfx } from "@/lib/sfx";
  * sendEmote (adapter seam). Ghosts keep their own dimmed set — emotes are
  * the ghost lounge's only table talk.
  */
+
+/** Cooldown chip — floats above the wheel (both layouts) so it never covers a petal. */
+function CooldownPill({ seconds }: { seconds: number }) {
+  return (
+    <span
+      aria-live="polite"
+      className="pointer-events-none absolute -top-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-3 py-1 font-body text-xs text-brass"
+    >
+      emote cooldown {seconds}s
+    </span>
+  );
+}
+
 export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { mode } = useGameTable();
   const muted = useSettingsStore((s) => s.emoteMuted);
@@ -95,6 +108,7 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
               <span className="max-w-16 truncate font-body text-[8px] leading-tight text-ink-dim">{preset.label}</span>
             </button>
           ))}
+          {cooling && <CooldownPill seconds={Math.ceil(remaining / 1000)} />}
         </motion.nav>
       ) : (
         <motion.nav
@@ -133,12 +147,8 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
               </button>
             );
           })}
+          {cooling && <CooldownPill seconds={Math.ceil(remaining / 1000)} />}
         </motion.nav>
-      )}
-      {cooling && (
-        <div className="fixed bottom-2 left-1/2 z-[75] -translate-x-1/2 rounded-full bg-wood-deep px-3 py-1 font-body text-xs text-brass">
-          emote cooldown {Math.ceil(remaining / 1000)}s
-        </div>
       )}
     </div>
   );

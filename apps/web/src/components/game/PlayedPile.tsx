@@ -6,7 +6,7 @@ import { useGameStore } from "@/store/game";
 import { useGameTable } from "@/components/game/gameTableContext";
 import { GameCard } from "@/components/game/GameCard";
 import { stackPopTransition, stackPopVariants, throwVariants, throwTransition } from "@/motion/table";
-import { rankWord } from "@/lib/format";
+import { pluralClaim } from "@/lib/format";
 
 /**
  * Central played pile (research/09 §2.2): per-PLAYER mini stacks (≤3
@@ -23,7 +23,7 @@ export function PlayedPile() {
   const heroSeat = useGameStore((s) => s.heroSeat);
   const nicknameOf = useGameStore((s) => s.nicknameOf);
   const forcedCall = useGameStore((s) => s.forcedCall);
-  const { orderedSeats, mode } = useGameTable();
+  const { orderedSeats } = useGameTable();
   const order = new Map(orderedSeats.map((s, i) => [s.seat, i]));
 
   const sorted = [...pile].sort((a, b) => (order.get(a.seat) ?? 99) - (order.get(b.seat) ?? 99));
@@ -53,7 +53,7 @@ export function PlayedPile() {
                   <div className="flex items-center">
                     {Array.from({ length: Math.min(stack.count, 3) }).map((_, i) => (
                       <span key={i} className={i > 0 ? "-ml-4" : ""}>
-                        <GameCard faceUp={false} size={mode === "desktop" ? "sm" : "sm"} />
+                        <GameCard faceUp={false} size="sm" />
                       </span>
                     ))}
                   </div>
@@ -87,8 +87,7 @@ export function PlayedPile() {
       {/* claim label under the last throw (implicit claim — STR/01 §3) */}
       {lastSeat !== null && tableCard && sorted.length > 0 && (
         <span className="rounded-full border border-brass-deep bg-wood-deep/90 px-2 py-0.5 font-body text-[11px] text-lamp">
-          claims {lastPlay?.count} as {rankWord(tableCard)}
-          {(lastPlay?.count ?? 1) !== 1 ? "S" : ""}
+          claims {lastPlay?.count} as {pluralClaim(tableCard, lastPlay?.count ?? 1)}
         </span>
       )}
 
