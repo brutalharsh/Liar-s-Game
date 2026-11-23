@@ -1,0 +1,39 @@
+{
+  "name": "@liars-game/server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Liar's Game server — Express 5 + Socket.IO: game authority, OAuth auth, admin REST, payment proxy billing, shop.",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "commonjs",
+  "main": "dist/src/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "start": "node dist/src/index.js",
+    "test": "vitest run",
+    "seed:catalog": "tsx scripts/seed-catalog.ts"
+  },
+  "dependencies": {
+    "@liars-game/shared": "*",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.5",
+    "helmet": "^8.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.3",
+    "socket.io": "^4.8.4",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "tsx": "^4.23.15",
+    "vitest": "^5.1.1"
+  }
+}

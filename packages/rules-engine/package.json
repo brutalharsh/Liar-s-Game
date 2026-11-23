@@ -1,0 +1,25 @@
+{
+  "name": "@liars-game/rules-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Pure TypeScript Liar's Deck rules engine: server-authoritative reducer, injected RNG port, deterministic replay. Implements STR/01 (incl. amendments A1-A4). Zero IO.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0",
+    "vitest": "^5.1.1"
+  }
+}

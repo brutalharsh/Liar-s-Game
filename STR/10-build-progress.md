@@ -78,8 +78,6 @@
   user + Network Access locked to the VPS IP (notes inside both env files).
 - Trademark clearance for "Liar's Game" before public launch (alternates benched)
 - Owner's VPS details (provider, region, access) for the deploy wave
-- Post-R1 merge: bump `packages/rules-engine` vitest 3.2.7 → ^5 (two CRITICAL
-  advisories — F1's flag) and re-run the suite
 
 ## Agent dispatch log
 
@@ -95,3 +93,13 @@
   15 routes, privacy + secrets scans clean)
 - W2 (table UI + cinematics) + W-AUTH (auth gate + admin UI + billing) —
   dispatched 2026-11-23 evening
+- ⚠️ **Provider outage**: all four in-flight agents (R1, S-A1, W2, W-AUTH) died
+  in one batch with HTTP 500 infrastructure errors — task-independent, transient.
+  Orchestrator survey: R1 ~90% salvageable (engine + 15 test files on disk;
+  suite red + deprecated `moduleResolution=node10` tsconfig), S-A1 ~40% (19
+  files: all 9 models + 10 libs; `oauth.ts` corrupted mid-write; routes/app layer
+  missing), W2 + W-AUTH territories clean
+- All four **re-dispatched as resumes** (contexts intact) with salvage orders —
+  R1: fix suite to full green + tsconfig modernization + vitest ^5 bump folded
+  into its mission (was an orchestrator post-merge task); S-A1: rewrite oauth.ts,
+  build routes/middleware/app/seed/io-mount; W2 + W-AUTH: restart original briefs
