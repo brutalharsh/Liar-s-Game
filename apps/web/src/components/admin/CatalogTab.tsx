@@ -15,10 +15,41 @@ import {
   type AdminCatalogItem,
 } from "@/lib/api";
 import { SHOP_CATEGORIES } from "@/lib/mock/catalog";
-import { overlayEmoji } from "@/lib/mock/avatar";
-import { Badge, Field } from "@/components/admin/bits";
+import { AvatarThumb } from "@/components/avatar";
+import { CreateIcon, SoundIcon, SparkleIcon, ThemeIcon, type IconComponent } from "@/components/ui/icons";
+import { Badge, CoinAmount, Field } from "@/components/admin/bits";
 import { formatCoins } from "@/lib/format";
 import { useToasts } from "@/store/ui";
+
+/** Category → paper-doll slot: these items render real part art in the admin grid. */
+const VISUAL_SLOT: Record<string, "hair" | "beard" | "hat" | "shirt" | "glasses" | "frame" | "base"> = {
+  hair: "hair",
+  beard: "beard",
+  hat: "hat",
+  shirt: "shirt",
+  glasses: "glasses",
+  frame: "frame",
+  body: "base",
+};
+
+/** Non-visual categories get a category-glyph tile instead of part art. */
+const CATEGORY_ICON: Record<string, IconComponent> = {
+  anim: SparkleIcon,
+  voicePack: SoundIcon,
+  theme: ThemeIcon,
+};
+
+/** tier → badge tone: common neutral · rare brass (red) · epic lamp (gold). */
+function tierTone(tier: "common" | "rare" | "epic" | undefined): "neutral" | "brass" | "warn" {
+  switch (tier) {
+    case "rare":
+      return "brass";
+    case "epic":
+      return "warn";
+    default:
+      return "neutral";
+  }
+}
 
 /**
  * CATALOG tab — the owner's core request: INLINE name+price editing, active
@@ -48,10 +79,10 @@ export function CatalogTab() {
   const categories = useMemo(() => {
     const counts = new Map<string, number>();
     for (const item of all) counts.set(item.category, (counts.get(item.category) ?? 0) + 1);
-    const known = SHOP_CATEGORIES.filter((c) => counts.has(c.id)).map((c) => ({ id: c.id, label: c.label, emoji: c.emoji, count: counts.get(c.id) ?? 0 }));
+    const known = SHOP_CATEGORIES.filter((c) => counts.has(c.id)).map((c) => ({ id: c.id, label: c.label, count: counts.get(c.id) ?? 0 }));
     const extra = [...counts.entries()]
       .filter(([id]) => !known.some((k) => k.id === id))
-      .map(([id, count]) => ({ id, label: id, emoji: "🎴", count }));
+      .map(([id, count]) => ({ id, label: id, count }));
     return [...known, ...extra];
   }, [all]);
 
@@ -145,12 +176,22 @@ export function CatalogTab() {
   };
 
   const artCell = (item: AdminCatalogItem) => (
-    <span className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-btn border border-wood-mid bg-wood-deep text-lg" aria-hidden>
+    <span
+      className="inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-btn border border-wood-mid bg-wood-deep"
+      aria-hidden
+    >
       {item.imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={item.imageUrl} alt="" className="h-full w-full object-cover" />
+      ) : VISUAL_SLOT[item.category] ? (
+        <AvatarThumb slot={VISUAL_SLOT[item.category]} id={item.artSlug ?? item._id} size={40} />
       ) : (
-        (overlayEmoji(item.artSlug ?? item._id) ?? "🎴")
+        <span className="text-lamp">
+          {(() => {
+            const Icon = CATEGORY_ICON[item.category];
+            return Icon ? <Icon size={22} /> : null;
+          })()}
+        </span>
       )}
     </span>
   );
@@ -167,7 +208,6 @@ export function CatalogTab() {
               category === cat.id ? "border-brass bg-brass/15 text-brass" : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
             }`}
           >
-            <span aria-hidden className="mr-1">{cat.emoji}</span>
             {cat.label} <span className="text-[10px] text-ink-dim">({cat.count})</span>
           </button>
         ))}
@@ -175,7 +215,9 @@ export function CatalogTab() {
 
       <div className="flex justify-end">
         <Button variant="outline" size="sm" onClick={() => setAddOpen(true)}>
-          + NEW ITEM
+          <span className="inline-flex items-center gap-1">
+            <CreateIcon size={16} /> NEW ITEM
+          </span>
         </Button>
       </div>
 
@@ -197,6 +239,7 @@ export function CatalogTab() {
       >
         {() => (
           <>
+            <h2 className="sr-only">Catalog shelf</h2>
             {/* desktop table */}
             <div className="hidden lg:block">
               <table className="w-full text-left">
@@ -250,11 +293,11 @@ export function CatalogTab() {
                               className="min-h-12 w-24 rounded-btn border-2 border-wood-mid bg-wood-deep px-2 font-body text-sm text-ivory"
                             />
                           ) : (
-                            <span className="font-body text-sm text-brass">🪙 {formatCoins(item.price)}</span>
+                            <CoinAmount amount={item.price} />
                           )}
                         </td>
                         <td className="px-2 py-2">
-                          <Badge tone={item.tier === "common" || !item.tier ? "neutral" : "brass"}>{item.tier ?? "common"}</Badge>
+                          <Badge tone={tierTone(item.tier)}>{item.tier ?? "common"}</Badge>
                           {item.levelReq ? <Badge tone="warn">LVL {item.levelReq}</Badge> : null}
                           {item.free ? <Badge tone="good">FREE</Badge> : null}
                         </td>
@@ -347,7 +390,9 @@ export function CatalogTab() {
                         ) : (
                           <>
                             <p className="truncate font-body text-sm text-ivory">{item.name}</p>
-                            <p className="font-body text-xs text-brass">🪙 {formatCoins(item.price)} · {item.tier ?? "common"}</p>
+                            <p className="font-body text-xs">
+                              <CoinAmount amount={item.price} className="text-xs" /> · {item.tier ?? "common"}
+                            </p>
                           </>
                         )}
                       </div>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
+import { LockIcon, WarningIcon } from "@/components/ui/icons";
 import { Field } from "@/components/admin/bits";
 import { adminLogin, apiErrorMessage, isApiError } from "@/lib/api";
 
@@ -11,7 +12,14 @@ import { adminLogin, apiErrorMessage, isApiError } from "@/lib/api";
  * side, lg_admin cookie 8h). Wrong creds get ONE generic message — no hints
  * about which field was wrong. Rate limits surface politely.
  */
-export function AdminLogin({ mockMode, onAuthed }: { mockMode: boolean; onAuthed: () => void }) {
+export function AdminLogin({
+  mockMode,
+  onAuthed,
+}: {
+  mockMode: boolean;
+  /** Receives the username the house signed in under (session identity). */
+  onAuthed: (username: string) => void;
+}) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -24,7 +32,7 @@ export function AdminLogin({ mockMode, onAuthed }: { mockMode: boolean; onAuthed
     setError(null);
     try {
       await adminLogin(username, password);
-      onAuthed();
+      onAuthed(username.trim() === "" ? "admin" : username.trim());
     } catch (err) {
       if (isApiError(err) && (err.status === 429 || err.error === "RATE_LIMITED")) {
         setError("Too many attempts — the lock cools off for a minute. Try again shortly.");
@@ -39,12 +47,12 @@ export function AdminLogin({ mockMode, onAuthed }: { mockMode: boolean; onAuthed
 
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-4 py-16">
-      <Panel className="w-full p-8">
+      <Panel tone="deep" className="w-full border-brass-deep/60 p-8">
         <div className="text-center">
-          <span className="text-5xl" aria-hidden>
-            🔐🎩
+          <span className="inline-flex h-16 w-16 items-center justify-center rounded-full border-2 border-brass-deep bg-brass/10 text-brass" aria-hidden>
+            <LockIcon size={28} />
           </span>
-          <h1 className="mt-3 font-display text-3xl text-ivory">Back office</h1>
+          <h1 className="mt-4 font-display text-3xl text-ivory">Back office</h1>
           <p className="mt-1 font-body text-xs text-ink-dim">
             House credentials only — they're configured at runtime via env, never in code.
           </p>
@@ -60,7 +68,8 @@ export function AdminLogin({ mockMode, onAuthed }: { mockMode: boolean; onAuthed
             autoComplete="current-password"
           />
           {error && (
-            <p role="alert" className="rounded-btn border-2 border-blood/60 bg-wood-deep px-3 py-2 font-body text-xs text-blood-bright">
+            <p role="alert" className="flex items-center gap-2 rounded-btn border-2 border-blood/60 bg-wood-deep px-3 py-2 font-body text-xs text-blood-bright">
+              <WarningIcon size={16} />
               {error}
             </p>
           )}

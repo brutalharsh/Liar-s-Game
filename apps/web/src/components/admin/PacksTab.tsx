@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/Switch";
 import { AsyncSection, Skeleton } from "@/components/ui/AsyncSection";
 import { useMockQuery } from "@/hooks/useMockQuery";
 import { adminListPacks, adminPatchPack, apiErrorMessage, type CoinPackRecord } from "@/lib/api";
-import { Field } from "@/components/admin/bits";
+import { CoinAmount, Field } from "@/components/admin/bits";
 import { formatCoins, formatInr } from "@/lib/format";
 import { useToasts } from "@/store/ui";
 
@@ -35,6 +35,7 @@ export function PacksTab() {
     >
       {(packs) => (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <h2 className="sr-only">Coin packs</h2>
           {packs.map((pack) => (
             <PackCard key={pack._id} pack={pack} push={push} />
           ))}
@@ -120,7 +121,7 @@ function PackCard({ pack, push }: { pack: CoinPackRecord; push: Push }) {
       </div>
 
       <p className="font-body text-[10px] text-ink-dim">
-        Buyer receives <span className="text-brass">{formatCoins((Number.parseInt(draft.coins, 10) || 0) + (Number.parseInt(draft.bonus, 10) || 0))}</span> coins
+        Buyer receives <CoinAmount amount={(Number.parseInt(draft.coins, 10) || 0) + (Number.parseInt(draft.bonus, 10) || 0)} className="text-xs" /> coins
       </p>
 
       <Button variant="brass" size="sm" disabled={!dirty || busy} onClick={() => void save()}>

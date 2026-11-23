@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
-import { Avatar } from "@/components/ui/Avatar";
+import { Avatar as AvatarDoll, AvatarThumb } from "@/components/avatar";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { AsyncSection, ErrorState, Skeleton } from "@/components/ui/AsyncSection";
 import { useMockQuery } from "@/hooks/useMockQuery";
@@ -14,17 +15,56 @@ import {
   type AdminUser,
   apiErrorMessage,
 } from "@/lib/api";
-import { specChips, toDisplaySpec } from "@/components/auth/viewer";
-import { Badge, ConfirmSheet, Field, formatStamp, formatMinor, statusTone } from "@/components/admin/bits";
+import { toDisplaySpec } from "@/components/auth/viewer";
+import { AVATAR_BASE_IDS } from "@/lib/wire";
+import { SoundIcon, SparkleIcon } from "@/components/ui/icons";
+import { Badge, CoinAmount, ConfirmSheet, Field, formatStamp, formatMinor, statusTone } from "@/components/admin/bits";
 import { formatCoins } from "@/lib/format";
 import { useToasts } from "@/store/ui";
 
 /**
- * USER drawer — profile drill-down (STR/02): avatar spec chips, title,
- * XP/level bar, derived coin balance, ledger (last 50), payment history,
- * match count + the two mutations: coin adjust (reason, confirm) and
+ * USER drawer — profile drill-down (STR/02): the paper-doll wearing the user's
+ * REAL spec, per-slot rows (read-only — the admin never equips for a player),
+ * title, XP/level bar, derived coin balance, ledger (last 50), payment
+ * history, match count + the two mutations: coin adjust (reason, confirm) and
  * ban/unban (reason, confirm). Optimistic-UI with rollback + toast.
  */
+
+/** The paper-doll's visual slots, in stack order (STR/03 §2). */
+const VISUAL_SLOTS: readonly { slot: "hair" | "beard" | "hat" | "shirt" | "glasses" | "frame"; label: string }[] = [
+  { slot: "hair", label: "Hair" },
+  { slot: "beard", label: "Beard" },
+  { slot: "hat", label: "Hat" },
+  { slot: "shirt", label: "Shirt" },
+  { slot: "glasses", label: "Glasses" },
+  { slot: "frame", label: "Frame" },
+];
+
+/** One equipped-slot line in the spec list (read-only display). */
+function SpecRow({
+  label,
+  id,
+  thumb,
+  aside,
+}: {
+  label: string;
+  id: string;
+  thumb: ReactNode;
+  aside?: ReactNode;
+}) {
+  return (
+    <li className="flex min-h-12 items-center gap-3 px-3 py-1.5">
+      <span className="shrink-0">{thumb}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-body text-[10px] uppercase tracking-widest text-ink-dim">{label}</span>
+        <span className="block truncate font-mono text-xs text-ivory" title={id}>
+          {id}
+        </span>
+      </span>
+      {aside}
+    </li>
+  );
+}
 export function UserSheet({
   userId,
   onClose,
@@ -115,15 +155,17 @@ export function UserSheet({
             const shown = user ?? detail.user;
           return (
             <div className="flex flex-col gap-5">
-              {/* headline */}
+              {/* headline — the paper-doll wearing the real spec (frame ring included) */}
               <div className="flex items-center gap-4">
-                <Avatar spec={toDisplaySpec(shown.avatarSpec)} size="xl" />
+                <span className="shrink-0 rounded-card border-2 border-wood-mid/70 bg-felt-deep/60 p-2">
+                  <AvatarDoll spec={toDisplaySpec(shown.avatarSpec)} size={112} />
+                </span>
                 <div className="min-w-0">
                   <p className="font-display text-2xl text-ivory">
                     {shown.nickname} {shown.banned ? <Badge tone="bad">BANNED</Badge> : null}
                   </p>
                   <p className="font-body text-xs text-ink-dim">
-                    {shown.name} · {shown.provider === "discord" ? "💬 discord" : "🔎 google"}
+                    {shown.name} · {shown.provider}
                   </p>
                   <p className="font-body text-xs text-lamp">“{shown.activeTitle ?? "no title"}”</p>
                 </div>
@@ -133,7 +175,9 @@ export function UserSheet({
               <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 <div className="rounded-btn border border-wood-mid/60 bg-wood/50 px-3 py-2">
                   <p className="font-body text-[10px] uppercase tracking-widest text-ink-dim">Coins</p>
-                  <p className="font-display text-lg text-brass">🪙 {formatCoins(shown.coinBalance)}</p>
+                  <p className="font-display text-lg">
+                    <CoinAmount amount={shown.coinBalance} />
+                  </p>
                   <p className="font-body text-[9px] text-ink-dim">derived from wallet ledger</p>
                 </div>
                 <div className="rounded-btn border border-wood-mid/60 bg-wood/50 px-3 py-2">
@@ -149,24 +193,65 @@ export function UserSheet({
                 </div>
               </div>
 
-              {/* avatar spec chips */}
+              {/* avatar spec — slot by slot, read-only (the admin never equips on a player's behalf) */}
               <div>
-                <p className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">Avatar spec</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {specChips(shown.avatarSpec).map((chip) => (
-                    <Badge key={chip.slot} tone="brass">
-                      {chip.slot}: {chip.value}
-                    </Badge>
-                  ))}
-                  {shown.banReason ? <Badge tone="bad" className="max-w-full truncate">ban: {shown.banReason}</Badge> : null}
-                </div>
+                <h2 className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">Avatar spec</h2>
+                {shown.avatarSpec ? (
+                  <ul className="divide-y divide-wood-mid/40 rounded-btn border border-wood-mid/50 bg-wood-deep/70">
+                    <SpecRow
+                      label="Base"
+                      id={shown.avatarSpec.base}
+                      thumb={<AvatarThumb slot="base" id={shown.avatarSpec.base} size={44} />}
+                      aside={
+                        (AVATAR_BASE_IDS as readonly string[]).includes(shown.avatarSpec.base) ? undefined : (
+                          <Badge tone="warn">legacy base — bridged render</Badge>
+                        )
+                      }
+                    />
+                    {VISUAL_SLOTS.map(({ slot, label }) => {
+                      const id = shown.avatarSpec?.[slot];
+                      if (!id) return null;
+                      return <SpecRow key={slot} label={label} id={id} thumb={<AvatarThumb slot={slot} id={id} size={44} />} />;
+                    })}
+                    {(["anim", "voicePack"] as const).map((slot) => {
+                      const id = shown.avatarSpec?.[slot];
+                      if (!id) return null;
+                      return (
+                        <SpecRow
+                          key={slot}
+                          label={slot === "anim" ? "Animation" : "Voice pack"}
+                          id={id}
+                          thumb={
+                            <span className="flex h-11 w-11 items-center justify-center rounded-btn border border-wood-mid/70 bg-wood/60 text-lamp" aria-hidden>
+                              {slot === "anim" ? <SparkleIcon size={22} /> : <SoundIcon size={22} />}
+                            </span>
+                          }
+                        />
+                      );
+                    })}
+                    {!VISUAL_SLOTS.some(({ slot }) => !!shown.avatarSpec?.[slot]) && !shown.avatarSpec.anim && !shown.avatarSpec.voicePack ? (
+                      <li className="px-3 py-2 font-body text-xs text-ink-dim">
+                        Nothing else equipped — the tailor keeps a tab.
+                      </li>
+                    ) : null}
+                    {shown.banReason ? (
+                      <li className="px-3 py-2">
+                        <Badge tone="bad" className="max-w-full truncate">ban: {shown.banReason}</Badge>
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : (
+                  <p className="rounded-btn border border-wood-mid/50 bg-wood-deep/70 px-3 py-2 font-body text-xs text-ink-dim">
+                    No avatar spec on file — the neutral silhouette sits in.
+                  </p>
+                )}
               </div>
 
               {/* ledger (append-only; last 50) */}
               <div>
-                <p className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">
+                <h2 className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">
                   Wallet ledger · newest first
-                </p>
+                </h2>
                 <div className="max-h-56 overflow-y-auto rounded-btn border border-wood-mid/50 bg-wood-deep/70" tabIndex={0} aria-label="Wallet ledger" role="group">
                   {detail.ledger.length === 0 ? (
                     <p className="p-3 font-body text-xs text-ink-dim">No ledger movements yet.</p>
@@ -191,7 +276,7 @@ export function UserSheet({
 
               {/* payment history */}
               <div>
-                <p className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">Payment history</p>
+                <h2 className="mb-1 font-body text-[10px] uppercase tracking-widest text-ink-dim">Payment history</h2>
                 {detail.payments.length === 0 ? (
                   <p className="font-body text-xs text-ink-dim">No coin packs bought.</p>
                 ) : (
@@ -264,7 +349,7 @@ export function UserSheet({
         <div className="flex flex-col gap-4">
           <p className="font-body text-xs text-ink-dim">
             A compensating ledger entry is written with your reason — balances are derived, never
-            edited. Current: <span className="text-brass">🪙 {formatCoins(user?.coinBalance ?? 0)}</span>
+            edited. Current: <CoinAmount amount={user?.coinBalance ?? 0} />
           </p>
           <Field
             id="coin-delta"

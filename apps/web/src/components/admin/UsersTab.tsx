@@ -6,8 +6,7 @@ import { AsyncSection, Skeleton } from "@/components/ui/AsyncSection";
 import { useMockQuery } from "@/hooks/useMockQuery";
 import { adminListUsers, type AdminUser, type AdminUsersPage } from "@/lib/api";
 import { toDisplaySpec } from "@/components/auth/viewer";
-import { Badge, formatStamp, Pager } from "@/components/admin/bits";
-import { formatCoins } from "@/lib/format";
+import { Badge, CoinAmount, formatStamp, Pager } from "@/components/admin/bits";
 import { UserSheet } from "@/components/admin/UserSheet";
 
 const PAGE_SIZE = 8;
@@ -75,6 +74,7 @@ export function UsersTab() {
       >
         {() => (
           <>
+            <h2 className="sr-only">Player roster</h2>
             {/* desktop table */}
             <div className="hidden lg:block">
               <table className="w-full text-left">
@@ -101,14 +101,16 @@ export function UsersTab() {
                           <span>
                             <span className="block font-display text-base text-ivory">{user.nickname}</span>
                             <span className="block font-body text-[10px] text-ink-dim">
-                              {user.provider === "discord" ? "💬 discord" : "🔎 google"} · {user.email ?? "no email"}
+                              {user.provider} · {user.email ?? "no email"}
                             </span>
                           </span>
                         </button>
                       </td>
                       <td className="px-2 py-2 font-body text-xs text-lamp">{user.activeTitle ?? "—"}</td>
                       <td className="px-2 py-2 text-right font-body text-sm text-ivory">{user.level}</td>
-                      <td className="px-2 py-2 text-right font-body text-sm text-brass">🪙 {formatCoins(user.coinBalance)}</td>
+                      <td className="px-2 py-2 text-right font-body text-sm">
+                        <CoinAmount amount={user.coinBalance} />
+                      </td>
                       <td className="px-2 py-2">
                         {user.banned ? <Badge tone="bad">BANNED</Badge> : <Badge tone="good">OK</Badge>}
                       </td>
@@ -132,7 +134,7 @@ export function UsersTab() {
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-display text-base text-ivory">{user.nickname}</span>
                     <span className="block font-body text-[10px] text-ink-dim">
-                      lvl {user.level} · 🪙 {formatCoins(user.coinBalance)}
+                      lvl {user.level} · <CoinAmount amount={user.coinBalance} className="text-[10px]" />
                       {user.activeTitle ? ` · ${user.activeTitle}` : ""}
                     </span>
                   </span>

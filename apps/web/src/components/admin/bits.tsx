@@ -3,6 +3,8 @@
 import type { ReactNode } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { Button } from "@/components/ui/Button";
+import { CoinIcon } from "@/components/ui/icons";
+import { formatCoins } from "@/lib/format";
 
 /** UTC timestamp rendering — SSR-stable (no locale/timezone drift). */
 export function formatStamp(iso: string | undefined): string {
@@ -51,6 +53,16 @@ export function statusTone(status: string): "neutral" | "good" | "bad" | "warn" 
     default:
       return "neutral";
   }
+}
+
+/** Gold coin figure — lamp-tone money text (the icon replaces the old coin glyph). */
+export function CoinAmount({ amount, className = "" }: { amount: number; className?: string }) {
+  return (
+    <span className={`inline-flex items-center gap-1 text-lamp ${className}`}>
+      <CoinIcon size={14} />
+      {formatCoins(amount)}
+    </span>
+  );
 }
 
 /** Smallest readable row for desktop tables / mobile cards alike. */

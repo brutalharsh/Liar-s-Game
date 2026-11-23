@@ -599,6 +599,24 @@ here receives the directive before any further work.
   must be shop-CLAIMED once before equip (by design); mock shop still on
   hyphen-catalog (aliases keep previews faithful) — wave 2 aligns.
 - **T2** ✅ noir re-theme: token VALUES remapped under their historical
+- **T5** ✅ admin sidebar dashboard: desktop fixed-sidebar workspace (brand +
+  session identity, red accent rail on active nav, top bar with section h1 +
+  sign out) / mobile top icon rail (48px, aria-current) + Sheet drawer labels;
+  full icon migration (Users/CreditCard/Package/Layers/ScrollText + brand/login
+  marks — zero emoji left in admin chrome); ?tab= URL-synced, existing
+  flows preserved (search+pagination, optimistic toasts, inline catalog
+  edits + upload, packs sanity, audit load-more); UserSheet renders the
+  user's REAL wire AvatarSpec as the large paper-doll with per-slot
+  AvatarThumb rows + legacy-base bridge badge; mock catalog + admin
+  fixtures aligned 1:1 to the server seed (category:slug, production
+  categories incl. the 5 body items, tiers, level-gates, free themes) —
+  shop priceMap now matches live ids too (bonus). Gates: tsc · 63/63 ·
+  build. COMMIT HELD for T4 (shared lib/mock airspace) — lands as one
+  verification + two pathspec commits. Flags: no hamburger icon in the
+  module (drawer uses a labeled trigger); demo-room/profile-fixtures
+  legacy hyphen ids ride the alias bridge; body try-on = settings
+  editor's job.
+- **T2** ✅ noir re-theme: token VALUES remapped under their historical
   names (compile-compat alias map in globals.css) — black/white/gray
   surfaces (#0a0a0a–#1c1c1c, ivory/ink → #f5f5f5/#a3a3a3), brass* =
   PRIMARY RED family #d92d20 (hover #e5484d, deep #a71d14) harmonized

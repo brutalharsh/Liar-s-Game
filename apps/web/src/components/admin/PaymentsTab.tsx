@@ -61,6 +61,7 @@ export function PaymentsTab() {
       >
         {(data) => (
           <>
+            <h2 className="sr-only">Checkout records</h2>
             {/* desktop table */}
             <div className="hidden lg:block">
               <table className="w-full text-left">
