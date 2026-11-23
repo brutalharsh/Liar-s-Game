@@ -288,3 +288,60 @@ describe('query validation (generous zod)', () => {
     expect(res.body).toMatchObject({ page: 2, perPage: 5, total: 0 });
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A8 pins — derived-read design choices observed under the edge audit
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('A8 pins — deleted/banned visibility + cache design', () => {
+  it('visible-rank compaction: a dropped top row hands rank 1 to the next visible player', async () => {
+    // Accepted v1 semantics: ranks are positions among VISIBLE rows — the
+    // same thing the xp metric does by filtering banned before pagination.
+    vi.mocked(User.find).mockImplementation(
+      (() => makeQuery([XP_ROWS[1]])) as unknown as typeof User.find,
+    );
+    const res = await request(`${server.url}/api/leaderboard?metric=wins`);
+    const body = res.body as Record<string, unknown>;
+    const leaderboard = body['leaderboard'] as Array<Record<string, unknown>>;
+    expect(leaderboard).toHaveLength(1);
+    expect(leaderboard[0]).toMatchObject({ accountId: ACC_2, rank: 1 });
+    // ...but `total` still counts the hidden identity (aggregation $count) —
+    // flagged upstream as a pagination nuance, pinned here so it is visible.
+    expect(body['total']).toBe(2);
+  });
+
+  it('a page whose every row is hidden renders empty while total > 0 (flagged, accepted)', async () => {
+    vi.mocked(User.find).mockImplementation(
+      (() => makeQuery([])) as unknown as typeof User.find,
+    );
+    const res = await request(`${server.url}/api/leaderboard?metric=kills`);
+    const body = res.body as Record<string, unknown>;
+    expect(res.status).toBe(200);
+    expect(body['leaderboard']).toEqual([]);
+    expect(body['total']).toBe(2);
+  });
+
+  it('60s TTL serves PRE-grant rows until clearLeaderboardCache() — no write-path invalidation exists', async () => {
+    // Design choice under audit (grep-verified): grantMatchRewards never
+    // calls clearLeaderboardCache; post-grant staleness is bounded by TTL.
+    await request(`${server.url}/api/leaderboard?metric=wins`); // prime the cache
+    const readsBefore = vi.mocked(MatchRecord.aggregate).mock.calls.length;
+    // A grant lands: the metric's underlying answer changes…
+    vi.mocked(MatchRecord.aggregate).mockImplementation(
+      (() => ({
+        session: vi.fn(),
+        exec: async () => [
+          { rows: [{ _id: ACC_2, value: 99 }, { _id: ACC_1, value: 7 }], total: [{ count: 2 }] },
+        ],
+      })) as unknown as typeof MatchRecord.aggregate,
+    );
+    const stale = await request(`${server.url}/api/leaderboard?metric=wins`);
+    expect(vi.mocked(MatchRecord.aggregate).mock.calls.length).toBe(readsBefore); // no re-query
+    const staleRows = (stale.body as { leaderboard: Array<Record<string, unknown>> }).leaderboard;
+    expect(staleRows[0]).toMatchObject({ accountId: ACC_1, value: 7 }); // PRE-grant data
+    clearLeaderboardCache();
+    const fresh = await request(`${server.url}/api/leaderboard?metric=wins`);
+    const freshRows = (fresh.body as { leaderboard: Array<Record<string, unknown>> }).leaderboard;
+    expect(freshRows[0]).toMatchObject({ accountId: ACC_2, value: 99 }); // post-grant truth
+  });
+});

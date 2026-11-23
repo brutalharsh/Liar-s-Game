@@ -119,3 +119,54 @@ describe('levelProgress (wire shape for the profile HUD)', () => {
     expect(progress.xpToNextLevel).toBe(733);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A8 edge audit — level-up boundaries must never be off-by-one, anywhere
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('A8 — levelProgress / computeLevel at EVERY cumulative boundary', () => {
+  it('each level L (1..100): exactly xpThroughLevel(L) → level L, xpIntoLevel 0, percent 0', () => {
+    for (let level = 1; level <= LEVEL_MAX; level += 1) {
+      const at = xpThroughLevel(level);
+      expect(computeLevel(at)).toBe(level);
+      const p = levelProgress(at);
+      expect(p.level).toBe(level);
+      expect(p.xpIntoLevel).toBe(0); // AT the boundary — not one XP into it
+      if (level < LEVEL_MAX) {
+        expect(p.atMax).toBe(false);
+        expect(p.percent).toBe(0);
+        expect(p.xpToNextLevel).toBe(xpForLevel(level));
+        expect(p.xpForLevel).toBe(xpForLevel(level));
+        // One XP past the boundary: same level, one XP credited into it.
+        expect(computeLevel(at + 1)).toBe(level);
+        expect(levelProgress(at + 1).xpIntoLevel).toBe(1);
+      } else {
+        expect(p.atMax).toBe(true);
+        expect(p.percent).toBe(100);
+        expect(p.xpToNextLevel).toBeNull();
+        expect(p.xpForLevel).toBeNull();
+      }
+    }
+  });
+
+  it('one XP short of levels 2..100 stays on the PREVIOUS level with xpToNextLevel 1', () => {
+    for (let level = 2; level <= LEVEL_MAX; level += 1) {
+      const p = levelProgress(xpThroughLevel(level) - 1);
+      expect(p.level).toBe(level - 1);
+      expect(p.xpToNextLevel).toBe(1); // the classic off-by-one regression
+      expect(p.atMax).toBe(false);
+      expect(p.xpIntoLevel).toBe(xpForLevel(level - 1) - 1);
+    }
+  });
+
+  it('the XP_TO_REACH_LEVEL_100 invariant is the level-100 boundary (never 99)', () => {
+    expect(computeLevel(XP_TO_REACH_LEVEL_100)).toBe(100);
+    const atMax = levelProgress(XP_TO_REACH_LEVEL_100);
+    expect(atMax.level).toBe(100);
+    expect(atMax.atMax).toBe(true);
+    expect(atMax.xpIntoLevel).toBe(0);
+    // One XP short of the invariant → still 99, exactly 1 to go.
+    expect(computeLevel(XP_TO_REACH_LEVEL_100 - 1)).toBe(99);
+    expect(levelProgress(XP_TO_REACH_LEVEL_100 - 1).xpToNextLevel).toBe(1);
+  });
+});

@@ -127,6 +127,20 @@ export class GrantPayloadError extends Error {
   }
 }
 
+/**
+ * Internal sentinel: users.updateOne matched 0 (a ban — or account deletion —
+ * landed mid-transaction). THROWN inside the grant tx so Mongo ABORTS it. The
+ * xp_events anchor was the tx's first write and must not survive without its
+ * grant: a committed anchor would make every future re-fire report this
+ * player as `already-granted` and silently drop the reward forever.
+ */
+class GrantWithheldMidFlightError extends Error {
+  constructor() {
+    super('grant withheld mid-flight');
+    this.name = 'GrantWithheldMidFlightError';
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Results (S1 pushes unlock toasts from these; game:over broadcasts the record)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -341,7 +355,7 @@ async function grantPlayer(
   const matchId = ctx.matchId;
   const endedAt = ctx.endedAt;
 
-  return withTransaction(async (session) => {
+  const runGrant = async (session: ClientSession): Promise<GrantPlayerResult> => {
     const sessionArg = session ? { session } : undefined;
 
     // 1) ANCHOR — unique (accountId, matchId). Duplicate = this player's
@@ -368,8 +382,10 @@ async function grantPlayer(
       sessionArg,
     ).exec();
     if (update && typeof update.matchedCount === 'number' && update.matchedCount === 0) {
-      console.warn(`[economy] grant skip (banned mid-flight) match=${matchId} user=${accountId}`);
-      return { ...base, accountId, status: 'skipped-banned' as const, level: currentLevel };
+      // Ban (or account deletion) landed mid-flight: THROW so the transaction
+      // ABORTS — the anchor insert must not commit without its grant, or a
+      // re-fire would report this player as "already-granted" forever.
+      throw new GrantWithheldMidFlightError();
     }
 
     // 3) coins — apply the record's number, behind STR/04 §2's earn cap.
@@ -463,7 +479,18 @@ async function grantPlayer(
       unlockedTitles,
       unlockedItems,
     };
-  });
+  };
+
+  try {
+    return await withTransaction(runGrant);
+  } catch (err) {
+    if (err instanceof GrantWithheldMidFlightError) {
+      // The tx aborted — NOTHING from it persisted (anchor included).
+      console.warn(`[economy] grant skip (banned mid-flight) match=${matchId} user=${accountId}`);
+      return { ...base, accountId, status: 'skipped-banned' as const, level: currentLevel };
+    }
+    throw err;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

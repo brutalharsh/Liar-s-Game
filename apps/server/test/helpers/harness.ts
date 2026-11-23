@@ -29,6 +29,7 @@ export const TEST_CONFIG: AppConfig = {
   authSecret: TEST_AUTH_SECRET,
   adminUsername: 'envadmin',
   adminPassword: 'correct-horse-battery',
+  oauth: {},
   imageServer: { url: 'http://images.test', key: 'img-key', projectId: 'prj-img' },
   payments: MOCK_PAYMENTS,
 };

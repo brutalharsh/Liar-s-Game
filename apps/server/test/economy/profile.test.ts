@@ -118,6 +118,37 @@ const FOREIGN_RECORD = {
   summary: { rounds: 1, totalPulls: 1, dareDevilMoments: 0 },
 };
 
+/** A8: an aborted 0-round match still lands in match_records — the profile
+ * must ship its exact zeroed shape (no defaults eating the zeros). */
+const ABORTED_ZERO_ROUND_RECORD = {
+  _id: 'rec-aborted',
+  matchId: 'm_20261123_0099',
+  roomCode: 'ABRT1',
+  endedAt: new Date('2026-11-23T22:00:00.000Z'),
+  capacity: 2,
+  theme: 'saloon',
+  players: [
+    {
+      accountId: USER_ID,
+      seat: 3,
+      nickname: 'Ron',
+      stats: {
+        kills: 0,
+        catches: 0,
+        falseAccusations: 0,
+        bluffSuccesses: 0,
+        deaths: 0,
+        pullsSurvived: 0,
+        roundsPlayed: 0,
+        won: false,
+        xpEarned: 0,
+        coinsEarned: 0,
+      },
+    },
+  ],
+  summary: { rounds: 0, totalPulls: 0, dareDevilMoments: 0 },
+};
+
 let server: Listening;
 
 beforeAll(async () => {
@@ -248,5 +279,35 @@ describe("GET /api/me (profile aggregate — W3's contract)", () => {
     const res = await request(`${server.url}/api/me`, { headers: session });
     expect(res.status).toBe(403);
     expect(res.body).toEqual({ error: 'BANNED' });
+  });
+
+  it('recentMatchRecords keeps a 0-round aborted match with its exact zeroed stats (A8)', async () => {
+    vi.mocked(MatchRecord.find).mockImplementation(
+      (() =>
+        makeQuery([ABORTED_ZERO_ROUND_RECORD, MY_RECORD, FOREIGN_RECORD])) as unknown as typeof MatchRecord.find,
+    );
+    const res = await request(`${server.url}/api/me`, { headers: session });
+    expect(res.status).toBe(200);
+    const body = res.body as Record<string, unknown>;
+    const records = body['recentMatchRecords'] as Array<Record<string, unknown>>;
+    expect(records).toHaveLength(2); // mine (aborted) + mine (normal); foreign dropped
+    const aborted = records[0] as Record<string, unknown>;
+    expect(aborted['matchId']).toBe('m_20261123_0099');
+    expect(aborted['summary']).toEqual({ rounds: 0, totalPulls: 0, dareDevilMoments: 0 });
+    const you = aborted['you'] as Record<string, unknown>;
+    expect(you['seat']).toBe(3);
+    expect(you['titleAtPlay']).toBeNull();
+    expect(you['stats']).toEqual({
+      kills: 0,
+      catches: 0,
+      falseAccusations: 0,
+      bluffSuccesses: 0,
+      deaths: 0,
+      pullsSurvived: 0,
+      roundsPlayed: 0,
+      won: false,
+      xpEarned: 0,
+      coinsEarned: 0,
+    });
   });
 });

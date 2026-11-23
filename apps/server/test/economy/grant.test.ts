@@ -96,6 +96,7 @@ import {
   type GrantSummary,
 } from '../../src/economy/grant.js';
 import { makeQuery } from '../helpers/harness.js';
+import { xpThroughLevel } from '../../src/economy/levels.js';
 import {
   ACCOUNT_IDS,
   ENDED_AT,
@@ -129,6 +130,19 @@ let ledgerCountResults: Record<string, number> = {};
 let userRows: Record<string, UserRow> = {};
 let entitlementError: Error | null = null;
 
+// Persistence sets — lifted to module scope so tests can model Mongo-tx
+// semantics: unique keys + (with withTxRollbackSemantics) rollback-on-throw.
+// They are NOT part of resetSheets(): surviving across grant calls inside one
+// test is the idempotence backbone.
+let xpEventKeys = new Set<string>();
+let matchRecordKeys = new Set<string>();
+let matchReplayKeys = new Set<string>();
+let ledgerTxIds = new Set<string>();
+/** In-flight gate for XpEvent.create (key = `<accountId>:<matchId>`) — lets a
+ * test hold two anchor inserts for the SAME key in flight simultaneously and
+ * release them together, simulating two processes granting in parallel. */
+let anchorGate: ((key: string) => Promise<void>) | null = null;
+
 function resetSheets(): void {
   appendCalls = [];
   userUpdates = [];
@@ -142,6 +156,36 @@ function resetSheets(): void {
   entitlementError = null;
 }
 
+/** The unit-test default: no session, no atomicity (sequential). */
+function defaultTx(): void {
+  vi.mocked(withTransaction).mockImplementation(
+    (async <T>(work: (session: undefined) => Promise<T>): Promise<T> =>
+      work(undefined)) as unknown as typeof withTransaction,
+  );
+}
+
+/**
+ * Model the REAL withTransaction semantics: writes made inside a tx are
+ * visible to the caller (sheets), but on throw the tx ABORTS and every
+ * persistence-set key it added rolls back — a mid-tx crash leaves NO anchor,
+ * so a re-fire retries cleanly instead of reporting "already-granted".
+ */
+function withTxRollbackSemantics(): void {
+  vi.mocked(withTransaction).mockImplementation(
+    (async <T>(work: (session: undefined) => Promise<T>): Promise<T> => {
+      const anchorsBefore = new Set(xpEventKeys);
+      const ledgerBefore = new Set(ledgerTxIds);
+      try {
+        return await work(undefined);
+      } catch (err) {
+        for (const k of xpEventKeys) if (!anchorsBefore.has(k)) xpEventKeys.delete(k);
+        for (const k of ledgerTxIds) if (!ledgerBefore.has(k)) ledgerTxIds.delete(k);
+        throw err;
+      }
+    }) as unknown as typeof withTransaction,
+  );
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   resetSheets();
@@ -151,9 +195,12 @@ beforeEach(() => {
 
   // MongoDB-shaped fakes: unique keys + E11000 on duplicates (the idempotency
   // backbone). Keys persist across calls within a test; sheets reset.
-  const xpEventKeys = new Set<string>();
-  const matchRecordKeys = new Set<string>();
-  const matchReplayKeys = new Set<string>();
+  xpEventKeys = new Set<string>();
+  matchRecordKeys = new Set<string>();
+  matchReplayKeys = new Set<string>();
+  ledgerTxIds = new Set<string>();
+  anchorGate = null;
+  defaultTx(); // re-arm the plain sequential withTransaction for every test
 
   vi.mocked(User.findById).mockImplementation(
     ((id: unknown) =>
@@ -193,14 +240,25 @@ beforeEach(() => {
     ((docs: unknown) => {
       const doc = (Array.isArray(docs) ? docs[0] : docs) as Record<string, unknown>;
       const key = `${String(doc['accountId'])}:${String(doc['matchId'])}`;
-      if (xpEventKeys.has(key)) throw duplicateKeyError(key);
-      xpEventKeys.add(key);
-      return [doc];
+      // Always async + decide AFTER the optional gate: two in-flight inserts
+      // for the same key must BOTH pass the pre-check — only one adds the key.
+      const run = async (): Promise<unknown> => {
+        await anchorGate?.(key);
+        if (xpEventKeys.has(key)) throw duplicateKeyError(key);
+        xpEventKeys.add(key);
+        return [doc];
+      };
+      return run();
     }) as unknown as typeof XpEvent.create,
   );
 
   vi.mocked(appendLedger).mockImplementation(
     (async (input: Record<string, unknown>) => {
+      const txId = String(input['txId']);
+      // wallet_ledger's UNIQUE txId index — mirrored like the Mongo one:
+      // a duplicate inserts NOTHING (the pre-existing row stays THE row).
+      if (ledgerTxIds.has(txId)) return { ok: false, duplicate: true };
+      ledgerTxIds.add(txId);
       appendCalls.push(input);
       return { ok: true };
     }) as unknown as typeof appendLedger,
@@ -708,5 +766,352 @@ describe('helpers stay honest', () => {
     expect(isDuplicateKeyError(duplicateKeyError('x'))).toBe(true);
     expect(isDuplicateKeyError(new Error('plain'))).toBe(false);
     expect(isDuplicateKeyError({ code: 11000 })).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// A8 edge audit — adversarial edge cases over the money + progression path
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('A8 — mid-flight ban must not poison the anchor', () => {
+  it('matchedCount 0 ABORTS the tx: anchor rolled back, re-grant after unban recovers', async () => {
+    withTxRollbackSemantics();
+    let withholdWinner = true;
+    vi.mocked(User.updateOne).mockImplementation(
+      ((filter: unknown, update: Record<string, unknown>) => {
+        const id = String((filter as Record<string, unknown>)['_id']);
+        if (id === ACCOUNT_IDS.winner && withholdWinner) {
+          // Ban landed between findById and the tx's users update.
+          return { exec: async () => ({ matchedCount: 0, upsertedCount: 0 }) };
+        }
+        userUpdates.push({ filter, update });
+        return { exec: async () => ({ matchedCount: 1, upsertedCount: 0 }) };
+      }) as unknown as typeof User.updateOne,
+    );
+
+    const first = await grantMatchRewards(payload());
+    expect(playerOf(first, ACCOUNT_IDS.winner).status).toBe('skipped-banned');
+    expect(first.players.filter((p) => p.status === 'granted')).toHaveLength(3);
+    // Anchor was attempted (tx's first write) but did NOT survive the abort:
+    expect(xpEventKeys.has(`${ACCOUNT_IDS.winner}:${MATCH_ID}`)).toBe(false);
+    expect(xpEventKeys.has(`${ACCOUNT_IDS.liar}:${MATCH_ID}`)).toBe(true);
+    expect(
+      appendCalls.find((c) => String(c['accountId']) === ACCOUNT_IDS.winner),
+    ).toBeUndefined();
+    expect(vi.mocked(console.warn).mock.calls.flat().join(' ')).toContain('mid-flight');
+
+    // Re-fire after the (hypothetical) unban: the pre-fix code hit the leaked
+    // anchor and returned 'already-granted' — the player's reward was gone
+    // forever. Now the grant retries and completes.
+    withholdWinner = false;
+    const second = await grantMatchRewards(payload());
+    expect(playerOf(second, ACCOUNT_IDS.winner).status).toBe('granted');
+    expect(playerOf(second, ACCOUNT_IDS.liar).status).toBe('already-granted');
+    const winnerUpdates = userUpdates.filter(
+      (u) => String((u.filter as Record<string, unknown>)['_id']) === ACCOUNT_IDS.winner,
+    );
+    expect(winnerUpdates).toHaveLength(1); // exactly one XP application ever
+    expect(winnerUpdates[0]?.update).toMatchObject({ $inc: { xp: 12 } });
+    expect(appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.winner)).toHaveLength(1);
+  });
+});
+
+describe('A8 — roster partial failure retries clean (the tx guarantees)', () => {
+  it('a mid-roster crash rejects the whole call; re-fire loses nothing, doubles nothing', async () => {
+    withTxRollbackSemantics();
+    let crashLiar = true;
+    vi.mocked(User.updateOne).mockImplementation(
+      ((filter: unknown, update: Record<string, unknown>) => {
+        const id = String((filter as Record<string, unknown>)['_id']);
+        if (id === ACCOUNT_IDS.liar && crashLiar) {
+          return {
+            exec: async () => {
+              throw new Error('mongo write failure (simulated mid-tx crash)');
+            },
+          };
+        }
+        userUpdates.push({ filter, update });
+        return { exec: async () => ({ matchedCount: 1, upsertedCount: 0 }) };
+      }) as unknown as typeof User.updateOne,
+    );
+
+    await expect(grantMatchRewards(payload())).rejects.toThrow('mongo write failure');
+    // Winner (seat 0) already fully committed in its own tx; liar's anchor died with its tx.
+    expect(xpEventKeys.has(`${ACCOUNT_IDS.winner}:${MATCH_ID}`)).toBe(true);
+    expect(xpEventKeys.has(`${ACCOUNT_IDS.liar}:${MATCH_ID}`)).toBe(false);
+    expect(appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.winner)).toHaveLength(1);
+
+    crashLiar = false;
+    const second = await grantMatchRewards(payload());
+    expect(second.matchRecord).toBe('already-present');
+    expect(second.matchReplay).toBe('already-present');
+    expect(playerOf(second, ACCOUNT_IDS.winner).status).toBe('already-granted');
+    expect(playerOf(second, ACCOUNT_IDS.liar).status).toBe('granted'); // retried clean
+    const liarUpdates = userUpdates.filter(
+      (u) => String((u.filter as Record<string, unknown>)['_id']) === ACCOUNT_IDS.liar,
+    );
+    expect(liarUpdates).toHaveLength(1);
+    expect(appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.liar)).toHaveLength(1);
+    expect(appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.winner)).toHaveLength(1);
+  });
+});
+
+describe('A8 — two process-parallel re-fires of the same game:over', () => {
+  it('exactly one grant per player: {granted, already-granted}, one row, one update', async () => {
+    let winnerArrivals = 0;
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    anchorGate = (key) => {
+      if (key.startsWith(`${ACCOUNT_IDS.winner}:`)) {
+        winnerArrivals += 1;
+        if (winnerArrivals === 2) release(); // both anchors in flight together
+        return gate;
+      }
+      return Promise.resolve();
+    };
+
+    const both = await Promise.all([
+      grantMatchRewards(payload()),
+      grantMatchRewards(payload()),
+    ]);
+    const [a, b] = both;
+
+    // Match-scoped persistence: one insert, one tolerated duplicate — same doc.
+    expect([a.matchRecord, b.matchRecord].sort()).toEqual(['already-present', 'inserted']);
+    expect([a.matchReplay, b.matchReplay].sort()).toEqual(['already-present', 'inserted']);
+    expect(matchReplayCreates).toHaveLength(2); // both attempted; one E11000'd
+
+    for (const id of [
+      ACCOUNT_IDS.winner,
+      ACCOUNT_IDS.liar,
+      ACCOUNT_IDS.survivor,
+      ACCOUNT_IDS.leaver,
+    ]) {
+      expect([playerOf(a, id).status, playerOf(b, id).status].sort()).toEqual([
+        'already-granted',
+        'granted',
+      ]);
+      expect(appendCalls.filter((c) => String(c['accountId']) === id)).toHaveLength(1);
+      expect(
+        userUpdates.filter(
+          (u) => String((u.filter as Record<string, unknown>)['_id']) === id,
+        ),
+      ).toHaveLength(1);
+    }
+    expect(xpEventKeys.size).toBe(4); // one anchor per granted player, no more
+    expect(userUpdates).toHaveLength(4);
+    expect(playerOf(a, ACCOUNT_IDS.banned).status).toBe('skipped-banned');
+    expect(playerOf(b, ACCOUNT_IDS.banned).status).toBe('skipped-banned');
+  });
+});
+
+describe('A8 — deliberate partial wallet state (ledger row exists, anchor lost)', () => {
+  it('txId duplicate after a fresh anchor is swallowed, not an error; no second row', async () => {
+    ledgerTxIds.add(`match:${MATCH_ID}:${ACCOUNT_IDS.winner}`);
+    const summary = await grantMatchRewards(payload());
+    const winner = playerOf(summary, ACCOUNT_IDS.winner);
+    expect(winner.status).toBe('granted');
+    expect(winner.coinsCredited).toBe(8); // treat-as-credited (the committed identical key)
+    expect(winner.coinsCapped).toBe(false);
+    expect(
+      appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.winner),
+    ).toHaveLength(0); // the seeded row IS the row — duplicate inserted nothing
+    expect(xpEventKeys.has(`${ACCOUNT_IDS.winner}:${MATCH_ID}`)).toBe(true);
+    // Everyone else granted normally despite the odd wallet state.
+    expect(summary.players.filter((p) => p.status === 'granted')).toHaveLength(4);
+  });
+});
+
+describe('A8 — anti-farm cap boundary (3rd event ok, 4th withheld)', () => {
+  it('two prior events in the window: this grant still credits (count 2 < cap 3)', async () => {
+    ledgerCountResults = { [ACCOUNT_IDS.winner]: EARN_EVENTS_PER_HOUR - 1 };
+    const summary = await grantMatchRewards(payload());
+    const winner = playerOf(summary, ACCOUNT_IDS.winner);
+    expect(winner.coinsCapped).toBe(false);
+    expect(winner.coinsCredited).toBe(8);
+    expect(
+      appendCalls.filter((c) => String(c['accountId']) === ACCOUNT_IDS.winner),
+    ).toHaveLength(1);
+  });
+
+  it('re-fire after a capped grant never counts toward the cap again', async () => {
+    ledgerCountResults = { [ACCOUNT_IDS.winner]: EARN_EVENTS_PER_HOUR };
+    await grantMatchRewards(payload());
+    resetSheets();
+    const capReadsBefore = vi.mocked(WalletLedger.countDocuments).mock.calls.length;
+
+    const second = await grantMatchRewards(payload());
+    const winnerRow = playerOf(second, ACCOUNT_IDS.winner);
+    expect(winnerRow.status).toBe('already-granted'); // anchor dup short-circuits before any cap read
+    expect(winnerRow.coinsCredited).toBe(0);
+    expect(winnerRow.coinsCapped).toBe(false); // pin: the no-op call reports no withholding
+    expect(vi.mocked(WalletLedger.countDocuments).mock.calls.length).toBe(capReadsBefore);
+    expect(appendCalls).toHaveLength(0); // the capped match itself also wrote no row
+  });
+});
+
+describe('A8 — zero-round abort (summary.rounds = 0)', () => {
+  it('persists record + replay, divides nothing, grants XP-0/coins-0 cleanly', async () => {
+    const roster = buildRecord().players.map((p) => ({
+      ...p,
+      stats: {
+        kills: 0,
+        catches: 0,
+        falseAccusations: 0,
+        bluffSuccesses: 0,
+        deaths: 0,
+        deathCause: undefined,
+        pullsSurvived: 0,
+        roundsPlayed: 0,
+        roundsSurvived: 0,
+        won: false,
+        xpEarned: 0,
+        coinsEarned: 0,
+      },
+    }));
+    const abortedRecord = buildRecord({
+      summary: { rounds: 0, totalPulls: 0, dareDevilMoments: 0 },
+      aborted: true,
+      winnerSeat: null,
+      players: roster,
+    });
+
+    const summary = await grantMatchRewards(payload({ record: abortedRecord }));
+
+    expect(summary.matchRecord).toBe('inserted');
+    expect(summary.matchReplay).toBe('inserted');
+    expect(matchReplayCreates[0]).toMatchObject({ aborted: true, winnerSeat: null });
+    expect(matchRecordCreates[0]?.['summary']).toEqual({
+      rounds: 0,
+      totalPulls: 0,
+      dareDevilMoments: 0,
+    });
+    expect(appendCalls).toHaveLength(0); // zero coins → zero ledger rows
+    expect(summary.players.filter((p) => p.status === 'granted')).toHaveLength(4);
+    for (const p of summary.players) {
+      expect(p.xpCredited).toBe(0);
+      expect(p.coinsCredited).toBe(0);
+      expect(p.levelUp).toBe(false);
+      expect(p.level).toBe(1);
+    }
+    // xp 0 → the users update is exactly a level re-set, never an $inc.
+    for (const u of userUpdates) {
+      expect(u.update['$inc']).toBeUndefined();
+      expect(u.update['$set']).toMatchObject({ level: 1 });
+    }
+    // The anchor is still written for every rostered human — re-fire stays a no-op.
+    expect(vi.mocked(XpEvent.create)).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe('A8 — all-bot rosters', () => {
+  it('unknown accounts: match_records + replay persist; every player skipped-unknown-user', async () => {
+    const record = buildRecord();
+    for (const p of record.players) p.accountId = ACCOUNT_IDS.ghost;
+
+    const summary = await grantMatchRewards(payload({ record }));
+
+    expect(summary.matchRecord).toBe('inserted');
+    expect(summary.matchReplay).toBe('inserted');
+    expect(matchReplayCreates[0]).toMatchObject({ seed: SEED, matchId: MATCH_ID });
+    // The match DID happen — all five zero-unknown seats keep their stats rows.
+    expect(matchRecordCreates[0]?.['players']).toHaveLength(5);
+    expect(summary.players.every((p) => p.status === 'skipped-unknown-user')).toBe(true);
+    expect(appendCalls).toHaveLength(0);
+    expect(userUpdates).toHaveLength(0);
+    expect(vi.mocked(withTransaction)).not.toHaveBeenCalled();
+  });
+
+  it('accountId-less seats persist an empty players array — coherent, no half-writes', async () => {
+    const record = buildRecord();
+    for (const p of record.players) p.accountId = undefined;
+
+    const summary = await grantMatchRewards(payload({ record }));
+
+    expect(summary.matchRecord).toBe('inserted');
+    expect(summary.matchReplay).toBe('inserted');
+    expect(matchRecordCreates[0]?.['players']).toEqual([]); // every seat dropped
+    expect(summary.players.every((p) => p.status === 'skipped-no-account')).toBe(true);
+    expect(appendCalls).toHaveLength(0);
+  });
+});
+
+describe('A8 — prestige frames at exact milestones (10/20/30/40)', () => {
+  function withWinnerAt(xp: number, level: number): void {
+    userRows = {
+      ...USER_ROWS,
+      [ACCOUNT_IDS.winner]: {
+        _id: ACCOUNT_IDS.winner,
+        nickname: 'Ron',
+        xp,
+        level,
+        banned: false,
+      },
+    };
+  }
+
+  it('grants level 20 EXACTLY with this match (xpThroughLevel(20) boundary)', async () => {
+    withWinnerAt(xpThroughLevel(20) - 12, 19); // record's 12 XP lands on the line
+    vi.mocked(CatalogItem.find).mockImplementation(
+      (() =>
+        makeQuery([
+          { _id: 'frame:prestige-bronze', category: 'frame', levelReq: 10, active: true },
+          { _id: 'frame:prestige-silver', category: 'frame', levelReq: 20, active: true },
+        ])) as unknown as typeof CatalogItem.find,
+    );
+
+    const summary = await grantMatchRewards(payload());
+    const winner = playerOf(summary, ACCOUNT_IDS.winner);
+    expect(winner.level).toBe(20);
+    expect(winner.levelUp).toBe(true);
+    expect(vi.mocked(CatalogItem.find)).toHaveBeenCalledWith({
+      active: true,
+      levelReq: { $gt: 0, $lte: 20 },
+    });
+    expect(winner.unlockedItems.slice().sort()).toEqual([
+      'frame:prestige-bronze',
+      'frame:prestige-silver',
+    ]);
+    const created = new Map(entitlementCreates.map((c) => [String(c['key']), c]));
+    expect(created.get('prestige-silver')).toMatchObject({ kind: 'item', source: 'level' });
+    expect(created.get('prestige-bronze')).toMatchObject({ kind: 'item', source: 'level' });
+    // $lte (not $lt): levelReq 20 is included AT level 20.
+    expect(String((userUpdates[0]?.update['$set'] as Record<string, unknown>)['level'])).toBe('20');
+  });
+
+  it('backfills every previously crossed milestone on ANY later grant (late catalog seed)', async () => {
+    withWinnerAt(xpThroughLevel(40), 40); // already 40 — frames 10/20/30/40 owed
+    vi.mocked(CatalogItem.find).mockImplementation(
+      (() =>
+        makeQuery([
+          { _id: 'frame:prestige-bronze', category: 'frame', levelReq: 10, active: true },
+          { _id: 'frame:prestige-silver', category: 'frame', levelReq: 20, active: true },
+          { _id: 'frame:prestige-gold', category: 'frame', levelReq: 30, active: true },
+          { _id: 'frame:prestige-diamond', category: 'frame', levelReq: 40, active: true },
+        ])) as unknown as typeof CatalogItem.find,
+    );
+
+    const summary = await grantMatchRewards(payload());
+    const winner = playerOf(summary, ACCOUNT_IDS.winner);
+    expect(winner.level).toBe(40);
+    expect(winner.levelUp).toBe(false);
+    expect(winner.unlockedItems).toHaveLength(4); // all four in ONE grant
+    const winnerEntitlements = entitlementCreates.filter(
+      (c) => String(c['accountId']) === ACCOUNT_IDS.winner,
+    );
+    expect(winnerEntitlements).toHaveLength(4); // every other grantee earns theirs too
+    for (const doc of winnerEntitlements) {
+      expect(doc['source']).toBe('level'); // earned-only, never purchasable
+      expect(doc['kind']).toBe('item');
+    }
+
+    // Re-fire is a no-op — no duplicate entitlement attempt even begins.
+    resetSheets();
+    const second = await grantMatchRewards(payload());
+    expect(playerOf(second, ACCOUNT_IDS.winner).status).toBe('already-granted');
+    expect(playerOf(second, ACCOUNT_IDS.winner).unlockedItems).toEqual([]);
+    expect(entitlementCreates).toHaveLength(0);
   });
 });
