@@ -21,6 +21,12 @@ jobs:
         run: |
           if [ -f package-lock.json ]; then npm ci; else npm install; fi
 
+      # packages/*/dist is gitignored — apps and tests resolve @liars-game/*
+      # through package.json exports, so the base packages must be built
+      # before typecheck/test/build steps run.
+      - name: Build workspace packages
+        run: npm run build -w packages/shared -w packages/rules-engine
+
       - name: Typecheck all workspaces
         run: npm run typecheck --if-present --workspaces
 

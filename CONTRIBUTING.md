@@ -21,7 +21,13 @@ IP analysis, hosting/economy research) — cite it when arguing for a change.
 git clone https://github.com/brutalharsh/Liar-s-Game.git
 cd Liar-s-Game
 npm install                 # workspaces: apps/web, apps/server, packages/*
-cp .env.example .env        # fill in your own values (never commit .env)
+
+# dist/ is gitignored — build the base packages before anything resolves:
+npm run build -w packages/shared -w packages/rules-engine
+
+cp .env.example .env.local  # fill the mandatory keys + point MONGODB_URI at a
+                            # reachable Mongo (full list in README) — never
+                            # commit .env*
 npm run dev:server          # Express + Socket.IO game server
 npm run dev:web             # Next.js app (another terminal)
 ```
@@ -40,6 +46,7 @@ npm run dev:web             # Next.js app (another terminal)
 ## Before you open a PR
 
 ```bash
+npm run build -w packages/shared -w packages/rules-engine   # once after install
 npm run typecheck   # must pass
 npm run lint        # must pass
 npm test            # full suite must pass, no skipped tests

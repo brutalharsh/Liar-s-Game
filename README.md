@@ -42,24 +42,60 @@ Full rules incl. house amendments: [`STR/01-game-rules.md`](STR/01-game-rules.md
 
 ## Set up locally
 
+Requirements: **Node 20+** and a **MongoDB** the server can reach (a free
+MongoDB Atlas cluster or a local `mongod` — the server connects before it
+listens).
+
 ```bash
 git clone https://github.com/brutalharsh/Liar-s-Game.git
 cd Liar-s-Game
-npm install                 # npm workspaces monorepo
-cp .env.example .env        # fill in your own values — NEVER commit .env
-npm run dev:server          # Express + Socket.IO on :3001
-npm run dev:web             # Next.js app on :3000 (another terminal)
+npm install                                            # npm workspaces monorepo
+
+# packages/*/dist is gitignored — build the two base packages FIRST,
+# or every import of @liars-game/* (server, web, tests) fails to resolve:
+npm run build -w packages/shared -w packages/rules-engine
+
+cp .env.example .env.local   # NEVER commit .env* (only the template is committed)
+
+npm run dev:server           # Express + Socket.IO on :3001
+npm run dev:web              # Next.js app on :3000 (another terminal)
 ```
 
-Verify everything: `npm run verify` (typecheck + lint + full test suite).
+The server boots only when its config validates — it names empty keys,
+never values. From the template you must fill in:
+
+| Key | Notes |
+|---|---|
+| `AUTH_SECRET` | `openssl rand -hex 32` |
+| `ADMIN_USERNAME` / `ADMIN_PASSWORD` | admin-dashboard login |
+| `MONGODB_URI` | real Mongo connection string (`mongodb://` / `mongodb+srv://`) |
+| `IMAGE_SERVER_URL` / `IMAGE_SERVER_KEY` / `IMAGE_SERVER_PROJECT_ID` | must be non-empty; an `http://` placeholder + any strings work for local dev |
+
+`APP_URL`, `MONGODB_DB`, `PORT`, `CLIENT_ORIGIN`, `PAYMENTS_PROVIDER` ship
+workable dev defaults in the template. Dev loads `.env.local` (falls back to
+`.env`); production loads `.env.production`. Player login uses Discord/Google
+OAuth with owner-registered client keys — leave them empty and the server
+boots fine, but `/login` can't complete a real provider flow yet.
+
+Verify everything (packages built): `npm run verify` — typecheck + lint +
+full test suite across all workspaces.
+
+**Live smoke** (scripted match over real sockets): boot the server, then
+`cd apps/web && node scripts/live-smoke.mjs`. It needs the same env + Mongo
+(reads `.env.local` walking up), runs a full ~4-minute match, and exits 0
+only if every wire-schema, privacy, and economy check passes. Restart the
+server process between smoke runs (join rate limit: 10 per IP per 10 min).
 
 ## Project status
 
 Live build log: [`STR/10-build-progress.md`](STR/10-build-progress.md)
 
 Roadmap highlights: public rooms browser, leaderboard + kills + titles,
-TTS voice lines, cosmetic shop with coin economy (payments stubbed until a
-provider is chosen), AI-generated original art. See [`STR/02-features.md`](STR/02-features.md).
+TTS voice lines, cosmetic shop with coin economy, AI-generated original art.
+Billing runs in `PAYMENTS_PROVIDER=mock` — nothing charges while the shop is
+playable — until the owner completes provider registration and flips the
+flag (`.env.example` documents the contract; nothing here names the hosted
+services). See [`STR/02-features.md`](STR/02-features.md).
 
 ## Contributing
 

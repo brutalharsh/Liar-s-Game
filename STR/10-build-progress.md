@@ -129,6 +129,18 @@
   `common|fine|rare|cursed` vs server `common|rare|epic` (A1 ④); theme
   `house` vs `house-table` (A7 owns that normalize mid-flight). ① (undeclared
   cors phantom-dep) fixed immediately.
+- **More queued (fleet A)**: A8 billing read-only flags — checkout crash
+  between ledger append and grantedAt never converges (dup path could set);
+  pack coins read at verify vs price frozen at checkout (admin edits in the
+  ≤30-min window drift coins — freeze coins in the checkout record at
+  creation?); paidAt may store Invalid Date from proxy garbage. A9 note:
+  STR/01 §8 "empty hand can't be challenged" = "no NEW risk attaches" (the
+  emptied finisher's last play stays challengeable) — add to README
+  interpretations. A10: root `lint` script is a silent no-op — wire eslint
+  or drop the script; `format:check` fails on 27 files — run `format:write`
+  once the UI fleet lands. U4 flags: demo-room snapshot omits isBot (mock
+  lobby shows zero bot badges — 1 line); Toaster toasts are focusable →
+  tabIndex={-1}. Smoke §8 robustness fix lands with A3.
 
 ## Agent dispatch log
 
@@ -284,3 +296,47 @@ Shared dev servers running: web :3000 (mock default), API :3001. Fleet B
 saves screenshots to /tmp/ui-audit/<U-id>/ for orchestrator vision review.
 File territories are strictly partitioned across all 22 agents; every agent
 has git-lockdown (orchestrator commits each verified landing).
+
+### Fleet A landings (2026-11-23 morning, all orchestrator-verified + committed)
+
+- **A6** ✅ read-only security re-audit: zero P0/P1; P2s (image-server master
+  key rotation; deploy trust-proxy depth) promoted to owner items above.
+- **A1** ✅ STR 00–09 reconciled to shipped code; code-drift flags queued
+  (cors phantom-dep — fixed immediately; emote-id mismatch; tier union;
+  dead HandshakeSchema).
+- **A4** ✅ router crash hardening: all 8 handlers + disconnect + connection
+  listener inside runGuarded/failSafe (double-wrapped; stacks never cross the
+  wire); 19 crash tests + 57 consumer tests green; happy paths byte-identical.
+- **A5** ✅ OAuth env fold (shared OAuthConfig, both-keys-or-absent → 503),
+  dead mocks deleted after the store/economy rewire to real profile coins,
+  titles registry 12→11 reconciled; .env.example verified complete; 62/62
+  shared + 296 server + 56 web.
+- **A7** ✅ seq-rewind rejoin-storm fix, single-flight recovery controller,
+  transport-drop → re-join, pendingThrow freeze fix, post-game-over input
+  rejection, emote cooldown on accept only; theme slugs normalized at the
+  wire boundary; +33 store/socket/bridge tests.
+- **A2** ✅ six real races fixed — double game:start (HIGH), seat-change
+  mid-start crash (HIGH), kickoff grace clock loss, vacated-room GC leak,
+  seam sync-throw, host-cascade deadlock self-heal; 6 deterministic
+  regression tests; runtime changed → smoke re-run pending A3's file.
+- **A8** ✅ one real grant defect fixed (banned-mid-tx anchor leak — tx now
+  aborts, unban + re-grant recovers); +19 edge tests + parallel-grant
+  harness. Billing flags queued (ledger-convergence; pack-coins-at-verify
+  drift window; paidAt Invalid Date). P0 flag (match.ts promise discard)
+  already covered by A2's handleMatchEnd guard — verified.
+- **A9** ✅ engine conformance: 23 new tests, engine matches STR/01 on every
+  audited axis (zero P0–P2). Soak timeout raised 60s → 120s (orchestrator).
+- **A10** ✅ cold-start docs double-broken and fixed (packages build step,
+  mandatory keys, Mongo prerequisite); CI as-pushed failed → build step
+  added; icons script name fixed; lint is a silent no-op (queued);
+  format:check fails on 27 files (deferred until the UI fleet lands to
+  avoid mid-edit churn).
+
+### Smoke §8 flake — root-caused not a regression
+
+The failed check (52/53) is the check's own design vs concurrency: §8's
+retry budget (20s) < leaderboard cache TTL (60s), and the 12 UI-audit
+browsers continuously refresh real REST → a pre-grant cache entry can
+outlive the retry window. Chain itself verified green twice (A10 direct +
+orchestrator curl: fresh grants visible). Fix (retry ≥65s + distinct-name
+matching) lands with A3's live-smoke.mjs ownership once A3 reports.
