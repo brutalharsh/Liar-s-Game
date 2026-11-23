@@ -50,6 +50,7 @@
 | W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | ✅ done — 23/23 store tests, tsc clean, app-wide build green; orchestrator re-verified |
 | S1 | Game rooms: RoomManager + STR/07 event router on the rules engine + timer wheel + reconnect + bots | `apps/server/src/game` + one index.ts block | 🏃 running |
 | E1 | Economy services: grantMatchRewards seam, levels 1–100, titles, anti-farm caps, leaderboard + profile REST | `apps/server/src/economy` + routes/economy + mounts line | ✅ done — 187/187 green; 10-lakh curve verified; PII projection tested |
+| W3 | Leaderboard + profile pages wired to E1's real endpoints (typed 1:1, curve-matched fixtures) | `apps/web` leaderboard/profile/api/fixtures | ✅ done — tsc, build, 23/23, scans clean; 4-metric board + full profile against the real contract |
 
 ## Next up (queue — dispatch as prerequisites land)
 
@@ -65,9 +66,15 @@
    pre-summed coin rows (reason `match_reward`); "House Always Wins" title
    deferred (MatchRecord lacks executor→victim — queued as R1 follow-up);
    add @liars-game/rules-engine to apps/server deps at integration
-3. **W3 — Leaderboard + profile wiring** to E1's real endpoints — 🏃 dispatched
-   2026-11-23 night (contract: GET /api/leaderboard + GET /api/me[/profile]
-   per E1's report)
+3. **W3 — Leaderboard + profile wiring** to E1's real endpoints — ✅ completed
+   2026-11-23 night; orchestrator re-verified: tsc clean, build green (both
+   routes static), 23/23, scans clean, territory exact. Flags folded into the
+   integration pass: dead mocks lib/mock/{leaderboard,profile}.ts (unread by
+   pages; store/economy still imports MOCK_WALLET — shop balance path),
+   titles registry reconcile 12→11 (`nine-lives`→`cat-with-nine-lives`,
+   `house-wins` deferred), no public per-account profile (board rows static),
+   server sends bare {error:CODE} bodies (client messages generic — acceptable
+   v1)
 4. **Integration pass**: web ↔ server smoke over real sockets (after S1 lands);
    pin catalog item id format (`category:slug` per STR/09 — S-A1 + W-AUTH
    aligned; W1-era dash-format fixtures to reconcile); reconcile the auth
@@ -75,7 +82,7 @@
    lib/oauth.ts's 4 process.env reads into the shared config; wire S1's
    onMatchEnd hook to E1's grantMatchRewards in index.ts; add
    rules-engine dep to apps/server + keep dist built; rooms/lobby live
-   socket wiring after S1's contract lands
+   socket wiring after S1's contract lands; W3 flags above
 5. *(M1 motion pass absorbed into W2's mission)*
 
 ## Open items (owner, no rush)

@@ -26,6 +26,7 @@ import {
   mockUpload,
   validateUpload,
 } from "@/lib/mock/admin-fixtures";
+import { mockLeaderboard, mockProfile } from "@/lib/mock/profile-fixtures";
 
 // ══════════════════════════════ wire types ══════════════════════════════════
 
@@ -202,6 +203,106 @@ export type BillingVerifyResult =
   | { status: "expired" };
 
 export type UploadResult = { imageId: string; imageUrl: string };
+
+// ── leaderboard + profile (E1 economy REST — STR/07 §0 "Game/store") ────────
+
+/** GET /api/leaderboard metrics (STR/09 derived reads; cached 60s server-side). */
+export type LeaderboardMetric = "wins" | "kills" | "xp" | "titles";
+
+export const LEADERBOARD_PER_PAGE_DEFAULT = 20;
+export const LEADERBOARD_PER_PAGE_MAX = 50;
+
+/**
+ * One GET /api/leaderboard row — explicit public projection: rank is the
+ * position for the requested metric; banned/deleted accounts never appear.
+ * (Server-identical twin of the shared LeaderboardRowSchema — TODO-sync-with-shared.)
+ */
+export interface LeaderboardEntry {
+  accountId: string;
+  nickname: string;
+  avatarSpec?: AdminAvatarSpec | null;
+  activeTitle: string | null;
+  level: number;
+  rank: number;
+  value: number;
+}
+
+export interface LeaderboardPage {
+  metric: LeaderboardMetric;
+  page: number;
+  perPage: number;
+  total: number;
+  leaderboard: LeaderboardEntry[];
+}
+
+/** /api/me levelProgress — `xpToNextLevel`/`xpForLevel` are null at level 100. */
+export interface ProfileLevelProgress {
+  level: number;
+  xp: number;
+  xpIntoLevel: number;
+  xpToNextLevel: number | null;
+  xpForLevel: number | null;
+  percent: number;
+  atMax: boolean;
+}
+
+/** One match_records line — the requesting player's OWN stats only (STR/09). */
+export interface ProfileMatchStats {
+  kills: number;
+  catches: number;
+  falseAccusations: number;
+  bluffSuccesses: number;
+  deaths: number;
+  pullsSurvived: number;
+  roundsPlayed: number;
+  won: boolean;
+  xpEarned: number;
+  coinsEarned: number;
+}
+
+export interface ProfileMatchRecord {
+  matchId: string;
+  roomCode: string;
+  endedAt: string;
+  capacity: number;
+  theme: string;
+  summary: { rounds: number; totalPulls: number; dareDevilMoments: number };
+  you: {
+    seat: number;
+    nickname: string;
+    titleAtPlay: string | null;
+    stats: ProfileMatchStats;
+  };
+}
+
+/** /api/me user — own account only; no email/provider identity rides along. */
+export interface ProfileUser {
+  id: string;
+  nickname: string;
+  name: string;
+  avatarUrl: string | null;
+  avatarSpec: AdminAvatarSpec | null;
+  activeTitle: string | null;
+  role: "user" | "admin";
+  xp: number;
+  level: number;
+  createdAt: string;
+  lastSeenAt: string;
+}
+
+export interface ProfileResponse {
+  user: ProfileUser;
+  /** Canonical level — recomputed from xp server-side, never the stored column. */
+  level: number;
+  levelProgress: ProfileLevelProgress;
+  /** Equipped title (idle); the count of unlocked ones rides separately. */
+  title: string | null;
+  coins: number;
+  unlockedTitleCount: number;
+  /** Last 10 finished matches, newest first — the player's own line only. */
+  recentMatchRecords: ProfileMatchRecord[];
+}
+
 
 // ══════════════════════════ mode + error plumbing ═══════════════════════════
 
@@ -543,4 +644,32 @@ export async function checkoutPack(packId: string): Promise<CheckoutStartResult>
 export async function verifyCheckout(token: string): Promise<BillingVerifyResult> {
   if (getApiMode() === "mock") return mockBilling.verify(token);
   return apiFetch<BillingVerifyResult>("/api/billing/verify", { method: "POST", json: { token } });
+}
+
+// ═════════════════ leaderboard + profile (E1 economy REST) ═══════════════════
+
+/**
+ * GET /api/leaderboard?metric=&page=&perPage= — public. `metric` defaults to
+ * "xp" server-side; `perPage` clamps to 1–50 (default 20). 60s public cache is
+ * a server header — this client just fetches per page/metric change.
+ */
+export async function getLeaderboard(
+  params: { metric?: LeaderboardMetric; page?: number; perPage?: number } = {},
+): Promise<LeaderboardPage> {
+  const metric = params.metric ?? "xp";
+  const page = Math.max(1, params.page ?? 1);
+  const perPage = Math.min(LEADERBOARD_PER_PAGE_MAX, Math.max(1, params.perPage ?? LEADERBOARD_PER_PAGE_DEFAULT));
+  if (getApiMode() === "mock") return mockLeaderboard.page(metric, page, perPage);
+  return apiFetch<LeaderboardPage>(`/api/leaderboard${qs({ metric, page, perPage })}`);
+}
+
+/**
+ * GET /api/me — the signed-in viewer's full profile (requireAuth). Identical
+ * twin exists at /api/me/profile; this client consumes /api/me.
+ * Errors: 401 AUTH_REQUIRED (session gone — surface as logged-out), 403 BANNED,
+ * 404 USER_NOT_FOUND — thrown as ApiError for the caller to branch on.
+ */
+export async function getProfile(): Promise<ProfileResponse> {
+  if (getApiMode() === "mock") return mockProfile.get();
+  return apiFetch<ProfileResponse>("/api/me");
 }

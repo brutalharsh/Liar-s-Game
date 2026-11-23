@@ -1,40 +1,85 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { Avatar } from "@/components/ui/Avatar";
 import { CoinBadge } from "@/components/ui/CoinBadge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/Button";
-import { AsyncSection, Skeleton } from "@/components/ui/AsyncSection";
+import { AsyncSection, EmptyState, Skeleton } from "@/components/ui/AsyncSection";
+import { toDisplaySpec } from "@/components/auth/viewer";
 import { useMockQuery } from "@/hooks/useMockQuery";
-import { mockFetch } from "@/lib/mock/api";
-import { MOCK_PROFILE, type MockProfile } from "@/lib/mock/profile";
-import { TITLES } from "@/lib/mock/titles";
-import { useEconomyStore } from "@/store/economy";
-import { useIdentityStore } from "@/store/identity";
-import { useToasts } from "@/store/ui";
-import { formatCoins } from "@/lib/format";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { getProfile, isApiError, type ProfileMatchRecord, type ProfileMatchStats, type ProfileResponse } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
+import { useCountUp } from "@/motion/useCountUp";
+import { formatCoins, titleCase } from "@/lib/format";
+import { THEMES } from "@/lib/mock/themes";
+import { formatWhen, memberSince, titleLabel } from "./display";
 
-/** KILLS is the headline stat (STR/02 v1 — "kills (headline)"). */
-function StatCard({ label, value, sub }: { label: string; value: number; sub?: string }) {
-  return (
-    <Panel className="flex min-h-24 flex-col items-center justify-center gap-1 p-4">
-      <span className="font-display text-3xl text-brass">{value}</span>
-      <span className="font-body text-[10px] uppercase tracking-widest text-ink-dim">{label}</span>
-      {sub && <span className="font-body text-[9px] text-lamp">{sub}</span>}
-    </Panel>
-  );
-}
-
+/**
+ * Own profile (GET /api/me — E1). Identity + level bar + wallet + the last 10
+ * match records, all server-owned numbers rendered read-only — this view never
+ * writes XP, coins or titles (clients are dumb terminals, STR/06 §3).
+ *
+ * Error branches per the contract: 401 AUTH_REQUIRED → re-probe the session so
+ * the existing auth gate takes over (sign-in wall); 403 BANNED → friendly
+ * banned state; 404 USER_NOT_FOUND → reset suggestion.
+ */
 export function ProfileView() {
-  const coins = useEconomyStore((s) => s.coins);
-  const equippedTitle = useEconomyStore((s) => s.equippedTitle);
-  const setTitle = useEconomyStore((s) => s.setTitle);
-  const nickname = useIdentityStore((s) => s.nickname);
-  const avatar = useIdentityStore((s) => s.avatar);
-  const push = useToasts();
-  const query = useMockQuery<MockProfile>(() => mockFetch(MOCK_PROFILE, { minDelayMs: 300 }), []);
+  const query = useMockQuery<ProfileResponse>(() => getProfile(), []);
+  const reduced = usePrefersReducedMotion();
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const logout = useAuthStore((s) => s.logout);
+
+  const apiErr = isApiError(query.error) ? query.error : null;
+  const signedOut = apiErr?.error === "AUTH_REQUIRED";
+  const banned = apiErr?.error === "BANNED";
+  const missing = apiErr?.error === "USER_NOT_FOUND";
+
+  // Session died between the gate's probe and this fetch → hand the route back
+  // to the gate (it flips to guest and renders the sign-in wall itself).
+  useEffect(() => {
+    if (signedOut) void fetchMe(true);
+  }, [signedOut, fetchMe]);
+
+  const ready = !query.loading && !query.error && !!query.data;
+  const coinsTarget = query.data?.coins ?? 0;
+  const coinsShown = useCountUp(coinsTarget, ready, 900, reduced);
+
+  if (banned) {
+    return <BannedState onSignOut={() => void logout()} />;
+  }
+
+  if (missing) {
+    return (
+      <div className="flex flex-col items-center gap-4 py-16">
+        <EmptyState
+          icon="🪑"
+          title="Your seat vanished"
+          sub="The ledger holds your coins but couldn't find the account. Signing out and back in usually resets the door."
+          action={
+            <Button variant="outline" onClick={() => void logout()}>
+              SIGN OUT
+            </Button>
+          }
+        />
+      </div>
+    );
+  }
+
+  if (signedOut) {
+    // momentary handoff — the gate swaps this for the sign-in wall
+    return (
+      <div className="flex flex-col gap-4 py-8" role="status" aria-label="Checking your seat">
+        <Skeleton className="h-40" />
+        <Skeleton className="h-24" />
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-8 py-8">
@@ -44,174 +89,249 @@ export function ProfileView() {
 
       <AsyncSection
         query={query}
+        errorTitle="The ledger wouldn't open"
         skeleton={
-          <div className="flex flex-col gap-4">
-            <Skeleton className="h-40" />
+          <div className="flex flex-col gap-4" aria-hidden>
+            <Skeleton className="h-44" />
             <Skeleton className="h-24" />
             <Skeleton className="h-64" />
           </div>
         }
-        isEmpty={(p) => p == null}
-        empty={<span />}
+        isEmpty={(p) => !p}
+        empty={
+          <EmptyState
+            icon="🕯️"
+            title="Nothing at this seat"
+            sub="The account read came back empty. Try again in a beat."
+          />
+        }
       >
-        {(profile) => (
-          <>
-            {/* identity + wallet */}
-            <Panel className="flex flex-col items-center gap-6 p-6 md:flex-row md:justify-between">
-              <div className="flex items-center gap-4">
-                <Avatar spec={avatar} size="xl" />
-                <div>
-                  <p className="font-display text-3xl text-ivory">{nickname || "YOU"}</p>
-                  <p className="font-body text-xs text-lamp">
-                    {equippedTitle
-                      ? (TITLES.find((t) => t.id === equippedTitle)?.name ?? "Regular")
-                      : "Regular"}
-                  </p>
-                  <p className="mt-1 font-body text-[11px] text-ink-dim">
-                    Guest profile — claim an account (v1.x) to keep your stash across devices.
-                  </p>
-                  <div className="mt-3 flex items-center gap-2">
-                    <span className="rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass">
-                      LVL {profile.level}
-                    </span>
-                    <CoinBadge amount={coins} size="lg" />
+        {(profile) => {
+          const progress = profile.levelProgress;
+          return (
+            <>
+              {/* identity + wallet */}
+              <Panel className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
+                <div className="flex items-center gap-4">
+                  <Avatar spec={toDisplaySpec(profile.user.avatarSpec)} size="xl" />
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-display text-3xl text-ivory">{profile.user.nickname}</p>
+                      {profile.user.role !== "user" && (
+                        <span className="rounded-full border-2 border-lamp px-2 py-0.5 font-display text-[10px] tracking-widest text-lamp">
+                          HOUSE
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-body text-xs text-lamp">
+                      {titleLabel(profile.title) ?? "no title equipped"}
+                    </p>
+                    <p className="mt-1 font-body text-[11px] text-ink-dim">
+                      Sitting here since {memberSince(profile.user.createdAt)} · last seen{" "}
+                      {formatWhen(profile.user.lastSeenAt)}
+                    </p>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <LevelBadge level={profile.level} />
+                      <span
+                        className="rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass"
+                        title="titles unlocked server-side"
+                      >
+                        🎖 {profile.unlockedTitleCount} titles
+                      </span>
+                      <CoinBadge amount={coinsShown} size="lg" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="w-full max-w-sm">
-                <ProgressBar
-                  value={profile.xp}
-                  max={profile.nextLevelXp}
-                  label={`${formatCoins(profile.xp)} / ${formatCoins(profile.nextLevelXp)} XP → level ${profile.level + 1}`}
-                />
-                <p className="mt-2 font-body text-[10px] text-ink-dim">
-                  XP per match: win 12 · survive 6 · die 4. Ten levels = a prestige frame (earned
-                  only, never sold).
+                <div className="w-full md:max-w-sm">
+                  {progress.atMax ? (
+                    <>
+                      <ProgressBar value={1} max={1} label="MAX LEVEL" />
+                      <p className="mt-2 font-body text-[11px] text-brass">
+                        The ceiling. {formatCoins(progress.xp)} XP banked — there is no level 101.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <ProgressBar
+                        value={progress.xpIntoLevel}
+                        max={progress.xpForLevel ?? 1}
+                        label={`LVL ${progress.level} → ${progress.level + 1}`}
+                      />
+                      <p className="mt-2 font-body text-[11px] text-ink-dim">
+                        {formatCoins(progress.xpIntoLevel)} / {formatCoins(progress.xpForLevel ?? 0)} XP ·{" "}
+                        {formatCoins(progress.xpToNextLevel ?? 0)} to next · win 12 · survive 6 · die 4 per
+                        match
+                      </p>
+                    </>
+                  )}
+                </div>
+              </Panel>
+
+              {/* recent tables */}
+              <section>
+                <SectionTitle kicker={`${profile.recentMatchRecords.length} on the record`}>
+                  Recent tables
+                </SectionTitle>
+                <ol className="flex flex-col gap-2">
+                  {profile.recentMatchRecords.map((rec, i) => (
+                    <MatchRow key={rec.matchId} rec={rec} index={i} />
+                  ))}
+                </ol>
+                <p className="mt-2 font-body text-[11px] text-ink-dim">
+                  Ten tables deep, your line only. Replays + full box scores land with a later wave
+                  — rows stay quiet till then.
                 </p>
+              </section>
+
+              <div className="flex flex-wrap justify-center gap-3">
+                <Link href="/shop">
+                  <Button variant="brass">🛍 VISIT THE SHOP</Button>
+                </Link>
+                <Link href="/leaderboard">
+                  <Button variant="outline">🏆 SEE THE RANKS</Button>
+                </Link>
+                <Link href="/settings">
+                  <Button variant="outline">⚙️ SETTINGS</Button>
+                </Link>
               </div>
-            </Panel>
-
-            {/* headline kills */}
-            <div className="text-center">
-              <p className="font-body text-xs uppercase tracking-[0.3em] text-lamp">headline stat</p>
-              <p className="font-display text-7xl text-brass md:text-8xl">{profile.kills}</p>
-              <p className="font-display text-2xl text-ivory">KILLS</p>
-              <p className="mt-1 font-body text-xs text-ink-dim">
-                executions where the target didn't walk away
-              </p>
-            </div>
-
-            {/* stat grid */}
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-              <StatCard label="catches" value={profile.catches} sub="liars exposed" />
-              <StatCard label="wins" value={profile.wins} sub="last one standing" />
-              <StatCard label="matches" value={profile.matches} sub="seats taken" />
-              <StatCard label="deaths" value={profile.deaths} sub="candles lit" />
-              <StatCard label="pulls survived" value={profile.pullsSurvived} sub="clicks heard" />
-              <StatCard label="false calls" value={profile.falseAccusations} sub="oops" />
-            </div>
-
-            {/* titles wall */}
-            <section>
-              <SectionTitle kicker={`owned ${profile.unlockedTitles.length}/12`}>Titles wall</SectionTitle>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {TITLES.map((title) => {
-                  const unlocked = profile.unlockedTitles.includes(title.id);
-                  const equipped = equippedTitle === title.id;
-                  return (
-                    <div
-                      key={title.id}
-                      className={`flex min-h-20 flex-col gap-1 rounded-card border-2 p-3 ${
-                        unlocked
-                          ? equipped
-                            ? "border-brass bg-brass/10"
-                            : "border-wood-mid bg-wood/60"
-                          : "border-wood-mid/40 bg-wood-deep/40 opacity-50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-display text-base text-ivory">
-                          {unlocked ? title.name : "🔒 " + title.name}
-                        </span>
-                        {equipped && <span className="text-xs text-brass">EQUIPPED</span>}
-                      </div>
-                      <p className="font-body text-[10px] text-ink-dim">{title.unlock}</p>
-                      <div className="mt-auto flex justify-end">
-                        {unlocked && !equipped && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setTitle(title.id);
-                              push({ title: `Title equipped: ${title.name}`, tone: "good" });
-                            }}
-                            className="text-xs text-brass"
-                          >
-                            EQUIP
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              <p className="mt-2 font-body text-[11px] text-ink-dim">
-                Titles unlock server-side at match end — never mid-round, never purchasable.
-              </p>
-            </section>
-
-            {/* match history strip */}
-            <section>
-              <SectionTitle kicker="recent">Last five tables</SectionTitle>
-              <ol className="flex flex-col gap-2">
-                {profile.matchHistory.map((match) => (
-                  <li key={match.id}>
-                    <Panel className="flex min-h-14 items-center gap-3 p-3">
-                      <span
-                        className={`rounded-btn border-2 px-2 py-0.5 font-display text-xs ${
-                          match.result === "won"
-                            ? "border-brass text-brass"
-                            : match.result === "survived"
-                              ? "border-verdict text-verdict"
-                              : "border-blood-bright text-blood-bright"
-                        }`}
-                      >
-                        {match.result === "won" ? "🏆 WON" : match.result === "survived" ? "✓ SURVIVED" : "✖ DIED"}
-                      </span>
-                      <span className="font-body text-xs text-ink-dim">
-                        round {match.round} · vs {match.opponents.join(", ")}
-                      </span>
-                      <span className="ml-auto flex items-center gap-2 font-display text-sm">
-                        <span title="kills" className="text-blood-bright">
-                          🗡 {match.kills}
-                        </span>
-                        <span title="xp" className="text-lamp">
-                          ✨ {match.xp}
-                        </span>
-                        <span title="coins" className="text-brass">
-                          🪙 {match.coins}
-                        </span>
-                      </span>
-                    </Panel>
-                  </li>
-                ))}
-              </ol>
-              <p className="mt-2 font-body text-[11px] text-ink-dim">
-                Match history archive (last 20) lands with v1.x.
-              </p>
-            </section>
-
-            <div className="flex justify-center gap-3">
-              <Link href="/shop">
-                <Button variant="brass">🛍 SPEND {formatCoins(coins)} COINS</Button>
-              </Link>
-              <Link href="/settings">
-                <Button variant="outline">⚙️ SETTINGS</Button>
-              </Link>
-            </div>
-          </>
-        )}
+            </>
+          );
+        }}
       </AsyncSection>
+    </div>
+  );
+}
+
+/** LVL chip — every 10th level rides a prestige frame (earned-only, STR/04 §5). */
+function LevelBadge({ level }: { level: number }) {
+  const prestige = level >= 10 && level % 10 === 0;
+  return (
+    <span
+      className={`rounded-full border-2 px-2 py-0.5 font-display text-sm ${
+        prestige ? "border-brass bg-brass/15 text-brass" : "border-brass-deep text-brass"
+      }`}
+    >
+      LVL {level}
+      {prestige ? " ✦" : ""}
+    </span>
+  );
+}
+
+/** One match_records line — result chip + room/theme/seat + your stat chips. */
+function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
+  const stats: ProfileMatchStats = rec.you.stats;
+  const themeName =
+    THEMES.find((t) => t.id === rec.theme)?.name ?? titleCase(rec.theme || "saloon");
+  const outcome = stats.won
+    ? { label: "🏆 WON", cls: "border-brass text-brass" }
+    : stats.deaths > 0
+      ? { label: "✖ DIED", cls: "border-blood-bright text-blood-bright" }
+      : { label: "✓ SURVIVED", cls: "border-verdict text-verdict" };
+  const playedTitle = titleLabel(rec.you.titleAtPlay);
+
+  return (
+    <motion.li
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: Math.min(index * 0.04, 0.4), duration: 0.24 }}
+    >
+      <Panel className="flex flex-col gap-2 p-3">
+        <div className="flex min-h-12 items-center gap-2">
+          <span className={`shrink-0 rounded-btn border-2 px-2 py-0.5 font-display text-xs ${outcome.cls}`}>
+            {outcome.label}
+          </span>
+          <span
+            className="shrink-0 rounded-btn border-2 border-wood-mid bg-wood-deep px-2 font-display text-xs tracking-widest text-ivory"
+            title={`room ${rec.roomCode}`}
+          >
+            {rec.roomCode}
+          </span>
+          <span className="ml-auto shrink-0 font-body text-[11px] text-ink-dim">
+            {formatWhen(rec.endedAt)}
+          </span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-[11px] text-ink-dim">
+          <span>🎪 {themeName}</span>
+          <span>
+            👥 {rec.capacity}-seat · your seat {rec.you.seat}
+          </span>
+          <span>
+            🎯 {rec.summary.rounds} rounds · {rec.summary.totalPulls} pulls
+            {rec.summary.dareDevilMoments > 0
+              ? ` · ${rec.summary.dareDevilMoments} daredevil`
+              : ""}
+          </span>
+          {playedTitle && <span>“{playedTitle}” at play</span>}
+        </div>
+
+        <div className="flex flex-wrap gap-1.5">
+          <StatChip icon="🗡" label={`${stats.kills} kills`} value={stats.kills} />
+          <StatChip icon="🔍" label={`${stats.catches} liars caught`} value={stats.catches} />
+          <StatChip icon="🎭" label={`${stats.bluffSuccesses} bluffs unchallenged`} value={stats.bluffSuccesses} />
+          <StatChip icon="🎲" label={`${stats.pullsSurvived} trigger pulls survived`} value={stats.pullsSurvived} />
+          {stats.falseAccusations > 0 && (
+            <StatChip icon="😬" label={`${stats.falseAccusations} false calls`} value={stats.falseAccusations} tone="bad" />
+          )}
+          <StatChip icon="✨" label={`${stats.xpEarned} XP earned`} value={stats.xpEarned} always />
+          <StatChip icon="🪙" label={`${stats.coinsEarned} coins earned`} value={stats.coinsEarned} always />
+        </div>
+      </Panel>
+    </motion.li>
+  );
+}
+
+/** Stat chip — icon + text (never color-only, STR/05 §7). Zero-value stats hide. */
+function StatChip({
+  icon,
+  label,
+  value,
+  tone = "plain",
+  always = false,
+}: {
+  icon: string;
+  label: string;
+  value: number;
+  tone?: "plain" | "bad";
+  always?: boolean;
+}) {
+  if (value === 0 && !always) return null;
+  return (
+    <span
+      className={`inline-flex min-h-8 items-center gap-1 rounded-full border-2 bg-wood-deep px-2 font-body text-[11px] ${
+        tone === "bad" ? "border-blood-bright/70 text-blood-bright" : "border-wood-mid text-ink-dim"
+      }`}
+    >
+      <span aria-hidden>{icon}</span> {label}
+    </span>
+  );
+}
+
+/** 403 BANNED — the friendly way out; no redemption claim, no table access. */
+function BannedState({ onSignOut }: { onSignOut: () => void }) {
+  return (
+    <div className="mx-auto flex max-w-md flex-col items-center px-4 py-16">
+      <Panel className="w-full p-8 text-center">
+        <span className="text-6xl" aria-hidden>
+          🎩🚫
+        </span>
+        <h2 className="mt-4 font-display text-3xl text-ivory">The house 86'd you</h2>
+        <p className="mt-2 font-body text-sm text-ink-dim">
+          This account is barred from the tables. Coins, XP and titles stay on your ledger —
+          but the door stays locked until the house says otherwise.
+        </p>
+        <p className="mt-2 font-body text-xs text-ink-dim">
+          If you think this is a mistake, reach the house through the project's support channel.
+        </p>
+        <div className="mt-6 flex flex-col gap-2">
+          <Button variant="outline" onClick={onSignOut}>
+            SIGN OUT
+          </Button>
+          <Link href="/how-to-play" className="font-body text-xs text-ink-dim underline hover:text-brass">
+            or re-read the house rules
+          </Link>
+        </div>
+      </Panel>
     </div>
   );
 }
