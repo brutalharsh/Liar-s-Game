@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "motion/react";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { RULE_SECTIONS, DECK_TABLE } from "@/lib/mock/rules-content";
@@ -18,7 +19,7 @@ const LOOP = [
 /**
  * The numbered game-loop diagram (pure CSS + props-driven highlight — no
  * images). The spotlight cycles 1→6 forever; reduced motion parks it on
- * step 1 with every step lit.
+ * step 1, static.
  */
 function LoopDiagram() {
   const reduced = usePrefersReducedMotion();
@@ -35,12 +36,12 @@ function LoopDiagram() {
       <p className="mb-3 text-center font-body text-xs uppercase tracking-[0.3em] text-lamp">
         the round loop
       </p>
-      <ol className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:items-center">
+      <ol className="flex flex-col items-stretch justify-center gap-3 md:grid md:grid-cols-3 md:items-center xl:flex xl:flex-row">
         {LOOP.map((step, i) => {
           const lit = reduced ? i === 0 : i === active;
           return (
-            <li key={step.label} className="flex flex-col items-stretch md:flex-1 md:flex-row md:items-center">
-              <div className="flex items-center gap-3 md:flex-col md:gap-1">
+            <li key={step.label} className="flex flex-col items-stretch xl:flex-1 xl:flex-row xl:items-center">
+              <div className="flex items-center gap-3 xl:flex-col xl:gap-1">
                 <motion.span
                   animate={{ scale: lit ? 1.06 : 1 }}
                   transition={{ duration: reduced ? 0 : 0.3 }}
@@ -54,21 +55,21 @@ function LoopDiagram() {
                     {step.icon}
                   </span>
                 </motion.span>
-                <div className="md:text-center">
+                <div className="xl:text-center">
                   <p className={`font-display text-sm tracking-wide ${lit ? "text-brass" : "text-ivory"}`}>
                     {i + 1}. {step.label}
                   </p>
-                  <p className="font-body text-[10px] text-ink-dim">{step.detail}</p>
+                  <p className="font-body text-[11px] leading-tight text-ink-dim">{step.detail}</p>
                 </div>
               </div>
-              <span aria-hidden className="hidden rotate-90 text-brass md:ml-auto md:mt-1 md:rotate-0 md:justify-end">
-                {i === LOOP.length - 1 ? "↺" : "↓"}
+              <span aria-hidden className="hidden text-brass xl:ml-auto xl:mt-2 xl:block">
+                {i === LOOP.length - 1 ? "↺" : "→"}
               </span>
             </li>
           );
         })}
       </ol>
-      <p className="mt-3 text-center font-body text-[11px] text-ink-dim">
+      <p className="mt-3 text-center font-body text-xs text-ink-dim">
         …and the wheel keeps spinning until one player is left standing.
       </p>
     </Panel>
@@ -122,9 +123,9 @@ export function HowToPlayView() {
           <table className="w-full text-left font-body text-sm">
             <thead>
               <tr className="text-xs uppercase tracking-widest text-lamp">
-                <th className="py-2 pr-4">Players</th>
-                <th className="py-2 pr-4">Liar's deck</th>
-                <th className="py-2">Note</th>
+                <th scope="col" className="py-2 pr-4">Players</th>
+                <th scope="col" className="py-2 pr-4">Liar's deck</th>
+                <th scope="col" className="py-2">Note</th>
               </tr>
             </thead>
             <tbody>
@@ -143,12 +144,12 @@ export function HowToPlayView() {
       <section className="text-center">
         <p className="font-body text-sm text-ink-dim">Got it? Prove it at the table.</p>
         <div className="mt-4 flex justify-center gap-3">
-          <a
+          <Link
             href="/create"
-            className="flex min-h-12 items-center rounded-btn border-2 border-brass bg-brass px-6 font-display text-wood-deep"
+            className="inline-flex min-h-16 touch-manipulation items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-8 font-display text-lg tracking-wide text-wood-deep hover:brightness-110 active:brightness-95"
           >
             CREATE A TABLE
-          </a>
+          </Link>
         </div>
       </section>
     </div>

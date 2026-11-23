@@ -355,6 +355,17 @@ matching) lands with A3's live-smoke.mjs ownership once A3 reports.
   targets, shimmer skeletons, dev-speak → human copy; ?next sanitized,
   keyboard-only journeys verified. Verdict: SHIP.
 
+- **U1** ✅ landing + how-to-play: prod-build Lighthouse mobile 89 / desktop
+  98 (a11y 100 both; per the code-only policy this pre-directive measurement
+  stands as the perf baseline). Fixes: hero CTA nested a/button killed →
+  single Link (axe nested-interactive gone), 16→48px tertiary links, room
+  skeletons matched to content height (CLS), nonexistent `.panel` class →
+  `<Panel>`, hero fade → y-rise (SSR paints content; LCP no longer JS-gated),
+  how-to loop responsive grid (3×2 ≥md), revived law arrows, next/link CTA,
+  scope=col semantics. Flags: SiteHeader auth cluster 48→52px CLS (fixed-
+  height slot), + the shared SiteFooter/MobileTabBar items, inline
+  text-shadow → token (globals owner), 340ms framer unused-JS on landing
+  (architecture pass).
 - **U11** ✅ profile + leaderboard: XP bar math measured exactly coherent,
   ?metric/?page survive reloads preserving ?apimode/?mock, 0 console errors,
   keyboard trace logical, Lighthouse a11y 100 (perf 72m/89d = dev-mode
