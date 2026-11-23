@@ -15,6 +15,7 @@ import {
   type ShotState,
   avatarSpecFromWire,
   type GamePhase,
+  themeFromWire,
 } from "@/lib/wire";
 import { socket } from "@/lib/socket";
 import { playSfx } from "@/lib/sfx";
@@ -183,7 +184,10 @@ function lobbyFromRoomState(room: RoomState): LobbySnapshot {
   return {
     code: room.roomCode,
     name: room.name,
-    theme: room.theme as LobbySnapshot["theme"],
+    // wire slug ('house-table') → UI catalog id ('house') — the store only
+    // ever holds catalog ids, so every consumer (data-theme CSS attr,
+    // themeMeta lookups) speaks one slug
+    theme: themeFromWire(room.theme),
     capacity: room.capacity,
     visibility: room.visibility,
     hostSeat: room.hostSeat,
@@ -221,6 +225,7 @@ export function computeForcedCall(seats: SeatView[], pile: PlayedStack[]): boole
 export function createGameStore(
   emitter: (action: ClientAction) => Promise<EmitResult> = (action) => socket.emit(action),
 ) {
+  let emoteInFlight: Promise<EmitResult> | null = null; // collapses rapid taps into one emote:send
   return create<GameStore>()((set, get) => ({
     ...initialState,
 
@@ -231,17 +236,18 @@ export function createGameStore(
 
     applyEvent: (ev) => {
       const seq = (ev.payload as { seq: number }).seq;
-
-      // Monotonic seq guard (STR/07 §4): a skipped seq means lost events.
-      // S1 seam: the bridge re-emits `room:join` and the server answers with
-      // a fresh `lobby:state` snapshot (recovery is 1 event, not N replays).
       const seqBefore = get().lastSeq;
-      if (seqBefore !== -1 && seq > seqBefore + 1) {
-        set({ needsSnapshot: true });
-      }
 
       if (ev.event === "lobby:state") {
         const room = ev.payload;
+        // Stale same-room snapshot (double-join race / socket.io recovery
+        // replay): NEVER let an older echo rewind a newer view or clear a
+        // fresher gap flag. A snapshot for a DIFFERENT room is always
+        // authoritative (join/leave flows reset the store, so seq numbers
+        // from two rooms never legitimately compare).
+        if (seqBefore !== -1 && room.roomCode === get().lobby?.code && room.seq < seqBefore) {
+          return;
+        }
         const prev = get();
         const lobby = lobbyFromRoomState(room);
         set({
@@ -262,6 +268,19 @@ export function createGameStore(
           forcedCall: computeForcedCall(lobby.seats, prev.pile),
         });
         return;
+      }
+
+      // Duplicate/stale delta (seq already applied — a replayed packet after a
+      // resync): drop it. Without this, a replay REWINDS lastSeq and every
+      // later in-order event looks like a gap → rejoin storm.
+      if (seqBefore !== -1 && seq <= seqBefore) return;
+
+      // Monotonic seq guard (STR/07 §4): a skipped seq means lost events.
+      // S1 seam: the bridge re-emits `room:join` and the server answers with
+      // a fresh `lobby:state` snapshot (recovery is 1 event, not N replays).
+      // This event still applies best-effort; the snapshot overwrites.
+      if (seq > seqBefore + 1) {
+        set({ needsSnapshot: true });
       }
 
       set({ lastSeq: seq });
@@ -401,6 +420,10 @@ export function createGameStore(
             phase: "reveal",
             window: null,
             forcedCall: false,
+            // the resolution settles any pending turn — stop the countdown
+            // ring from lingering through the cinematic
+            turnSeat: null,
+            deadlineTs: null,
             reveal: {
               seat: accused,
               cards: ev.payload.cards.map((c) => ({ id: c.id, rank: c.rank })),
@@ -492,6 +515,9 @@ export function createGameStore(
             },
             window: null,
             forcedCall: false,
+            // the ceremony owns the screen — no turn/timer state survives it
+            turnSeat: null,
+            deadlineTs: null,
             feed: pushFeed(
               prev.feed,
               ev.payload.winnerSeat === null
@@ -511,7 +537,9 @@ export function createGameStore(
           set({
             lobby: {
               ...lobby,
-              seats: lobby.seats.map((seat) => ({ ...seat, connected: bySeat.get(seat.seat)?.connected ?? true })),
+              // a seat the payload omits keeps its previous flag — never
+              // default it to connected (presence is server-authoritative)
+              seats: lobby.seats.map((seat) => ({ ...seat, connected: bySeat.get(seat.seat)?.connected ?? seat.connected })),
             },
           });
           return;
@@ -555,18 +583,46 @@ export function createGameStore(
     clearSelection: () => set({ selectedCardIds: [] }),
 
     sendThrow: async () => {
-      const { selectedCardIds, pendingThrow } = get();
+      const { selectedCardIds, pendingThrow, phase } = get();
+      // advisory guard: the server is the authority, but a dance after the
+      // ceremony is locally dead too (round:new is the only re-arm)
+      if (phase === "game-over") return { ok: false, errorCode: "EVENT_STALE", errorMessage: "The match is already over." };
       if (pendingThrow || selectedCardIds.length === 0) return { ok: false, errorMessage: "Nothing selected." };
       const cardIds = [...selectedCardIds];
       set({ pendingThrow: true, pendingThrowIds: cardIds });
-      return emitter({ type: "play:cards", cardIds });
+      const res = await emitter({ type: "play:cards", cardIds });
+      if (!res.ok) {
+        // the play never landed (rejection / ack timeout) — free the SAME-TURN
+        // retry instead of freezing the hand until the next turn:begin
+        set({ pendingThrow: false, pendingThrowIds: null });
+      }
+      return res;
     },
 
-    sendCheck: (accusedSeat) => emitter({ type: "liar:call", accusedSeat }),
+    sendCheck: (accusedSeat) => {
+      if (get().phase === "game-over") {
+        return Promise.resolve({ ok: false, errorCode: "EVENT_STALE", errorMessage: "The match is already over." });
+      }
+      return emitter({ type: "liar:call", accusedSeat });
+    },
 
     sendEmote: (emoteId) => {
-      set({ lastEmoteSentAt: Date.now() });
-      return emitter({ type: "emote:send", emoteId });
+      // Cooldown is advisory client-side (the server re-arms it anyway); it's
+      // stamped only on the server's ACCEPT so a rejected emote doesn't burn
+      // it. In-flight taps collapse into one emit.
+      if (emoteInFlight) return emoteInFlight;
+      emoteInFlight = emitter({ type: "emote:send", emoteId }).then(
+        (res) => {
+          emoteInFlight = null;
+          if (res.ok) get().noteEmoteSent();
+          return res;
+        },
+        (err: unknown) => {
+          emoteInFlight = null;
+          throw err;
+        },
+      );
+      return emoteInFlight;
     },
 
     startGame: () => emitter({ type: "game:start" }),

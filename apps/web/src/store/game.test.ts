@@ -372,6 +372,7 @@ describe("applyEvent — round:end / game:over resets", () => {
     const f = fresh();
     f.store.getState().applyEvent(lobbyState());
     f.send("window:open", { playSeat: 2, closesAtTs: Date.now() + 12_000 });
+    f.send("turn:begin", { seat: 1, deadlineTs: Date.now() + 10_000 });
     f.send("game:over", {
       winnerSeat: 0,
       matchRecord: matchRecord(),
@@ -383,6 +384,8 @@ describe("applyEvent — round:end / game:over resets", () => {
     expect(s.gameOver?.matchRecord.players).toHaveLength(5);
     expect(s.gameOver?.rewards[0]?.coins).toBe(6);
     expect(s.window).toBeNull();
+    expect(s.turnSeat).toBeNull(); // stale-action guard: no turn survives the ceremony
+    expect(s.deadlineTs).toBeNull();
 
     // rematch: the first round:new clears the game-over surfaces
     f.send("round:new", { roundNo: 1, tableCard: "K", dealtCounts: [] });
@@ -390,14 +393,51 @@ describe("applyEvent — round:end / game:over resets", () => {
     expect(s.gameOver).toBeNull();
     expect(s.phase).toBe("round-new");
   });
+
+  it("in-round actions after game:over are locally rejected", async () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    f.send("game:over", {
+      winnerSeat: 0,
+      matchRecord: matchRecord(),
+      rewards: [],
+    });
+    f.store.getState().toggleCardSelection("c0");
+    const throwRes = await f.store.getState().sendThrow();
+    expect(throwRes.ok).toBe(false);
+    const checkRes = await f.store.getState().sendCheck(2);
+    expect(checkRes.ok).toBe(false);
+    expect(f.sent).toEqual([]); // nothing even reaches the wire (server stays authority anyway)
+  });
+
+  it("a rejected play frees the same-turn retry (pendingThrow never sticks)", async () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    f.store.getState().toggleCardSelection("c0");
+    f.emitterResults.push({ ok: false, errorCode: "EVENT_STALE", errorMessage: "Too slow." });
+    const first = await f.store.getState().sendThrow();
+    expect(first.ok).toBe(false);
+    expect(f.store.getState().pendingThrow).toBe(false); // unstuck
+    expect(f.store.getState().selectedCardIds).toEqual(["c0"]); // selection survives for the retry
+
+    const second = await f.store.getState().sendThrow();
+    expect(second.ok).toBe(true);
+    expect(f.sent).toHaveLength(2);
+    expect(f.store.getState().pendingThrow).toBe(true); // staged until play:accept
+  });
 });
 
 describe("applyEvent — presence / emotes / errors", () => {
   it("presence:update flips connection badges", () => {
     const f = fresh();
     f.store.getState().applyEvent(lobbyState());
-    f.send("presence:update", { seats: [{ seat: 2, connected: false, afk: true }] });
+    f.send("presence:update", { seats: [{ seat: 2, connected: false, afk: true }, { seat: 3, connected: false, afk: false }] });
     expect(at(f, 2)?.connected).toBe(false);
+
+    // a seat the payload omits keeps its PREVIOUS flag — never forced "connected"
+    f.send("presence:update", { seats: [{ seat: 2, connected: true, afk: false }] });
+    expect(at(f, 3)?.connected).toBe(false);
+    expect(at(f, 2)?.connected).toBe(true);
   });
 
   it("emote:broadcast lands the bubble for the seat", () => {
@@ -412,15 +452,52 @@ describe("applyEvent — presence / emotes / errors", () => {
   it("error events surface the user-safe message in the feed", () => {
     const f = fresh();
     f.store.getState().applyEvent(lobbyState());
-    f.send("error", { code: "EVENT_STALE", message: "Too slow — first call wins.", eventRef: "liar:call" });
+    const phaseBefore = f.store.getState().phase;
+    expect(() =>
+      f.send("error", { code: "EVENT_STALE", message: "Too slow — first call wins.", eventRef: "liar:call" }),
+    ).not.toThrow();
     const feed = f.store.getState().feed;
     expect(feed[feed.length - 1]?.text).toContain("Too slow");
+    expect(f.store.getState().phase).toBe(phaseBefore); // surfaced, never thrown
+    expect(f.store.getState().needsSnapshot).toBe(false);
   });
 
   it("sendEmote routes through the emitter seam", async () => {
     const f = fresh();
     await f.store.getState().sendEmote("snake");
     expect(f.sent).toEqual([{ type: "emote:send", emoteId: "snake" }]);
+  });
+
+  it("emote cooldown stamps only on the server's accept (a reject never burns it)", async () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    f.emitterResults.push({ ok: false, errorCode: "RATE_LIMITED", errorMessage: "Emotes cool down for 3 seconds." });
+    const rejected = await f.store.getState().sendEmote("snake");
+    expect(rejected.ok).toBe(false);
+    expect(f.store.getState().lastEmoteSentAt).toBe(0); // unchanged — retry is free
+
+    const accepted = await f.store.getState().sendEmote("laugh");
+    expect(accepted.ok).toBe(true);
+    expect(f.store.getState().lastEmoteSentAt).toBeGreaterThan(0);
+  });
+
+  it("rapid emote taps collapse into one emote:send while the first is in flight", async () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    const [a, b] = await Promise.all([f.store.getState().sendEmote("laugh"), f.store.getState().sendEmote("clap")]);
+    expect(a.ok && b.ok).toBe(true);
+    expect(f.sent).toHaveLength(1); // deduped — the second tap reuses the same emit
+  });
+
+  it("reveal:show retires the pending turn (no countdown lingers through the cinematic)", () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    f.send("turn:begin", { seat: 0, deadlineTs: Date.now() + 20_000 }); // own-turn direct call path
+    f.send("reveal:show", { cards: [{ id: "r1", rank: "Q" }], verdict: "TRUTH", loserSeat: 0 });
+    const s = f.store.getState();
+    expect(s.phase).toBe("reveal");
+    expect(s.turnSeat).toBeNull();
+    expect(s.deadlineTs).toBeNull();
   });
 });
 
@@ -448,6 +525,98 @@ describe("seq — monotonic room counter (STR/07 §4)", () => {
     f.send("play:accept", { seat: 1, count: 1, totalPile: 1 });
     f.send("play:accept", { seat: 2, count: 1, totalPile: 2 });
     expect(f.store.getState().needsSnapshot).toBe(false);
+  });
+
+  it("drops a replayed/duplicate delta without rewinding lastSeq (no rejoin storm)", () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState()); // lastSeq 0
+    f.send("play:accept", { seat: 1, count: 1, totalPile: 1 }); // seq 1
+    f.send("play:accept", { seat: 2, count: 2, totalPile: 3 }); // seq 2
+
+    // socket.io recovery replays seq 2 AFTER we already applied it
+    const replay = ev("play:accept", 2, { seat: 2, count: 2, totalPile: 3 });
+    f.store.getState().applyEvent(replay);
+    const s = f.store.getState();
+    expect(s.lastSeq).toBe(2); // never rewound
+    expect(s.needsSnapshot).toBe(false);
+
+    // the next in-order event must NOT look like a gap (the old rewind made
+    // every later event a "gap" → thundering rejoin)
+    f.send("play:accept", { seat: 3, count: 1, totalPile: 4 }); // seq 3
+    expect(f.store.getState().needsSnapshot).toBe(false);
+    expect(f.store.getState().pile.at(-1)?.seat).toBe(3);
+  });
+
+  it("drops a stale same-room snapshot (double-join race / recovery echo)", () => {
+    const f = fresh();
+    const snapNew = lobbyState();
+    (snapNew.payload as unknown as { seq: number }).seq = 6;
+    f.store.getState().applyEvent(snapNew);
+    expect(f.store.getState().roundNo).toBe(2);
+
+    // an older echo for the SAME room arrives last — it must not rewind the world
+    const snapStale = lobbyState();
+    (snapStale.payload as unknown as { seq: number }).seq = 3;
+    (snapStale.payload as unknown as { roundNo: number }).roundNo = 1;
+    f.store.getState().applyEvent(snapStale);
+    const s = f.store.getState();
+    expect(s.lastSeq).toBe(6);
+    expect(s.roundNo).toBe(2);
+  });
+
+  it("applies a DIFFERENT room's snapshot even with a lower seq (room switch)", () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    f.send("play:accept", { seat: 1, count: 1, totalPile: 1 });
+    f.send("play:accept", { seat: 2, count: 2, totalPile: 3 }); // lastSeq 2
+
+    const roomB = lobbyState();
+    Object.assign(roomB.payload, { seq: 1, roomCode: "TESTB", theme: "house-table" });
+    f.store.getState().applyEvent(roomB);
+    const s = f.store.getState();
+    expect(s.lobby?.code).toBe("TESTB");
+    expect(s.lobby?.theme).toBe("house"); // wire slug → UI catalog id
+    expect(s.lastSeq).toBe(1);
+    expect(s.needsSnapshot).toBe(false);
+  });
+
+  it("reconnect: same-code rejoin → catch-up snapshot restores the mid-match scene", () => {
+    const f = fresh();
+    const lobby = lobbyState();
+    Object.assign(lobby.payload, { seq: 0, theme: "house-table" });
+    f.store.getState().applyEvent(lobby);
+    f.send("play:accept", { seat: 1, count: 1, totalPile: 1 }); // seq 1
+    f.send("round:new", { roundNo: 3, tableCard: "A", dealtCounts: [{ seat: 1, count: 4 }] }); // seq 2
+
+    // scissors-cut: events 3–4 lost; event 5 lands → gap flagged, best-effort applied
+    const late = ev("hand:deal", 5, { cards: [{ id: "x1", rank: "A" }, { id: "x2", rank: "K" }] });
+    f.store.getState().applyEvent(late);
+    expect(f.store.getState().needsSnapshot).toBe(true);
+    expect(f.store.getState().hand.map((c) => c.id)).toEqual(["x1", "x2"]);
+
+    // the bridge's rejoin answers with an authoritative mid-match snapshot:
+    // seat restored, hand restored, seq resynced, flag cleared
+    const catchUp = lobbyState();
+    Object.assign(catchUp.payload, { seq: 5, theme: "house-table" });
+    f.store.getState().applyEvent(catchUp);
+    const s = f.store.getState();
+    expect(s.needsSnapshot).toBe(false);
+    expect(s.lastSeq).toBe(5);
+    expect(s.phase).toBe("turn");
+    expect(s.hand.map((c) => c.id)).toEqual(["c0", "c1", "c2", "c3"]);
+    expect(s.lobby?.theme).toBe("house");
+  });
+
+  it("an unknown (future) server event is safely ignored, seq still advances", () => {
+    const f = fresh();
+    f.store.getState().applyEvent(lobbyState());
+    const before = f.store.getState();
+    const future = { event: "future:event", payload: { seq: 1 } } as unknown as ServerEvent;
+    expect(() => f.store.getState().applyEvent(future)).not.toThrow();
+    const after = f.store.getState();
+    expect(after.lastSeq).toBe(1);
+    expect(after.phase).toBe(before.phase); // nothing else touched
+    expect(after.needsSnapshot).toBe(false);
   });
 });
 

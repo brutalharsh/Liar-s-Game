@@ -13,6 +13,18 @@
  *     that speaks the exact same event contract. Selectable via `?demo=1`
  *     (or by default until S1 lands); `?live=1` or NEXT_PUBLIC_TRANSPORT=live
  *     selects the real server together with NEXT_PUBLIC_SOCKET_URL.
+ *
+ *   MID-MATCH DROPS — intended behavior (STR/03 §3 / STR/07 §4):
+ *   socket.io itself auto-reconnects the transport; the STORE then rejoins.
+ *   The room code is the seat authority (no reconnect token on the wire),
+ *   so a restored transport is not enough — GameBridge listens to
+ *   `onStatus` and on "reconnected" re-emits `room:join` (idempotent
+ *   server-side; the answer is ONE catch-up `lobby:state` whose seq
+ *   supersedes every event missed during the drop — we never replay
+ *   deltas). The same rejoin runs when the store flags a seq gap.
+ *   A failed FIRST connect never poisons the adapter: `connect()` clears
+ *   its memo so a later call dials fresh. The mock never drops, so it
+ *   simply never signals.
  * ============================================================================
  */
 
@@ -27,15 +39,26 @@ import {
   type ServerEventName,
   flattenAck,
   serverEventSchemas,
+  themeToWire,
 } from "@/lib/wire";
 import { MockRoom } from "@/lib/mock/demo-room";
 
 export type TransportMode = "mock" | "live";
 
+/**
+ * Transport lifecycle (live adapter only; the mock never fires).
+ *   · "connected"  — first transport-level connection (the connect() promise also resolves)
+ *   · "reconnected" — socket.io restored the transport after a mid-match drop
+ *   · "dropped"     — transport lost; socket.io will keep retrying on its own
+ */
+export type SocketStatus = "connected" | "reconnected" | "dropped";
+
 export interface SocketAdapter {
   readonly mode: TransportMode;
   connect(handshake: Handshake): Promise<void>;
   on(handler: (ev: ServerEvent) => void): () => void;
+  /** Subscribe to transport lifecycle changes. Unsubscribe = returned fn. */
+  onStatus(handler: (status: SocketStatus) => void): () => void;
   emit(action: ClientAction): Promise<EmitResult>;
   disconnect(): void;
 }
@@ -44,28 +67,53 @@ const ACK_TIMEOUT_MS = 10_000;
 
 // ── live transport (socket.io-client) ──────────────────────────────────────
 
-class LiveSocketAdapter implements SocketAdapter {
+/** Live adapter (exported for unit tests — the app only uses the `socket` singleton). */
+export class LiveSocketAdapter implements SocketAdapter {
   readonly mode = "live" as const;
   private socket: Socket | null = null;
   private connectPromise: Promise<void> | null = null;
+  private everConnected = false;
+  private statusHandlers = new Set<(status: SocketStatus) => void>();
+
+  /** Injectable client factory so the reconnect contract is unit-testable. */
+  constructor(
+    private makeClient: (url: string, opts: { withCredentials: boolean; auth: Record<string, unknown> }) => Socket = (url, opts) => io(url, opts),
+  ) {}
 
   private url(): string {
     return process.env.NEXT_PUBLIC_SOCKET_URL ?? ""; // "" = same origin (Caddy path per STR/06 §5)
   }
 
+  private emitStatus(status: SocketStatus): void {
+    for (const handler of this.statusHandlers) handler(status);
+  }
+
   connect(handshake: Handshake): Promise<void> {
     if (this.connectPromise) return this.connectPromise;
+    this.everConnected = false;
     this.connectPromise = new Promise<void>((resolve, reject) => {
       // Auth per STR/07 §0: the Socket.IO handshake carries the `lg_session`
       // cookie implicitly — withCredentials sends it. `auth` carries the
       // sessionIndependent identity (reconnect token etc.).
-      const socket = io(this.url(), {
+      const socket = this.makeClient(this.url(), {
         withCredentials: true,
         auth: handshake as Record<string, unknown>,
       });
       this.socket = socket;
-      socket.once("connect", () => resolve());
-      socket.once("connect_error", (err: Error) => reject(err));
+      socket.on("connect", () => {
+        if (this.everConnected) this.emitStatus("reconnected");
+        else {
+          this.everConnected = true;
+          this.emitStatus("connected");
+          resolve();
+        }
+      });
+      socket.on("disconnect", () => this.emitStatus("dropped"));
+      socket.once("connect_error", (err: Error) => {
+        if (this.everConnected) return; // a failed reconnect retry — socket.io keeps trying
+        this.teardown(); // a dead first connect must not poison the adapter: allow a fresh dial
+        reject(err);
+      });
     });
     return this.connectPromise;
   }
@@ -92,6 +140,13 @@ class LiveSocketAdapter implements SocketAdapter {
     };
   }
 
+  onStatus(handler: (status: SocketStatus) => void): () => void {
+    this.statusHandlers.add(handler);
+    return () => {
+      this.statusHandlers.delete(handler);
+    };
+  }
+
   async emit(action: ClientAction): Promise<EmitResult> {
     const socket = this.socket;
     if (!socket) return { ok: false, errorCode: "NO_CONNECTION", errorMessage: "Not connected yet." };
@@ -109,19 +164,36 @@ class LiveSocketAdapter implements SocketAdapter {
     });
   }
 
-  disconnect(): void {
+  private teardown(): void {
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
     this.connectPromise = null;
   }
+
+  disconnect(): void {
+    this.teardown();
+  }
 }
 
 /** App action union → shared `{ event, payload }` wire event. */
-function toWireAction(action: ClientAction): { event: keyof typeof clientEventSchemas; payload: Record<string, unknown> } {
+export function toWireAction(action: ClientAction): {
+  event: keyof typeof clientEventSchemas;
+  payload: Record<string, unknown>;
+} {
   switch (action.type) {
     case "room:create":
-      return { event: "room:create", payload: { name: action.name, capacity: action.capacity, theme: action.theme, visibility: action.visibility } };
+      // theme: catalog id → validated wire slug ('house' rides out as
+      // 'house-table'); already-slugified values pass through (idempotent)
+      return {
+        event: "room:create",
+        payload: {
+          name: action.name,
+          capacity: action.capacity,
+          theme: themeToWire(action.theme),
+          visibility: action.visibility,
+        },
+      };
     case "room:join":
       return { event: "room:join", payload: { code: action.code } };
     case "room:leave":
@@ -173,6 +245,11 @@ class MockSocketAdapter implements SocketAdapter {
     };
   }
 
+  /** The scripted room never drops the transport — no status ever fires. */
+  onStatus(): () => void {
+    return () => undefined;
+  }
+
   async emit(action: ClientAction): Promise<EmitResult> {
     const { event, payload } = toWireAction(action);
     const parsed = clientEventSchemas[event].safeParse(payload);
@@ -193,6 +270,17 @@ class MockSocketAdapter implements SocketAdapter {
 
 // ── selection ──────────────────────────────────────────────────────────────
 
+/**
+ * Which adapter the app runs on:
+ *   · SSR/prerender and `NODE_ENV=test` → always mock (never dials out)
+ *   · `?demo` in the URL → mock (deterministic scripted room)
+ *   · `?live` or `NEXT_PUBLIC_TRANSPORT=live` → live (with NEXT_PUBLIC_SOCKET_URL;
+ *     "" = same origin via the Caddy path per STR/06 §5)
+ *   · otherwise → mock (the default until the deploy wave)
+ * The adapter is a module singleton: within a session the transport is fixed
+ * (a full reload re-resolves it). GameBridge reacts to transport state purely
+ * through `onStatus`, so both adapters share one recovery path.
+ */
 function resolveTransport(): TransportMode {
   if (typeof window === "undefined") return "mock"; // SSR/prerender — never dials out
   if (process.env.NODE_ENV === "test") return "mock";

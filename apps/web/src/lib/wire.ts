@@ -97,6 +97,36 @@ export type ThemeId =
   | "orbital"
   | "kabuki";
 
+/**
+ * THEME-SLUG NORMALIZATION — the single wire↔store seam (STR/10 "theme slug
+ * normalize at the store level"). The server validates free themes as wire
+ * slugs ('house-table'); the UI catalog (lib/mock/themes) calls that theme
+ * 'house'. Contract: the WIRE only ever sees slugs (room:create emissions are
+ * mapped by `toWireAction`), and the STORE only ever holds catalog ids
+ * (`lobbyFromRoomState` maps incoming `lobby:state` — so e.g. the
+ * `data-theme` CSS attribute GameBridge sets always matches the token file).
+ * Both directions are idempotent: an already-translated value passes through
+ * untouched, which keeps the mock (it echoes whatever it is given) and the
+ * component seam in components/rooms/theme-slug.ts working unchanged.
+ */
+const WIRE_THEME_BY_ID: Partial<Record<ThemeId, string>> = {
+  house: "house-table",
+};
+
+const ID_BY_WIRE_THEME: Record<string, ThemeId> = {
+  "house-table": "house",
+};
+
+/** UI catalog id (or an already-slugified value) → wire slug used on emission. */
+export function themeToWire(id: ThemeId): string {
+  return WIRE_THEME_BY_ID[id] ?? id;
+}
+
+/** Wire slug (or a catalog id the server never renamed) → the UI catalog id. */
+export function themeFromWire(slug: string): ThemeId {
+  return ID_BY_WIRE_THEME[slug] ?? (slug as ThemeId);
+}
+
 // ── app-side seat/lobby view-models (derived in the store from shared payloads) ──
 
 /** Public seat view — everything here is visible to the whole room (STR/07 §3). */
@@ -117,6 +147,7 @@ export interface SeatView {
 export interface LobbySnapshot {
   code: string;
   name: string;
+  /** UI catalog ThemeId — normalized from the wire slug at the store boundary (themeFromWire). */
   theme: ThemeId;
   capacity: number;
   visibility: Visibility;
