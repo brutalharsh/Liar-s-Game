@@ -14,8 +14,7 @@ function handOf(s: GameState, seat: number): string[] {
 
 function shotOf(effects: Effect[]) {
   return effects.find((e) => e.kind === 'SHOT_RESULT') as
-    | Extract<Effect, { kind: 'SHOT_RESULT' }>
-    | undefined;
+    Extract<Effect, { kind: 'SHOT_RESULT' }> | undefined;
 }
 
 /**
@@ -27,7 +26,11 @@ function driveLadder(k: number) {
   const L = turnSeat(s);
   s = withBullets(s, { [L]: k, [(L + 1) % 3]: 6, [(L + 2) % 3]: 6 });
   let t = T0 + 5;
-  const outcomes: { pullNo: number; outcome: 'BLANK' | 'LIVE'; badge: ReturnType<typeof chamberBadge> }[] = [];
+  const outcomes: {
+    pullNo: number;
+    outcome: 'BLANK' | 'LIVE';
+    badge: ReturnType<typeof chamberBadge>;
+  }[] = [];
   for (let pull = 1; pull <= k; pull++) {
     // R4: the bullet stays in the SAME chamber for the whole match — never re-rolled:
     expect(s.players.find((p) => p.seat === L)!.bulletPos).toBe(k);
@@ -154,8 +157,7 @@ describe('Shot assignment (A1 — owner amendment)', () => {
       s = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 3), at: T0 + 5 }).s;
       const r = ok(s, { type: 'LIAR', seat: B, at: T0 + 6 });
       const assigned = r.effects.find((e) => e.kind === 'SHOT_ASSIGNED') as
-        | Extract<Effect, { kind: 'SHOT_ASSIGNED' }>
-        | undefined;
+        Extract<Effect, { kind: 'SHOT_ASSIGNED' }> | undefined;
       expect(assigned!.loserSeat).toBe(A); // target locked to the loser
       kinds.add(assigned!.shotKind);
       const next = ok(r.s, { type: 'REVEAL_ACK', at: T0 + 7 });
@@ -196,8 +198,7 @@ describe('Shot assignment (A1 — owner amendment)', () => {
       const r = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 2), at: T0 + 7 }); // empties with lies
       expect(r.s.round!.resolution?.forced).toBe(true);
       const assigned = r.effects.find((e) => e.kind === 'SHOT_ASSIGNED') as
-        | Extract<Effect, { kind: 'SHOT_ASSIGNED' }>
-        | undefined;
+        Extract<Effect, { kind: 'SHOT_ASSIGNED' }> | undefined;
       expect(assigned!.loserSeat).toBe(A);
       kinds.add(assigned!.shotKind);
     }

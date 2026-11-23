@@ -30,4 +30,10 @@ export {
   startRound,
 } from './round';
 export { replay, stripRuntime, type ReplayOptions, type ReplayResult } from './replay';
-export { chamberBadge, toPublicSnapshot, type ChamberBadge, type PublicPlayerView, type PublicSnapshot } from './serialize';
+export {
+  chamberBadge,
+  toPublicSnapshot,
+  type ChamberBadge,
+  type PublicPlayerView,
+  type PublicSnapshot,
+} from './serialize';

@@ -93,7 +93,7 @@
 ## Open items (owner, no rush)
 
 - **Payments registration — the ONE blocker for going live**: give the
-  `td_setup_…` key OR create the project on the provider dashboard (private
+  owner setup key OR create the project on the provider dashboard (private
   `docs/payments-api.md`) →
   paste `PAYMENT_API_KEY` + `PROJECT_ID` into `.env.local` AND `.env.production` →
   flip `PAYMENTS_PROVIDER=proxy`. Everything else is already built.
@@ -118,17 +118,13 @@
   sitewide bucket); consider a dedicated ADMIN_SECRET separate from
   AUTH_SECRET; add a per-IP socket connection cap (STR/08 §8) or accept CDN
   absorption; confirm CSP is enforced at the edge (Caddy).
-- **Post-fleet fix list (A6 + A1 audits)**: scrub the `td_setup_` key-prefix hint
-  from STR (A6); admin-query safeParse → VALIDATION not INTERNAL (A6);
-  **PRUNE the dead HandshakeSchema** from shared events.ts — A1 confirmed
-  server auth is cookie-only and STR/07 §0 now documents no-reconnectToken
-  (A1/A6 agree: prune, don't wire); **emote id mismatch** — web
-  lib/mock/emotes.ts ids ≠ server EMOTE_CATALOG (rooms.ts:62–73) → live
-  emotes VALIDATION-reject (A1 ③, real user-facing bug; coordinate EmoteWheel
-  which U6 audits); **catalog tier union mismatch** — web api.ts
-  `common|fine|rare|cursed` vs server `common|rare|epic` (A1 ④); theme
-  `house` vs `house-table` (A7 owns that normalize mid-flight). ① (undeclared
-  cors phantom-dep) fixed immediately.
+- **Post-fleet fix list (A6 + A1 audits)** — ALL RESOLVED (fix waves FW-1/FW-2 +
+  orchestrator): td_setup key-prefix scrub → generic "owner setup key"
+  phrasing ✓ · admin-query safeParse → 400 VALIDATION ✓ · dead
+  HandshakeSchema pruned (cookie-only auth per STR/07 §0) ✓ · emote id
+  mismatch → shared EMOTE_IDS enum, both trees derive ✓ · catalog tier
+  union aligned (common|rare|epic) ✓ · cors phantom-dep declared ✓ ·
+  theme house/house-table normalized at the wire boundary (A7) ✓
 - **More queued (fleet A)**: A8 billing read-only flags — checkout crash
   between ledger append and grantedAt never converges (dup path could set);
   pack coins read at verify vs price frozen at checkout (admin edits in the

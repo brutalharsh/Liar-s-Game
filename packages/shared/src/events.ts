@@ -123,9 +123,9 @@ export const RoundNewPayloadSchema = z.strictObject({
   roundNo: z.number().int().min(1),
   tableCard: TableCardSchema,
   /** Cards dealt per seat this round, as seat/count pairs (public by nature). */
-  dealtCounts: z.array(
-    z.strictObject({ seat: SeatSchema, count: z.number().int().min(0).max(5) }),
-  ).max(10),
+  dealtCounts: z
+    .array(z.strictObject({ seat: SeatSchema, count: z.number().int().min(0).max(5) }))
+    .max(10),
 });
 export type RoundNewPayload = z.infer<typeof RoundNewPayloadSchema>;
 
@@ -228,9 +228,9 @@ export type GameOverPayload = z.infer<typeof GameOverPayloadSchema>;
 
 export const PresenceUpdatePayloadSchema = z.strictObject({
   seq: SeqSchema,
-  seats: z.array(
-    z.strictObject({ seat: SeatSchema, connected: z.boolean(), afk: z.boolean() }),
-  ).max(10),
+  seats: z
+    .array(z.strictObject({ seat: SeatSchema, connected: z.boolean(), afk: z.boolean() }))
+    .max(10),
 });
 export type PresenceUpdatePayload = z.infer<typeof PresenceUpdatePayloadSchema>;
 
@@ -357,9 +357,7 @@ export function parseClientEvent<N extends ClientEventName>(
   name: N,
   payload: unknown,
 ): z.infer<(typeof clientEventSchemas)[N]> {
-  return clientEventSchemas[name].parse(payload) as z.infer<
-    (typeof clientEventSchemas)[N]
-  >;
+  return clientEventSchemas[name].parse(payload) as z.infer<(typeof clientEventSchemas)[N]>;
 }
 
 /** Parses a server→client payload (used by tests + the CI packet-recorder). */
@@ -367,7 +365,5 @@ export function parseServerEvent<N extends ServerEventName>(
   name: N,
   payload: unknown,
 ): z.infer<(typeof serverEventSchemas)[N]> {
-  return serverEventSchemas[name].parse(payload) as z.infer<
-    (typeof serverEventSchemas)[N]
-  >;
+  return serverEventSchemas[name].parse(payload) as z.infer<(typeof serverEventSchemas)[N]>;
 }

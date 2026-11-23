@@ -71,8 +71,10 @@ export function dealHands(
   seats: readonly number[],
 ): { hands: { seat: number; cards: Card[] }[]; leftover: Card[] } {
   const dealt = HAND_SIZE * seats.length;
-  if ( shuffled.length < dealt) {
-    throw new Error(`dealHands: deck of ${shuffled.length} cannot fund ${seats.length} × ${HAND_SIZE}`);
+  if (shuffled.length < dealt) {
+    throw new Error(
+      `dealHands: deck of ${shuffled.length} cannot fund ${seats.length} × ${HAND_SIZE}`,
+    );
   }
   const hands: { seat: number; cards: Card[] }[] = [];
   for (let i = 0; i < seats.length; i++) {

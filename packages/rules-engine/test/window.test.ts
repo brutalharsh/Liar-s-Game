@@ -24,7 +24,11 @@ describe('A2 open challenge window (5–10 players)', () => {
     const { s, effects, A, next } = afterFirstPlay();
     expect(s.phase).toBe('WINDOW');
     const opened = findEffect(effects, 'WINDOW_OPENED');
-    expect(opened).toMatchObject({ accusedSeat: A, armedAt: T0 + 5 + 2_000, closesAt: T0 + 5 + 10_000 });
+    expect(opened).toMatchObject({
+      accusedSeat: A,
+      armedAt: T0 + 5 + 2_000,
+      closesAt: T0 + 5 + 10_000,
+    });
     const turn = findEffect(effects, 'TURN_STARTED');
     expect(turn?.seat).toBe(next);
     expect(s.turn?.deadline).toBe(T0 + 5 + 15_000); // 7p → 15s turns
@@ -92,8 +96,16 @@ describe('A2 open challenge window (5–10 players)', () => {
 
   it('belief closes the window: the next holder plays → window shut (believed), fresh window on the new play', () => {
     const { s, A, next, at } = afterFirstPlay(17);
-    const r = ok(s, { type: 'PLAY', seat: next, cardIds: s.players[next].hand.map((c) => c.id).slice(0, 2), at: at + 4_000 });
-    expect(findEffect(r.effects, 'WINDOW_CLOSED')).toMatchObject({ reason: 'believed', accusedSeat: A });
+    const r = ok(s, {
+      type: 'PLAY',
+      seat: next,
+      cardIds: s.players[next].hand.map((c) => c.id).slice(0, 2),
+      at: at + 4_000,
+    });
+    expect(findEffect(r.effects, 'WINDOW_CLOSED')).toMatchObject({
+      reason: 'believed',
+      accusedSeat: A,
+    });
     expect(findEffect(r.effects, 'WINDOW_OPENED')?.accusedSeat).toBe(next);
     expect(r.s.phase).toBe('WINDOW');
     expect(r.s.round!.window?.closesAt).toBe(at + 4_000 + 10_000);
@@ -106,9 +118,19 @@ describe('A2 open challenge window (5–10 players)', () => {
     const table = s.round!.tableCard;
     s = withHands(s, { [A]: Array.from({ length: 5 }, () => tableOf(table)) }); // A holds 5 lies
     const at = T0 + 5;
-    s = ok(s, { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at }).s;
+    s = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+      at,
+    }).s;
     const next = (A + 1) % 7;
-    const s2 = ok(s, { type: 'PLAY', seat: next, cardIds: s.players[next].hand.map((c) => c.id).slice(0, 1), at: at + 3_000 }).s;
+    const s2 = ok(s, {
+      type: 'PLAY',
+      seat: next,
+      cardIds: s.players[next].hand.map((c) => c.id).slice(0, 1),
+      at: at + 3_000,
+    }).s;
     expect(s2.players[A].stats.bluffSuccesses).toBe(1); // ≥1 lie, unchallenged, un-revealed
     expect(s.players[A].stats.bluffSuccesses).toBe(0); // credited at closure, not at play
   });
@@ -120,7 +142,10 @@ describe('A2 open challenge window (5–10 players)', () => {
     expect(late.err?.code).toBe('ERR_TOO_EARLY'); // 1ms before the window closes
     const r = ok(base.s, { type: 'WINDOW_EXPIRE', at: base.at + 10_500 });
     expect(r.s.phase).toBe('TURN');
-    expect(findEffect(r.effects, 'WINDOW_CLOSED')).toMatchObject({ reason: 'expired', accusedSeat: A });
+    expect(findEffect(r.effects, 'WINDOW_CLOSED')).toMatchObject({
+      reason: 'expired',
+      accusedSeat: A,
+    });
     // After expiry the challenge right is GONE even though the pile still shows the play:
     const turnHolder = r.s.turn!.seat;
     const denied = apply(r.s, { type: 'LIAR', seat: turnHolder, at: base.at + 11_000 });
@@ -134,7 +159,12 @@ describe('A2 open challenge window (5–10 players)', () => {
     const off = table === 'K' ? 'Q' : 'K';
     s = withHands(s, { [A]: [off, off, off, off, off] });
     const at = T0 + 5;
-    s = ok(s, { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 2), at }).s;
+    s = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: s.players[A].hand.map((c) => c.id).slice(0, 2),
+      at,
+    }).s;
     const r = ok(s, { type: 'WINDOW_EXPIRE', at: at + 10_000 });
     expect(r.s.players[A].stats.bluffSuccesses).toBe(1);
   });
@@ -184,7 +214,12 @@ describe('Big Table (8–10p, deck m=3 — mission A3/Y1)', () => {
     let s = startedMatch(9, 42);
     const A = s.turn!.seat;
     s = withBullets(s, { 0: 6, 1: 6, 2: 6, 3: 6, 4: 6, 5: 6, 6: 6, 7: 6, 8: 6 });
-    const play = ok(s, { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at: T0 + 5 });
+    const play = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+      at: T0 + 5,
+    });
     expect(play.s.phase).toBe('WINDOW');
     expect(play.effects.find((e) => e.kind === 'WINDOW_OPENED')).toBeDefined();
   });

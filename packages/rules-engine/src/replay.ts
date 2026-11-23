@@ -8,7 +8,15 @@
  */
 import { apply, createMatch } from './engine';
 import { SeededRng } from './rng';
-import type { Effect, GameError, GameEvent, GameState, LogEntry, MatchConfig, RosterEntry } from './types';
+import type {
+  Effect,
+  GameError,
+  GameEvent,
+  GameState,
+  LogEntry,
+  MatchConfig,
+  RosterEntry,
+} from './types';
 import { DEFAULT_MATCH_CONFIG } from './types';
 
 export interface ReplayOptions {

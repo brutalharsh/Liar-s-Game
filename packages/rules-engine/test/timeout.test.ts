@@ -3,14 +3,15 @@ import { apply, createMatch } from '../src/engine';
 import type { Effect, GameState } from '../src/types';
 import { ok, roster, startedMatch, T0, turnSeat, withBullets } from './helpers';
 
-const handOf = (s: { players: { seat: number; hand: { id: string }[] }[] }, seat: number): string[] =>
-  s.players.find((p) => p.seat === seat)!.hand.map((c) => c.id);
+const handOf = (
+  s: { players: { seat: number; hand: { id: string }[] }[] },
+  seat: number,
+): string[] => s.players.find((p) => p.seat === seat)!.hand.map((c) => c.id);
 
 const first = <T extends Effect['kind']>(effs: Effect[], kind: T) =>
   effs.find((e) => e.kind === kind) as Extract<Effect, { kind: T }> | undefined;
 
-const pileTopIds = (s: GameState): string[] =>
-  s.round!.pile.at(-1)!.cards.map((c) => c.id);
+const pileTopIds = (s: GameState): string[] => s.round!.pile.at(-1)!.cards.map((c) => c.id);
 
 describe('A4 timeouts: auto-play, never auto-call', () => {
   it('timeout plays the PRE-STAGED selection when present', () => {
@@ -24,7 +25,7 @@ describe('A4 timeouts: auto-play, never auto-call', () => {
     expect(played.auto).toBe('timeout');
     expect(played.seat).toBe(A);
     expect(played.count).toBe(2);
-    expect(pileTopIds(r.s)).toEqual(staged);     // exactly the staged cards
+    expect(pileTopIds(r.s)).toEqual(staged); // exactly the staged cards
     expect(r.s.players.find((p) => p.seat === A)!.hand).toHaveLength(3);
     expect(r.s.players.find((p) => p.seat === A)!.staged).toHaveLength(0);
   });
@@ -37,7 +38,11 @@ describe('A4 timeouts: auto-play, never auto-call', () => {
       expect(r.err).toBeUndefined();
       const actor = r.state.players.find((p) => p.seat === A)!;
       expect(actor.hand).toHaveLength(4); // exactly one card left the hand
-      return { state: r.state, ids: pileTopIds(r.state), playedCount: first(r.effects, 'PLAYED')!.count };
+      return {
+        state: r.state,
+        ids: pileTopIds(r.state),
+        playedCount: first(r.effects, 'PLAYED')!.count,
+      };
     };
     const a = run(302);
     const b = run(302); // same seed → identical RngPort stream → identical choice
@@ -69,18 +74,24 @@ describe('A4 timeouts: auto-play, never auto-call', () => {
   it('clock guards: before deadline → ERR_TOO_EARLY; wrong seat → ERR_NOT_YOUR_TURN; wrong phase → ERR_WRONG_PHASE', () => {
     const s = startedMatch(3, 305);
     const A = turnSeat(s);
-    expect(apply(s, { type: 'TURN_TIMEOUT', seat: A, at: s.turn!.deadline - 1 }).err?.code).toBe('ERR_TOO_EARLY');
-    expect(apply(s, { type: 'TURN_TIMEOUT', seat: (A + 1) % 3, at: s.turn!.deadline }).err?.code).toBe('ERR_NOT_YOUR_TURN');
+    expect(apply(s, { type: 'TURN_TIMEOUT', seat: A, at: s.turn!.deadline - 1 }).err?.code).toBe(
+      'ERR_TOO_EARLY',
+    );
+    expect(
+      apply(s, { type: 'TURN_TIMEOUT', seat: (A + 1) % 3, at: s.turn!.deadline }).err?.code,
+    ).toBe('ERR_NOT_YOUR_TURN');
     const dealt = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 1), at: T0 + 5 });
     const liar = ok(dealt.s, { type: 'LIAR', seat: turnSeat(dealt.s), at: T0 + 6 });
-    expect(apply(liar.s, { type: 'TURN_TIMEOUT', seat: 0, at: T0 + 100_000 }).err?.code).toBe('ERR_WRONG_PHASE');
+    expect(apply(liar.s, { type: 'TURN_TIMEOUT', seat: 0, at: T0 + 100_000 }).err?.code).toBe(
+      'ERR_WRONG_PHASE',
+    );
   });
 
   it('fast-mode timeout inside the open window: auto-play closes the window (believed) and opens the next one', () => {
-    let s = apply(
-      createMatch({ roster: roster(7), seed: 306, config: { fastMode: true } }),
-      { type: 'MATCH_START', at: T0 },
-    ).state;
+    let s = apply(createMatch({ roster: roster(7), seed: 306, config: { fastMode: true } }), {
+      type: 'MATCH_START',
+      at: T0,
+    }).state;
     s = apply(s, { type: 'BEGIN_TURNS', at: T0 + 1 }).state;
     s = withBullets(s, { [0]: 6, [1]: 6, [2]: 6, [3]: 6, [4]: 6, [5]: 6, [6]: 6 });
     const A = turnSeat(s);
@@ -141,10 +152,20 @@ describe('A4 disconnect policy: 60s grace, "drunk under the table", no eliminati
     let s = startedMatch(3, 314);
     const A = turnSeat(s);
     s = ok(s, { type: 'DISCONNECT', seat: A, at: T0 + 5 }).s;
-    const denied = apply(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 1), at: T0 + 6 });
+    const denied = apply(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: handOf(s, A).slice(0, 1),
+      at: T0 + 6,
+    });
     expect(denied.err?.code).toBe('ERR_DISCONNECTED'); // an offline seat cannot act
     s = ok(s, { type: 'RECONNECT', seat: A, at: T0 + 20_000 }).s;
-    const played = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 1), at: T0 + 21_000 });
+    const played = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: handOf(s, A).slice(0, 1),
+      at: T0 + 21_000,
+    });
     expect(played.effects.find((e) => e.kind === 'PLAYED')).toBeDefined();
   });
 
@@ -159,6 +180,8 @@ describe('A4 disconnect policy: 60s grace, "drunk under the table", no eliminati
 
   it('ABANDON without a preceding DISCONNECT → ERR_NOT_DISCONNECTED', () => {
     const s = startedMatch(3, 316);
-    expect(apply(s, { type: 'ABANDON', seat: 1, at: T0 + 5 }).err?.code).toBe('ERR_NOT_DISCONNECTED');
+    expect(apply(s, { type: 'ABANDON', seat: 1, at: T0 + 5 }).err?.code).toBe(
+      'ERR_NOT_DISCONNECTED',
+    );
   });
 });

@@ -95,9 +95,10 @@ export class SeededRng implements RngPort {
 
   /** Uniform on [min, max], exact rejection sampling (no modulo bias). */
   int(minInclusive: number, maxInclusive: number): number {
-    if (maxInclusive < minInclusive) throw new Error(`RngPort.int: empty range [${minInclusive},${maxInclusive}]`);
+    if (maxInclusive < minInclusive)
+      throw new Error(`RngPort.int: empty range [${minInclusive},${maxInclusive}]`);
     const range = BigInt(maxInclusive - minInclusive + 1);
-    const limit = (MASK64 + 1n) / range * range; // first multiple of range ≤ 2^64
+    const limit = ((MASK64 + 1n) / range) * range; // first multiple of range ≤ 2^64
     let x = this.next64();
     while (x >= limit) x = this.next64();
     return minInclusive + Number(x % range);

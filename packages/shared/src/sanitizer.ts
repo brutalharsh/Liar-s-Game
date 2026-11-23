@@ -64,9 +64,9 @@ const CONFUSABLES: Readonly<Record<string, string>> = Object.freeze({
   Υ: 'Y',
   Χ: 'X',
   // Latin-lookalike letters without NFKC decompositions
-  'ɡ': 'g',
-  'Ɩ': 'I',
-  'ǀ': 'I',
+  ɡ: 'g',
+  Ɩ: 'I',
+  ǀ: 'I',
 });
 
 /**

@@ -78,11 +78,9 @@ describe('STR/01 §3/§5 — joker & poison law, exhaustive (34 plays × 3 table
         const r = ok(s1, { type: 'PLAY', seat: A, cardIds: handIds(s1, A), at: T0 + 5 });
         const call = ok(r.s, { type: 'LIAR', seat: B, at: T0 + 6 });
         const revealed = call.effects.find((e) => e.kind === 'REVEALED') as
-          | Extract<Effect, { kind: 'REVEALED' }>
-          | undefined;
+          Extract<Effect, { kind: 'REVEALED' }> | undefined;
         const shot = call.effects.find((e) => e.kind === 'SHOT_ASSIGNED') as
-          | Extract<Effect, { kind: 'SHOT_ASSIGNED' }>
-          | undefined;
+          Extract<Effect, { kind: 'SHOT_ASSIGNED' }> | undefined;
 
         // The reveal shows exactly the accused's last play — the combo itself.
         expect(revealed?.cards.map((c) => c.rank).sort()).toEqual([...combo].sort());

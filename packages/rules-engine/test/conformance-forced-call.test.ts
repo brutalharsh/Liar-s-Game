@@ -33,7 +33,11 @@ describe('STR/01 §8 — forced call credit & the only-at-exhaustion guard', () 
 
     expect(r.s.phase).toBe('REVEAL'); // forced auto-call: no B decision ever existed
     expect(findEffect(r.effects, 'REVEALED')).toMatchObject({
-      forced: true, challengerSeat: B, accusedSeat: A, verdict: 'LIE', loserSeat: A,
+      forced: true,
+      challengerSeat: B,
+      accusedSeat: A,
+      verdict: 'LIE',
+      loserSeat: A,
     });
     expect(r.s.round!.resolution!.pullNo).toBe(1);
     expect(r.s.players[B].stats.catches).toBe(1); // §10 catch, credited even when forced
@@ -51,7 +55,12 @@ describe('STR/01 §8 — forced call credit & the only-at-exhaustion guard', () 
     const r1 = ok(s, { type: 'PLAY', seat: A, cardIds: handIds(s, A).slice(0, 3), at: T0 + 5 });
     expect(r1.s.phase).toBe('TURN'); // A: 2, B: 5 → two holders
     expect(r1.s.round!.resolution).toBeUndefined();
-    const r2 = ok(r1.s, { type: 'PLAY', seat: B, cardIds: handIds(r1.s, B).slice(0, 3), at: T0 + 6 });
+    const r2 = ok(r1.s, {
+      type: 'PLAY',
+      seat: B,
+      cardIds: handIds(r1.s, B).slice(0, 3),
+      at: T0 + 6,
+    });
     expect(r2.s.phase).toBe('TURN'); // A: 2, B: 2 → still two holders
     expect(r2.s.round!.resolution).toBeUndefined();
     expect(r2.effects.some((e) => e.kind === 'REVEALED')).toBe(false);
@@ -60,8 +69,18 @@ describe('STR/01 §8 — forced call credit & the only-at-exhaustion guard', () 
     let s3 = startedMatch(3, 9502);
     const X = turnSeat(s3);
     s3 = ok(s3, { type: 'PLAY', seat: X, cardIds: handIds(s3, X).slice(0, 3), at: T0 + 5 }).s; // X: 3 played
-    s3 = ok(s3, { type: 'PLAY', seat: turnSeat(s3), cardIds: handIds(s3, turnSeat(s3)).slice(0, 1), at: T0 + 6 }).s; // Y
-    s3 = ok(s3, { type: 'PLAY', seat: turnSeat(s3), cardIds: handIds(s3, turnSeat(s3)).slice(0, 1), at: T0 + 7 }).s; // Z
+    s3 = ok(s3, {
+      type: 'PLAY',
+      seat: turnSeat(s3),
+      cardIds: handIds(s3, turnSeat(s3)).slice(0, 1),
+      at: T0 + 6,
+    }).s; // Y
+    s3 = ok(s3, {
+      type: 'PLAY',
+      seat: turnSeat(s3),
+      cardIds: handIds(s3, turnSeat(s3)).slice(0, 1),
+      at: T0 + 7,
+    }).s; // Z
     expect(turnSeat(s3)).toBe(X); // the rotation is back at X (still holding 2)
     const rEmpty = ok(s3, { type: 'PLAY', seat: X, cardIds: handIds(s3, X), at: T0 + 8 }); // X empties
     expect(rEmpty.s.players.find((p) => p.seat === X)!.hand).toHaveLength(0);
@@ -71,7 +90,10 @@ describe('STR/01 §8 — forced call credit & the only-at-exhaustion guard', () 
     expect(nextHolder).not.toBe(X); // the empty seat is passed over (§2.4/§8 "skipped")
     expect(rEmpty.s.players.find((p) => p.seat === nextHolder)!.hand.length).toBeGreaterThan(0);
     const rPlayOn = ok(rEmpty.s, {
-      type: 'PLAY', seat: nextHolder, cardIds: handIds(rEmpty.s, nextHolder).slice(0, 1), at: T0 + 9,
+      type: 'PLAY',
+      seat: nextHolder,
+      cardIds: handIds(rEmpty.s, nextHolder).slice(0, 1),
+      at: T0 + 9,
     });
     expect(rPlayOn.s.phase).toBe('TURN'); // the round simply continues
     expect(rPlayOn.s.round!.resolution).toBeUndefined();

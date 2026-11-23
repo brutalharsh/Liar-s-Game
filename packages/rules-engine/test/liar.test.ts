@@ -23,7 +23,11 @@ describe('Resolution: reveal & judgment (R17/R18, doc-02 §11 checklist)', () =>
     s = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 3), at: T0 + 5 }).s;
     const r = ok(s, { type: 'LIAR', seat: B, at: T0 + 6 });
     expect(first(r.effects, 'REVEALED')).toMatchObject({
-      verdict: 'TRUTH', loserSeat: B, accusedSeat: A, challengerSeat: B, forced: false,
+      verdict: 'TRUTH',
+      loserSeat: B,
+      accusedSeat: A,
+      challengerSeat: B,
+      forced: false,
     });
     expect(first(r.effects, 'SHOT_ASSIGNED')).toMatchObject({ loserSeat: B, shotKind: 'SELF' });
     expect(r.s.round!.resolution?.loserRole).toBe('accuser');
@@ -96,7 +100,7 @@ describe('Resolution: reveal & judgment (R17/R18, doc-02 §11 checklist)', () =>
 });
 
 describe('play+call same-tick atomicity ([SD-T] exploit — doc-02 R14 engine note)', () => {
-  it('PLAY lands first → the follow-up LIAR can never judge the caller\'s own card', () => {
+  it("PLAY lands first → the follow-up LIAR can never judge the caller's own card", () => {
     let s = startedMatch(3, 60);
     s = withBullets(s, { 0: 6, 1: 6, 2: 6 });
     const A = turnSeat(s);
@@ -122,7 +126,12 @@ describe('play+call same-tick atomicity ([SD-T] exploit — doc-02 R14 engine no
     s = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 1), at: T0 + 5 }).s;
     const r = ok(s, { type: 'LIAR', seat: B, at: T0 + 6 });
     expect(first(r.effects, 'REVEALED')).toMatchObject({ accusedSeat: A, verdict: 'LIE' });
-    const stale = apply(r.s, { type: 'PLAY', seat: B, cardIds: handOf(r.s, B).slice(0, 1), at: T0 + 6 });
+    const stale = apply(r.s, {
+      type: 'PLAY',
+      seat: B,
+      cardIds: handOf(r.s, B).slice(0, 1),
+      at: T0 + 6,
+    });
     expect(stale.err?.code).toBe('ERR_WRONG_PHASE');
   });
 
@@ -153,7 +162,9 @@ describe('Forced auto-call (R29/R30 — holders == 1 fires instantly)', () => {
     const r = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 2), at: T0 + 7 }); // A empties
     expect(r.s.phase).toBe('REVEAL'); // jumped straight past TURN — no B decision ever
     expect(first(r.effects, 'REVEALED')).toMatchObject({
-      forced: true, challengerSeat: B, accusedSeat: A,
+      forced: true,
+      challengerSeat: B,
+      accusedSeat: A,
     });
   });
 
@@ -167,7 +178,11 @@ describe('Forced auto-call (R29/R30 — holders == 1 fires instantly)', () => {
     s = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 3), at: T0 + 5 }).s;
     s = ok(s, { type: 'PLAY', seat: B, cardIds: handOf(s, B).slice(0, 3), at: T0 + 6 }).s;
     const r = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 2), at: T0 + 7 }); // empties, truthful
-    expect(first(r.effects, 'REVEALED')).toMatchObject({ forced: true, verdict: 'TRUTH', loserSeat: B });
+    expect(first(r.effects, 'REVEALED')).toMatchObject({
+      forced: true,
+      verdict: 'TRUTH',
+      loserSeat: B,
+    });
     expect(first(r.effects, 'SHOT_ASSIGNED')).toMatchObject({ loserSeat: B, shotKind: 'SELF' });
     expect(r.s.players[B].stats.falseAccusations).toBe(1);
     expect(r.s.players[B].pulls).toBe(1); // the pull is consumed deterministically at resolution
@@ -202,7 +217,12 @@ describe('Forced auto-call (R29/R30 — holders == 1 fires instantly)', () => {
     for (const seat of order.slice(0, 4)) plays.push({ seat, count: 2 });
     let last: ReturnType<typeof apply> | undefined;
     for (const p of plays) {
-      last = apply(s, { type: 'PLAY', seat: p.seat, cardIds: handOf(s, p.seat).slice(0, p.count), at: t });
+      last = apply(s, {
+        type: 'PLAY',
+        seat: p.seat,
+        cardIds: handOf(s, p.seat).slice(0, p.count),
+        at: t,
+      });
       expect(last.err, `play by ${p.seat}`).toBeUndefined();
       s = last.state;
       t += 3_000;

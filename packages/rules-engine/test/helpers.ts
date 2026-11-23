@@ -4,7 +4,15 @@
  * (the engine is in-package); `withHands`/`withBullets` clone before mutating.
  */
 import { apply, cloneState, createMatch } from '../src/engine';
-import type { ApplyResult, Card, GameEvent, GameState, PlayerState, Rank, RosterEntry } from '../src/types';
+import type {
+  ApplyResult,
+  Card,
+  GameEvent,
+  GameState,
+  PlayerState,
+  Rank,
+  RosterEntry,
+} from '../src/types';
 
 export const BASE_SEED = 20261123;
 /** Fake epoch base (ms) — all scripted times are offsets from this. */
@@ -33,7 +41,8 @@ export function startedMatch(n: number, seed = BASE_SEED, at = T0): GameState {
 /** apply() + assert acceptance. Returns the new state. */
 export function ok(s: GameState, ev: GameEvent): { s: GameState; effects: ApplyResult['effects'] } {
   const r = apply(s, ev);
-  if (r.err) throw new Error(`expected accept, got ${r.err.code}: ${r.err.message} (event ${ev.type})`);
+  if (r.err)
+    throw new Error(`expected accept, got ${r.err.code}: ${r.err.message} (event ${ev.type})`);
   return { s: r.state, effects: r.effects };
 }
 
@@ -97,7 +106,10 @@ export function turnSeat(s: GameState): number {
 }
 
 /** Fully resolve a challenge chain: REVEAL_ACK → SHOT_ACK effect pair. */
-export function drainResolution(s: GameState, at: number): { s: GameState; shot: ApplyResult['effects'] } {
+export function drainResolution(
+  s: GameState,
+  at: number,
+): { s: GameState; shot: ApplyResult['effects'] } {
   const r1 = ok(s, { type: 'REVEAL_ACK', at });
   const shot = r1.effects.filter((e) => e.kind === 'SHOT_RESULT');
   const r2 = ok(r1.s, { type: 'SHOT_ACK', at });

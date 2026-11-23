@@ -47,7 +47,10 @@ import { challengeModeFor, DEFAULT_MATCH_CONFIG, turnTimerMs } from './types';
 // ─────────────────────────────────────────────────────────────────────────────
 
 class Reject extends Error {
-  constructor(readonly code: ErrCode, message: string) {
+  constructor(
+    readonly code: ErrCode,
+    message: string,
+  ) {
     super(message);
   }
 }
@@ -82,8 +85,7 @@ export function createMatch(o: CreateMatchOptions): GameState {
   if (seats.some((seat, i) => seat !== i)) {
     throw new Error(`createMatch: roster seats must be exactly 0..N-1 (got [${seats.join(',')}])`);
   }
-  const rng =
-    o.rng ?? (o.seed !== undefined ? new SeededRng(o.seed) : undefined);
+  const rng = o.rng ?? (o.seed !== undefined ? new SeededRng(o.seed) : undefined);
   if (!rng) {
     throw new Error('createMatch: pass `seed` (deterministic/replayable) or `rng` (injected)');
   }
@@ -204,9 +206,16 @@ function dispatch(s: GameState, ev: GameEvent, effects: Effect[]): void {
   // Abort watch (STR/01 §9): fewer than 2 connected human players still alive →
   // remaining one wins by default / match aborted. Deferred while a reveal or
   // shot is mid-flight so the pending resolution completes on the wire.
-  const isDriver = ev.type === 'BEGIN_TURNS' || ev.type === 'PLAY' || ev.type === 'LIAR' ||
-    ev.type === 'STAGE' || ev.type === 'TURN_TIMEOUT' || ev.type === 'WINDOW_EXPIRE' ||
-    ev.type === 'REVEAL_ACK' || ev.type === 'SHOT_ACK' || ev.type === 'NEXT_ROUND';
+  const isDriver =
+    ev.type === 'BEGIN_TURNS' ||
+    ev.type === 'PLAY' ||
+    ev.type === 'LIAR' ||
+    ev.type === 'STAGE' ||
+    ev.type === 'TURN_TIMEOUT' ||
+    ev.type === 'WINDOW_EXPIRE' ||
+    ev.type === 'REVEAL_ACK' ||
+    ev.type === 'SHOT_ACK' ||
+    ev.type === 'NEXT_ROUND';
   if (isDriver && maybeAbort(s, ev.at, effects)) {
     reject('ERR_MATCH_OVER', 'match aborted (fewer than 2 players remain)');
   }
@@ -328,7 +337,8 @@ function handlePlay(s: GameState, ev: GameEvent & { type: 'PLAY' }, effects: Eff
   const p = seated(s, ev.seat);
   requireActorRights(p);
   const turn = requireTurn(s);
-  if (ev.seat !== turn.seat) reject('ERR_NOT_YOUR_TURN', `not ${ev.seat}'s turn (it's ${turn.seat}'s)`);
+  if (ev.seat !== turn.seat)
+    reject('ERR_NOT_YOUR_TURN', `not ${ev.seat}'s turn (it's ${turn.seat}'s)`);
   if (ev.cardIds.length < 1 || ev.cardIds.length > 3) {
     reject('ERR_INVALID_COUNT', `play ${ev.cardIds.length} cards is outside 1..3`);
   }
@@ -448,7 +458,10 @@ function handleLiar(s: GameState, ev: GameEvent & { type: 'LIAR' }, effects: Eff
     const w = round.window;
     if (!w) reject('ERR_INTERNAL', 'WINDOW phase without window state');
     if (ev.accusedSeat !== undefined && ev.accusedSeat !== w.accusedSeat) {
-      reject('ERR_WRONG_ACCUSED', `LIAR aimed at seat ${ev.accusedSeat}, current window is ${w.accusedSeat}`);
+      reject(
+        'ERR_WRONG_ACCUSED',
+        `LIAR aimed at seat ${ev.accusedSeat}, current window is ${w.accusedSeat}`,
+      );
     }
     if (ev.seat === w.accusedSeat) {
       reject('ERR_SELF_CHALLENGE', 'the accused cannot challenge their own play');
@@ -476,7 +489,10 @@ function handleLiar(s: GameState, ev: GameEvent & { type: 'LIAR' }, effects: Eff
       reject('ERR_SELF_CHALLENGE', 'the accused cannot challenge their own play');
     }
     if (ev.accusedSeat !== undefined && ev.accusedSeat !== accusedSeat) {
-      reject('ERR_WRONG_ACCUSED', `LIAR aimed at seat ${ev.accusedSeat}, last play is ${accusedSeat}'s`);
+      reject(
+        'ERR_WRONG_ACCUSED',
+        `LIAR aimed at seat ${ev.accusedSeat}, last play is ${accusedSeat}'s`,
+      );
     }
   }
 
@@ -514,7 +530,7 @@ function resolveChallenge(
   }
   const challenger = seatOf(s, o.challengerSeat);
   const lied = containsLie(o.play.cards, round.tableCard);
-  const verdict = lied ? 'LIE' as const : 'TRUTH' as const;
+  const verdict = lied ? ('LIE' as const) : ('TRUTH' as const);
   if (lied) challenger.stats.catches += 1;
   else challenger.stats.falseAccusations += 1;
 
@@ -546,7 +562,9 @@ function resolveChallenge(
   if (dareDevil) s.dareDevilMoments += 1;
 
   const deathCause = died
-    ? shotKind === 'EXECUTE_BY_ACCUSER' ? ('executed' as const) : ('selfRoulette' as const)
+    ? shotKind === 'EXECUTE_BY_ACCUSER'
+      ? ('executed' as const)
+      : ('selfRoulette' as const)
     : undefined;
   const resolution: ChallengeResolution = {
     challengerSeat: o.challengerSeat,
@@ -642,7 +660,11 @@ function handleTurnTimeout(
   onPlay(s, { seat: ev.seat, cards, at: ev.at, effects, auto });
 }
 
-function handleWindowExpire(s: GameState, ev: GameEvent & { type: 'WINDOW_EXPIRE' }, effects: Effect[]): void {
+function handleWindowExpire(
+  s: GameState,
+  ev: GameEvent & { type: 'WINDOW_EXPIRE' },
+  effects: Effect[],
+): void {
   if (s.phase !== 'WINDOW') reject('ERR_WRONG_PHASE', `WINDOW_EXPIRE from ${s.phase}`);
   const round = requireRound(s);
   const w = round.window;
@@ -655,7 +677,11 @@ function handleWindowExpire(s: GameState, ev: GameEvent & { type: 'WINDOW_EXPIRE
   s.phase = 'TURN'; // the current turn-holder keeps their remaining time
 }
 
-function handleRevealAck(s: GameState, _ev: GameEvent & { type: 'REVEAL_ACK' }, effects: Effect[]): void {
+function handleRevealAck(
+  s: GameState,
+  _ev: GameEvent & { type: 'REVEAL_ACK' },
+  effects: Effect[],
+): void {
   if (s.phase !== 'REVEAL') reject('ERR_WRONG_PHASE', `REVEAL_ACK from ${s.phase}`);
   const res = requireRound(s).resolution;
   if (!res) reject('ERR_INTERNAL', 'REVEAL phase without resolution');
@@ -674,7 +700,11 @@ function handleRevealAck(s: GameState, _ev: GameEvent & { type: 'REVEAL_ACK' }, 
  * After every roulette — blank or live — the round ends (R20/R25); then either
  * the match ends (last alive, R32) or ROUND_END holds the starter designation.
  */
-function handleShotAck(s: GameState, ev: GameEvent & { type: 'SHOT_ACK' }, effects: Effect[]): void {
+function handleShotAck(
+  s: GameState,
+  ev: GameEvent & { type: 'SHOT_ACK' },
+  effects: Effect[],
+): void {
   if (s.phase !== 'SHOT') reject('ERR_WRONG_PHASE', `SHOT_ACK from ${s.phase}`);
   const round = requireRound(s);
   const res = round.resolution;
@@ -710,7 +740,11 @@ function handleShotAck(s: GameState, ev: GameEvent & { type: 'SHOT_ACK' }, effec
   s.phase = 'ROUND_END';
 }
 
-function handleNextRound(s: GameState, _ev: GameEvent & { type: 'NEXT_ROUND' }, effects: Effect[]): void {
+function handleNextRound(
+  s: GameState,
+  _ev: GameEvent & { type: 'NEXT_ROUND' },
+  effects: Effect[],
+): void {
   if (s.phase !== 'ROUND_END') reject('ERR_WRONG_PHASE', `NEXT_ROUND from ${s.phase}`);
   const round = requireRound(s);
   if (s.pendingStarter === null) reject('ERR_INTERNAL', 'NEXT_ROUND without pending starter');
@@ -721,7 +755,11 @@ function handleNextRound(s: GameState, _ev: GameEvent & { type: 'NEXT_ROUND' }, 
 // Presence / abandonment
 // ─────────────────────────────────────────────────────────────────────────────
 
-function handlePresence(s: GameState, ev: GameEvent & { type: 'DISCONNECT' | 'RECONNECT' | 'ABANDON' | 'LEAVE' }, effects: Effect[]): void {
+function handlePresence(
+  s: GameState,
+  ev: GameEvent & { type: 'DISCONNECT' | 'RECONNECT' | 'ABANDON' | 'LEAVE' },
+  effects: Effect[],
+): void {
   const p = seated(s, ev.seat);
   switch (ev.type) {
     case 'DISCONNECT':

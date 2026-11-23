@@ -124,9 +124,14 @@ describe('client event schemas (STR/07 §1)', () => {
         preset.id,
       ).toBe(true);
     }
-    expect(clientEventSchemas['emote:send'].safeParse({ emoteId: 'call-my-bluff' }).success).toBe(false);
+    expect(clientEventSchemas['emote:send'].safeParse({ emoteId: 'call-my-bluff' }).success).toBe(
+      false,
+    );
     expect(clientEventSchemas['emote:send'].safeParse({ emoteId: 'snake' }).success).toBe(false);
-    expect(serverEventSchemas['emote:broadcast'].safeParse({ seq: 1, seat: 0, emoteId: 'party-parrot' }).success).toBe(false);
+    expect(
+      serverEventSchemas['emote:broadcast'].safeParse({ seq: 1, seat: 0, emoteId: 'party-parrot' })
+        .success,
+    ).toBe(false);
   });
 
   it('profile:tts-say never accepts an audio field', () => {
@@ -180,7 +185,10 @@ describe('server event schemas (STR/07 §2)', () => {
   it('reveal:show is the ONLY event whose cards carry ranks', () => {
     const payload = {
       seq: 21,
-      cards: [{ id: 'c_09', rank: 'K' }, { id: 'c_10', rank: 'J' }],
+      cards: [
+        { id: 'c_09', rank: 'K' },
+        { id: 'c_10', rank: 'J' },
+      ],
       verdict: 'TRUTH',
       loserSeat: 0,
     };
@@ -197,9 +205,9 @@ describe('server event schemas (STR/07 §2)', () => {
     const schema = serverEventSchemas['shot:assign'];
     expect(schema.safeParse({ seq: 1, loserSeat: 1, kind: 'SELF' }).success).toBe(true);
     expect(schema.safeParse({ seq: 1, loserSeat: 1, kind: 'EXECUTE' }).success).toBe(false);
-    expect(
-      schema.safeParse({ seq: 1, loserSeat: 1, kind: 'SELF', executorSeat: 2 }).success,
-    ).toBe(false);
+    expect(schema.safeParse({ seq: 1, loserSeat: 1, kind: 'SELF', executorSeat: 2 }).success).toBe(
+      false,
+    );
     expect(
       schema.safeParse({ seq: 1, loserSeat: 1, kind: 'EXECUTE', executorSeat: 2 }).success,
     ).toBe(true);
@@ -233,12 +241,12 @@ describe('server event schemas (STR/07 §2)', () => {
 
   it('error payloads stay small and allow empty eventRef', () => {
     const schema = serverEventSchemas['error'];
-    expect(schema.safeParse({ seq: 1, code: 'EVENT_STALE', message: 'm', eventRef: '' }).success).toBe(
-      true,
-    );
-    expect(schema.safeParse({ seq: 1, code: 'x'.repeat(65), message: 'm', eventRef: '' }).success).toBe(
-      false,
-    );
+    expect(
+      schema.safeParse({ seq: 1, code: 'EVENT_STALE', message: 'm', eventRef: '' }).success,
+    ).toBe(true);
+    expect(
+      schema.safeParse({ seq: 1, code: 'x'.repeat(65), message: 'm', eventRef: '' }).success,
+    ).toBe(false);
   });
 
   it('lobby:state parses a lobby-phase snapshot too (the catch-up view)', () => {

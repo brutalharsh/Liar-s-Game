@@ -28,7 +28,9 @@ describe('Turn timers (A4 ladder)', () => {
     expect(challengeModeFor(DEFAULT_MATCH_CONFIG, 4)).toBe('next-only');
     expect(challengeModeFor(DEFAULT_MATCH_CONFIG, 5)).toBe('open-window');
     expect(challengeModeFor(DEFAULT_MATCH_CONFIG, 10)).toBe('open-window');
-    expect(challengeModeFor({ ...DEFAULT_MATCH_CONFIG, windowMode: 'next-only' }, 10)).toBe('next-only');
+    expect(challengeModeFor({ ...DEFAULT_MATCH_CONFIG, windowMode: 'next-only' }, 10)).toBe(
+      'next-only',
+    );
   });
 });
 
@@ -42,7 +44,12 @@ describe('validatePlay clauses (doc-14 task 17 — negative per clause)', () => 
       ['4 cards exceeds 1..3', A, ids.slice(0, 4), 'ERR_INVALID_COUNT'],
       ['duplicate card ids', A, [ids[0], ids[0]], 'ERR_DUPLICATE_CARD'],
       ['foreign card id (garbage)', A, ['nope'], 'ERR_NOT_OWNED_CARD'],
-      ["another player's card", A, s.players[(A + 1) % 3].hand.map((c) => c.id).slice(0, 1), 'ERR_NOT_OWNED_CARD'],
+      [
+        "another player's card",
+        A,
+        s.players[(A + 1) % 3].hand.map((c) => c.id).slice(0, 1),
+        'ERR_NOT_OWNED_CARD',
+      ],
       ['not the turn-holder', (A + 1) % 3, ids.slice(0, 1), 'ERR_NOT_YOUR_TURN'],
     ];
     for (const [name, seat, cardIds, code] of table) {
@@ -58,7 +65,10 @@ describe('validatePlay clauses (doc-14 task 17 — negative per clause)', () => 
     const r = ok(s, { type: 'PLAY', seat: A, cardIds: ids, at: T0 + 5 });
     expect(r.s.players[A].hand.map((c) => c.id)).not.toContain(ids[0]);
     expect(r.s.players[A].hand).toHaveLength(3);
-    const played = r.effects.find((e) => e.kind === 'PLAYED') as Extract<Effect, { kind: 'PLAYED' }>;
+    const played = r.effects.find((e) => e.kind === 'PLAYED') as Extract<
+      Effect,
+      { kind: 'PLAYED' }
+    >;
     expect(played.seat).toBe(A);
     expect(played.count).toBe(2);
     expect(played.pile).toEqual([{ seat: A, count: 2 }]);
@@ -101,7 +111,10 @@ describe('Counter-clockwise turn order skips dead + empty-handed (R27/R28)', () 
     });
     s = ok(s, { type: 'PLAY', seat: A, cardIds: handOf(s, A).slice(0, 2), at: T0 + 5 }).s;
     const r = ok(s, { type: 'LIAR', seat: B, at: T0 + 6 });
-    expect(r.effects.find((e) => e.kind === 'REVEALED')).toMatchObject({ verdict: 'LIE', loserSeat: A });
+    expect(r.effects.find((e) => e.kind === 'REVEALED')).toMatchObject({
+      verdict: 'LIE',
+      loserSeat: A,
+    });
     const afterShot = ok(r.s, { type: 'REVEAL_ACK', at: T0 + 7 });
     s = ok(afterShot.s, { type: 'SHOT_ACK', at: T0 + 8 }).s;
     expect(s.players[A].alive).toBe(false);
@@ -120,13 +133,18 @@ describe('STAGE (pre-staging selection, A4 source)', () => {
     let s = startedMatch(3);
     const A = turnSeat(s);
     const ids = handOf(s, A);
-    s = ok(s, { type: 'STAGE', seat: (A + 1) % 3, cardIds: handOf(s, (A + 1) % 3).slice(0, 2), at: T0 + 3 }).s;
+    s = ok(s, {
+      type: 'STAGE',
+      seat: (A + 1) % 3,
+      cardIds: handOf(s, (A + 1) % 3).slice(0, 2),
+      at: T0 + 3,
+    }).s;
     expect(s.players[(A + 1) % 3].staged).toHaveLength(2);
     s = ok(s, { type: 'STAGE', seat: (A + 1) % 3, cardIds: [], at: T0 + 4 }).s;
     expect(s.players[(A + 1) % 3].staged).toHaveLength(0);
     for (const bad of [
-      ['x'],                                     // garbage id
-      [...ids.slice(0, 1), ...ids.slice(0, 1)],  // same card twice
+      ['x'], // garbage id
+      [...ids.slice(0, 1), ...ids.slice(0, 1)], // same card twice
     ] as string[][]) {
       const r = apply(s, { type: 'STAGE', seat: (A + 1) % 3, cardIds: bad, at: T0 + 6 });
       expect(r.err?.code).toMatch(/ERR_(NOT_OWNED_CARD|DUPLICATE_CARD)/);

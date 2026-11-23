@@ -2,8 +2,10 @@ import { describe, expect, it } from 'vitest';
 import type { Effect } from '../src/types';
 import { ok, startedMatch, T0, turnSeat, withBullets, withHands } from './helpers';
 
-const handOf = (s: { players: { seat: number; hand: { id: string }[] }[] }, seat: number): string[] =>
-  s.players.find((p) => p.seat === seat)!.hand.map((c) => c.id);
+const handOf = (
+  s: { players: { seat: number; hand: { id: string }[] }[] },
+  seat: number,
+): string[] => s.players.find((p) => p.seat === seat)!.hand.map((c) => c.id);
 
 const gameOver = (effs: Effect[]) =>
   effs.find((e) => e.kind === 'GAME_OVER') as Extract<Effect, { kind: 'GAME_OVER' }> | undefined;
@@ -77,7 +79,12 @@ describe('Win & abort semantics (STR/01 §9 / R32)', () => {
     s = withBullets(s, { [A]: 6, [B]: 6 }); // the shot will be a blank
     const table = s.round!.tableCard;
     s = withHands(s, { [A]: [table, table, table, table, table] });
-    s = ok(s, { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at: T0 + 5 }).s;
+    s = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+      at: T0 + 5,
+    }).s;
     const r = ok(s, { type: 'LIAR', seat: B, at: T0 + 6 }); // REVEAL in flight (verdict TRUTH)
     // A and B both walk mid-reveal; the challenge resolution must still complete:
     s = ok(r.s, { type: 'LEAVE', seat: A, at: T0 + 6_100 }).s;

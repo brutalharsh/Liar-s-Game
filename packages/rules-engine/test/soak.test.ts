@@ -73,9 +73,13 @@ function driveMatch(nPlayers: number, seed: number): DriveResult {
           step({ type: 'RECONNECT', seat, at: ++now });
         }
         if (my.int(0, 24) === 0) {
-          const victim = s.players.find((x) => x.alive && x.seat !== seat && x.disconnectedAt === undefined);
+          const victim = s.players.find(
+            (x) => x.alive && x.seat !== seat && x.disconnectedAt === undefined,
+          );
           if (victim) step({ type: 'DISCONNECT', seat: victim.seat, at: ++now });
-          const comeback = s.players.find((x) => x.alive && x.disconnectedAt !== undefined && x.seat !== s.turn?.seat);
+          const comeback = s.players.find(
+            (x) => x.alive && x.disconnectedAt !== undefined && x.seat !== s.turn?.seat,
+          );
           if (comeback) step({ type: 'RECONNECT', seat: comeback.seat, at: ++now });
         }
         const pileEmpty = s.round!.pile.length === 0;
@@ -85,7 +89,11 @@ function driveMatch(nPlayers: number, seed: number): DriveResult {
           const at = Math.min(s.turn!.deadline - 1, now + my.int(1, 5_000));
           step({ type: 'PLAY', seat, cardIds: handOf(s, seat).slice(0, count), at });
           now = Math.max(now, at);
-        } else if (roll <= 7 && !pileEmpty && challengeModeFor(s.config, aliveCount(s)) === 'next-only') {
+        } else if (
+          roll <= 7 &&
+          !pileEmpty &&
+          challengeModeFor(s.config, aliveCount(s)) === 'next-only'
+        ) {
           step({ type: 'LIAR', seat, at: Math.min(s.turn!.deadline - 1, ++now) });
         } else {
           step({ type: 'TURN_TIMEOUT', seat, at: s.turn!.deadline + my.int(0, 4) });
@@ -98,14 +106,12 @@ function driveMatch(nPlayers: number, seed: number): DriveResult {
         const seat = s.turn!.seat;
         const roll = my.int(0, 9);
         const eligible = s.players.filter(
-          (x) => x.alive && !x.abandoned && x.disconnectedAt === undefined && x.seat !== w.accusedSeat,
+          (x) =>
+            x.alive && !x.abandoned && x.disconnectedAt === undefined && x.seat !== w.accusedSeat,
         );
         if (roll <= 2 && eligible.length > 0) {
           const challenger = my.pick(eligible);
-          const at = Math.max(
-            Math.min(w.armedAt + my.int(0, 8_000), w.closesAt),
-            now + 1,
-          );
+          const at = Math.max(Math.min(w.armedAt + my.int(0, 8_000), w.closesAt), now + 1);
           step({ type: 'LIAR', seat: challenger.seat, at });
           now = Math.max(now, at);
         } else if (roll <= 6) {
@@ -143,9 +149,7 @@ describe('Soak: randomized full matches across 2/3/4/5/7/10 players', () => {
 
       // 1) verdicts always match the reveal contents vs the round's table card:
       for (const rv of reveals) {
-        const lied = rv.cards.some(
-          (r) => r !== rv.table && r !== 'JOKER',
-        );
+        const lied = rv.cards.some((r) => r !== rv.table && r !== 'JOKER');
         expect(rv.verdict === 'LIE', `seed ${seed}`).toBe(lied);
       }
 
@@ -162,9 +166,7 @@ describe('Soak: randomized full matches across 2/3/4/5/7/10 players', () => {
       // 3) one roulette per round, always:
       expect(record.summary.rounds).toBe(s.completedRounds);
       expect(record.summary.totalPulls).toBe(s.completedRounds);
-      expect(record.summary.totalPulls).toBe(
-        s.players.reduce((sum, p) => sum + p.pulls, 0),
-      );
+      expect(record.summary.totalPulls).toBe(s.players.reduce((sum, p) => sum + p.pulls, 0));
 
       // 4) revolver law: death exactly at bulletPos; survivors under 6 pulls:
       for (const p of dead) {
@@ -184,8 +186,13 @@ describe('Soak: randomized full matches across 2/3/4/5/7/10 players', () => {
       // 5) coin math: +1 per survived round for everyone; winner additionally rolls 2..7:
       for (const p of s.players) {
         if (p.stats.won) {
-          expect(p.stats.coinsEarned - p.stats.roundsSurvived, `seed ${seed}`).toBeGreaterThanOrEqual(2);
-          expect(p.stats.coinsEarned - p.stats.roundsSurvived, `seed ${seed}`).toBeLessThanOrEqual(7);
+          expect(
+            p.stats.coinsEarned - p.stats.roundsSurvived,
+            `seed ${seed}`,
+          ).toBeGreaterThanOrEqual(2);
+          expect(p.stats.coinsEarned - p.stats.roundsSurvived, `seed ${seed}`).toBeLessThanOrEqual(
+            7,
+          );
         } else {
           expect(p.stats.coinsEarned, `seed ${seed}`).toBe(p.stats.roundsSurvived);
         }
@@ -210,8 +217,24 @@ describe('Soak: randomized full matches across 2/3/4/5/7/10 players', () => {
 
   it('containsLie equals the engine verdict semantics used in 1)', () => {
     expect(containsLie([{ id: 'a', rank: 'K' }], 'K')).toBe(false);
-    expect(containsLie([{ id: 'a', rank: 'K' }, { id: 'b', rank: 'JOKER' }], 'Q')).toBe(true); // K is off-table on Q
-    expect(containsLie([{ id: 'a', rank: 'Q' }, { id: 'b', rank: 'JOKER' }], 'Q')).toBe(false);
+    expect(
+      containsLie(
+        [
+          { id: 'a', rank: 'K' },
+          { id: 'b', rank: 'JOKER' },
+        ],
+        'Q',
+      ),
+    ).toBe(true); // K is off-table on Q
+    expect(
+      containsLie(
+        [
+          { id: 'a', rank: 'Q' },
+          { id: 'b', rank: 'JOKER' },
+        ],
+        'Q',
+      ),
+    ).toBe(false);
     expect(containsLie([{ id: 'a', rank: 'K' }], 'Q')).toBe(true);
   });
 });

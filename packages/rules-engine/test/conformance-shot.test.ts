@@ -58,7 +58,10 @@ describe('STR/01 §6 — false accuser: always self-roulette, never accuser-exec
 
       const r = ok(s, { type: 'LIAR', seat: W, at: ++t });
       expect(findEffect(r.effects, 'REVEALED')).toMatchObject({
-        accusedSeat: 0, challengerSeat: W, verdict: 'TRUTH', loserSeat: W,
+        accusedSeat: 0,
+        challengerSeat: W,
+        verdict: 'TRUTH',
+        loserSeat: W,
       });
       const shot = findEffect(r.effects, 'SHOT_ASSIGNED')!;
       expect(shot).toMatchObject({ loserSeat: W, shotKind: 'SELF' }); // §6 row 2, always

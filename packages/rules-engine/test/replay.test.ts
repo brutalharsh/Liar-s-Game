@@ -79,7 +79,8 @@ function driveEventPure(seed: number) {
     }
   }
 
-  if (s.phase !== 'GAME_END') throw new Error(`match never ended (phase ${s.phase}) after 500 steps`);
+  if (s.phase !== 'GAME_END')
+    throw new Error(`match never ended (phase ${s.phase}) after 500 steps`);
   return { s, effects, errors };
 }
 
@@ -101,8 +102,8 @@ describe('Deterministic replay (mission: re-run a match from (seed, events[]))',
       events: final.log,
     });
     expect(stripRuntime(rp.state)).toEqual(stripRuntime(final)); // bit-exact reproduction
-    expect(rp.effects).toEqual(run.effects);                     // identical broadcast stream
-    expect(rp.rejected.map((e) => e.code)).toEqual(run.errors);  // identical rejection sequence
+    expect(rp.effects).toEqual(run.effects); // identical broadcast stream
+    expect(rp.rejected.map((e) => e.code)).toEqual(run.errors); // identical rejection sequence
   });
 
   it('replay is repeatable: two replays produce identical states', () => {
@@ -116,8 +117,15 @@ describe('Deterministic replay (mission: re-run a match from (seed, events[]))',
   it('a different seed diverges (the seed is load-bearing)', () => {
     const seed = 77_003;
     const run = driveEventPure(seed);
-    const other = replay({ roster: roster(3), matchId: 'm-replay', seed: seed + 1, events: run.s.log });
-    expect(JSON.stringify(stripRuntime(other.state))).not.toEqual(JSON.stringify(stripRuntime(run.s)));
+    const other = replay({
+      roster: roster(3),
+      matchId: 'm-replay',
+      seed: seed + 1,
+      events: run.s.log,
+    });
+    expect(JSON.stringify(stripRuntime(other.state))).not.toEqual(
+      JSON.stringify(stripRuntime(run.s)),
+    );
   });
 
   it('replay accepts plain GameEvent[] (not just LogEntry[])', () => {

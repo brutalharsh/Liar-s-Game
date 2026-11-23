@@ -66,7 +66,7 @@
   returns to `/billing/return` → **backend re-verifies** status with the proxy →
   grants coins ONLY on `status === 'paid'` + exact `amountMinor` match,
   idempotent by token. Packs: ₹49/₹99/₹199/₹399 → 500/1200/2500/5500 coins.
-  BLOCKED only on project registration (owner: `td_setup_…` key, or manual
+  BLOCKED only on project registration (owner's project setup key, or manual
   creation on the provider dashboard — see private `docs/payments-api.md` —
   then paste key+id into env). Mock
   fallback until then — mock never credits anything.

@@ -192,7 +192,10 @@ describe('oauth provider parsing (optional — absent pair = not configured)', (
       },
       { loadEnvFile: false },
     );
-    expect(config.oauth.discord).toEqual({ clientId: 'discord-id', clientSecret: 'discord-secret' });
+    expect(config.oauth.discord).toEqual({
+      clientId: 'discord-id',
+      clientSecret: 'discord-secret',
+    });
     expect(config.oauth.google).toBeUndefined(); // secret missing → not configured
   });
 
@@ -226,7 +229,9 @@ describe('env-file selection (AGENTS.md rule 5)', () => {
     writeFileSync(join(tmp, '.env.local'), 'PORT=9998\n');
     expect(resolveEnvFile({ NODE_ENV: 'production' }, { cwd: tmp })).toBeUndefined();
     writeFileSync(join(tmp, '.env.production'), 'PORT=9997\n');
-    expect(resolveEnvFile({ NODE_ENV: 'production' }, { cwd: tmp })).toBe(join(tmp, '.env.production'));
+    expect(resolveEnvFile({ NODE_ENV: 'production' }, { cwd: tmp })).toBe(
+      join(tmp, '.env.production'),
+    );
   });
 
   it('dev mode prefers .env.local, falling back to .env', () => {
@@ -235,7 +240,9 @@ describe('env-file selection (AGENTS.md rule 5)', () => {
       writeFileSync(join(devTmp, '.env'), 'PORT=9996\n');
       expect(resolveEnvFile({}, { cwd: devTmp })).toBe(join(devTmp, '.env'));
       writeFileSync(join(devTmp, '.env.local'), 'PORT=9995\n');
-      expect(resolveEnvFile({ NODE_ENV: 'development' }, { cwd: devTmp })).toBe(join(devTmp, '.env.local'));
+      expect(resolveEnvFile({ NODE_ENV: 'development' }, { cwd: devTmp })).toBe(
+        join(devTmp, '.env.local'),
+      );
     } finally {
       rmSync(devTmp, { recursive: true, force: true });
     }
@@ -246,7 +253,10 @@ describe('env-file selection (AGENTS.md rule 5)', () => {
       '/custom/.env.ci',
     );
     expect(
-      resolveEnvFile({ NODE_ENV: 'production', LIARS_ENV_FILE: '/custom/.env.ci' }, { envFile: '/opt/.env' }),
+      resolveEnvFile(
+        { NODE_ENV: 'production', LIARS_ENV_FILE: '/custom/.env.ci' },
+        { envFile: '/opt/.env' },
+      ),
     ).toBe('/opt/.env');
   });
 

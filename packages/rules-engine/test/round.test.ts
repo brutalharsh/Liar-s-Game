@@ -18,11 +18,18 @@ function playFalseAccusationRound(seed: number) {
   const H2 = (R + 2) % 4;
   const table = s.round!.tableCard;
   // R plays a truth, N plays a truth, so H2's call on N is a FALSE ACCUSATION:
-  s = withHands(s, { [R]: [table, table, table, table, table], [N]: [table, table, table, table, table] });
+  s = withHands(s, {
+    [R]: [table, table, table, table, table],
+    [N]: [table, table, table, table, table],
+  });
   s = ok(s, { type: 'PLAY', seat: R, cardIds: handOf(s, R).slice(0, 1), at: T0 + 5 }).s;
   s = ok(s, { type: 'PLAY', seat: N, cardIds: handOf(s, N).slice(0, 1), at: T0 + 6 }).s;
   const r = ok(s, { type: 'LIAR', seat: H2, at: T0 + 7 });
-  expect(r.s.round!.resolution).toMatchObject({ verdict: 'TRUTH', loserSeat: H2, loserRole: 'accuser' });
+  expect(r.s.round!.resolution).toMatchObject({
+    verdict: 'TRUTH',
+    loserSeat: H2,
+    loserRole: 'accuser',
+  });
   return { previousStarter: R, accused: N, falseAccuser: H2, s: r.s };
 }
 

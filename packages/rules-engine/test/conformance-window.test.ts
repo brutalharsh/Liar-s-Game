@@ -40,30 +40,37 @@ describe('STR/01 A2/A4 — window & timer config representation', () => {
 
   it('window clocks are offsets of the play time; NOT_ARMED before arm delay, inclusive at BOTH boundaries, rejected after close', () => {
     const config: MatchConfig = { ...DEFAULT_MATCH_CONFIG, armDelayMs: 600, windowMs: 4_000 };
-    let s = apply(
-      createMatch({ roster: roster(7), seed: 9401, config }),
-      { type: 'MATCH_START', at: T0 },
-    ).state;
+    let s = apply(createMatch({ roster: roster(7), seed: 9401, config }), {
+      type: 'MATCH_START',
+      at: T0,
+    }).state;
     s = apply(s, { type: 'BEGIN_TURNS', at: T0 + 1 }).state;
     const A = turnSeat(s);
     const at = T0 + 5;
     const r = ok(s, { type: 'PLAY', seat: A, cardIds: handIds(s, A).slice(0, 1), at });
     expect(r.s.phase).toBe('WINDOW');
     expect(findEffect(r.effects, 'WINDOW_OPENED')).toMatchObject({
-      accusedSeat: A, openedAt: at, armedAt: at + 600, closesAt: at + 4_000,
+      accusedSeat: A,
+      openedAt: at,
+      armedAt: at + 600,
+      closesAt: at + 4_000,
     });
     expect(r.s.round!.window).toMatchObject({ armedAt: at + 600, closesAt: at + 4_000 });
 
     // Each probe branches from the same post-play window state (apply is pure):
     const w = r.s;
-    expect(apply(w, { type: 'LIAR', seat: (A + 2) % 7, at: at + 599 }).err?.code).toBe('ERR_WINDOW_NOT_ARMED');
+    expect(apply(w, { type: 'LIAR', seat: (A + 2) % 7, at: at + 599 }).err?.code).toBe(
+      'ERR_WINDOW_NOT_ARMED',
+    );
     const early = apply(w, { type: 'LIAR', seat: (A + 3) % 7, at: at + 600 }); // == armedAt
     expect(early.err).toBeUndefined();
     expect(early.state.phase).toBe('REVEAL');
     const atClose = apply(w, { type: 'LIAR', seat: (A + 4) % 7, at: at + 4_000 }); // == closesAt
     expect(atClose.err).toBeUndefined();
     expect(atClose.state.phase).toBe('REVEAL');
-    expect(apply(w, { type: 'LIAR', seat: (A + 5) % 7, at: at + 4_001 }).err?.code).toBe('ERR_WINDOW_CLOSED');
+    expect(apply(w, { type: 'LIAR', seat: (A + 5) % 7, at: at + 4_001 }).err?.code).toBe(
+      'ERR_WINDOW_CLOSED',
+    );
   });
 
   it('alive-count derivation: windows at 6 and 5 alive, next-only at 4 alive; timers 15s→20s; deck stays 40 cards', () => {
@@ -126,7 +133,9 @@ describe('STR/01 A2/A4 — window & timer config representation', () => {
     // Next-only rights at 4 alive: bystanders rejected, the turn holder may call.
     const holder = p3.s.turn!.seat;
     const bystander = p3.s.players.find((p) => p.alive && p.seat !== L3 && p.seat !== holder)!.seat;
-    expect(apply(p3.s, { type: 'LIAR', seat: bystander, at: t3 + 2 }).err?.code).toBe('ERR_NOT_YOUR_TURN');
+    expect(apply(p3.s, { type: 'LIAR', seat: bystander, at: t3 + 2 }).err?.code).toBe(
+      'ERR_NOT_YOUR_TURN',
+    );
     const called = ok(p3.s, { type: 'LIAR', seat: holder, at: t3 + 3 });
     expect(called.s.round!.resolution).toMatchObject({ accusedSeat: L3, loserSeat: L3 });
     r = ok(called.s, { type: 'REVEAL_ACK', at: t3 + 4 });
@@ -145,7 +154,9 @@ describe('STR/01 A2/A4 — window & timer config representation', () => {
     expect(r.s.phase).toBe('TURN');
     expect(r.s.round!.window).toBeUndefined();
     expect(r.effects.filter((e) => e.kind === 'WINDOW_OPENED')).toHaveLength(0);
-    expect(apply(r.s, { type: 'LIAR', seat: (A + 3) % 7, at: T0 + 6 }).err?.code).toBe('ERR_NOT_YOUR_TURN');
+    expect(apply(r.s, { type: 'LIAR', seat: (A + 3) % 7, at: T0 + 6 }).err?.code).toBe(
+      'ERR_NOT_YOUR_TURN',
+    );
     expect(ok(r.s, { type: 'LIAR', seat: turnSeat(r.s), at: T0 + 7 }).s.phase).toBe('REVEAL');
   });
 });

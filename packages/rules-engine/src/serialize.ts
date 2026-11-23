@@ -65,9 +65,7 @@ export function toPublicSnapshot(s: GameState, viewerSeat?: number): PublicSnaps
       : null;
 
   const pileCount = (round?.pile ?? []).reduce((n, pl) => n + pl.cards.length, 0);
-  const heldCount = s.players
-    .filter((p) => p.alive)
-    .reduce((n, p) => n + p.hand.length, 0);
+  const heldCount = s.players.filter((p) => p.alive).reduce((n, p) => n + p.hand.length, 0);
   const deckSize = round ? round.leftover.length + pileCount + heldCount : null;
 
   return {

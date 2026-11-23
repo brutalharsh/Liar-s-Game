@@ -87,9 +87,9 @@ describe('Deck builder (A3 scaling)', () => {
     expect(containsLie([K, Q], 'K')).toBe(true); // one false card sinks the play
     expect(containsLie([Q, J], 'K')).toBe(true);
     expect(containsLie([J, J, J], 'K')).toBe(false); // jokers wild → truth
-    expect(containsLie([A, J, K], 'K')).toBe(true);  // A is off-table → mixed play is a lie
+    expect(containsLie([A, J, K], 'K')).toBe(true); // A is off-table → mixed play is a lie
     expect(containsLie([Q, A], 'K')).toBe(true);
-    expect(containsLie([Q, J], 'Q')).toBe(false);     // table-rank + joker is fully true
+    expect(containsLie([Q, J], 'Q')).toBe(false); // table-rank + joker is fully true
   });
 
   it('rejects invalid module counts and player counts', () => {

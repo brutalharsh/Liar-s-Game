@@ -224,7 +224,9 @@ export function loadConfig(
 
   const mongodbUri = env['MONGODB_URI'];
   if (!mongodbUri || !/^mongodb(\+srv)?:\/\//.test(mongodbUri)) {
-    throw new Error('[config] MONGODB_URI must be a mongodb:// or mongodb+srv:// connection string.');
+    throw new Error(
+      '[config] MONGODB_URI must be a mongodb:// or mongodb+srv:// connection string.',
+    );
   }
   const mongodbDb = env['MONGODB_DB'];
   if (!mongodbDb || mongodbDb.trim().length === 0) {

@@ -46,7 +46,15 @@ class RecordingRng implements RngPort {
 
 describe('STR/01 §1 — deck composition for every N = 2..10 (A3)', () => {
   it.each([
-    [2, 1], [3, 1], [4, 1], [5, 2], [6, 2], [7, 2], [8, 2], [9, 3], [10, 3],
+    [2, 1],
+    [3, 1],
+    [4, 1],
+    [5, 2],
+    [6, 2],
+    [7, 2],
+    [8, 2],
+    [9, 3],
+    [10, 3],
   ])('N=%i players → m=%i: deck is m × (6K+6Q+6A+2 Jokers), 40% truths', (n, m) => {
     expect(deckModulesFor(n)).toBe(m);
     expect(m).toBe(Math.ceil(n / 4));
@@ -70,13 +78,17 @@ describe('STR/01 §1 — deck composition for every N = 2..10 (A3)', () => {
 describe('STR/01 §1 — revolver mint (uniform 1..6 at match start, never re-rolled)', () => {
   it('MATCH_START mints every bulletPos through rng.int(1,6) before any other draw', () => {
     const rng = new RecordingRng(new SeededRng(771));
-    const r = apply(
-      createMatch({ roster: roster(3), matchId: 'm-mint', rng }),
-      { type: 'MATCH_START', at: T0 },
-    );
+    const r = apply(createMatch({ roster: roster(3), matchId: 'm-mint', rng }), {
+      type: 'MATCH_START',
+      at: T0,
+    });
     expect(r.err).toBeUndefined();
     const mints = rng.intCalls.slice(0, 3);
-    expect(mints.map((c) => [c.min, c.max])).toEqual([[1, 6], [1, 6], [1, 6]]);
+    expect(mints.map((c) => [c.min, c.max])).toEqual([
+      [1, 6],
+      [1, 6],
+      [1, 6],
+    ]);
     expect(r.state.players.map((p) => p.bulletPos)).toEqual(mints.map((c) => c.out));
   });
 
@@ -103,17 +115,22 @@ describe('STR/01 §1 — revolver mint (uniform 1..6 at match start, never re-ro
 
   it('no re-mint across reshuffles, redeals and deaths: int(1,6) fires exactly N times, bulletPos is constant', () => {
     const rng = new RecordingRng(new SeededRng(772));
-    let s = apply(
-      createMatch({ roster: roster(3), matchId: 'm-mint', rng }),
-      { type: 'MATCH_START', at: T0 },
-    ).state;
+    let s = apply(createMatch({ roster: roster(3), matchId: 'm-mint', rng }), {
+      type: 'MATCH_START',
+      at: T0,
+    }).state;
     s = apply(s, { type: 'BEGIN_TURNS', at: T0 + 1 }).state;
     const minted = s.players.map((p) => p.bulletPos);
     expect(rng.mintCalls()).toHaveLength(3);
 
     // Full round: a play, a challenge, a roulette (deaths allowed), a redeal.
     const playAndCall = (st: GameState, t: number): GameState => {
-      let cur = ok(st, { type: 'PLAY', seat: turnSeat(st), cardIds: handIds(st, turnSeat(st)).slice(0, 1), at: t }).s;
+      let cur = ok(st, {
+        type: 'PLAY',
+        seat: turnSeat(st),
+        cardIds: handIds(st, turnSeat(st)).slice(0, 1),
+        at: t,
+      }).s;
       cur = ok(cur, { type: 'LIAR', seat: turnSeat(cur), at: t + 1 }).s; // 3p → next-only
       cur = ok(cur, { type: 'REVEAL_ACK', at: t + 2 }).s;
       return ok(cur, { type: 'SHOT_ACK', at: t + 3 }).s;

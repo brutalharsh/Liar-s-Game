@@ -12,7 +12,15 @@
  *   dead designated starter → next living ccw seat after them (R26 fallback).
  */
 import { buildDeck, dealHands, deckModulesFor, tableDeckRanks } from './deck';
-import type { Effect, GameState, LogEntry, MatchRecord, Play, PlayerState, RoundState } from './types';
+import type {
+  Effect,
+  GameState,
+  LogEntry,
+  MatchRecord,
+  Play,
+  PlayerState,
+  RoundState,
+} from './types';
 
 export function seatOf(s: GameState, seat: number): PlayerState {
   const p = s.players.find((q) => q.seat === seat);
@@ -66,7 +74,10 @@ export function startRound(s: GameState, roundNo: number, starterSeat: number): 
   const alive = alivePlayers(s);
   const deck = s.rng.shuffle(buildDeck(deckModulesFor(s.capacity)));
   const tableCard = s.rng.pick(tableDeckRanks());
-  const { hands, leftover } = dealHands(deck, alive.map((p) => p.seat));
+  const { hands, leftover } = dealHands(
+    deck,
+    alive.map((p) => p.seat),
+  );
 
   const round: RoundState = {
     roundNo,
@@ -202,5 +213,11 @@ export function logEnvelope(s: GameState): {
   initialSeed: number | null;
   log: LogEntry[];
 } {
-  return { matchId: s.matchId, roomCode: s.roomCode, capacity: s.capacity, initialSeed: s.initialSeed, log: s.log };
+  return {
+    matchId: s.matchId,
+    roomCode: s.roomCode,
+    capacity: s.capacity,
+    initialSeed: s.initialSeed,
+    log: s.log,
+  };
 }

@@ -12,11 +12,9 @@ const first = <T extends Effect['kind']>(effs: Effect[], kind: T) =>
 
 const offOf = (t: TableRank): 'Q' | 'K' => (t === 'K' ? 'Q' : 'K');
 
-const stat = (s: S, seat: number) =>
-  s.players.find((p) => p.seat === seat)!.stats;
+const stat = (s: S, seat: number) => s.players.find((p) => p.seat === seat)!.stats;
 
-const pullsOf = (s: S, seat: number) =>
-  s.players.find((p) => p.seat === seat)!.pulls;
+const pullsOf = (s: S, seat: number) => s.players.find((p) => p.seat === seat)!.pulls;
 
 describe('STR/09 MatchRecord: full-match stat attribution', () => {
   it('a fully scripted 5-round match: every stat, coin and XP lands exactly (STR/01 §10)', () => {
@@ -71,9 +69,20 @@ describe('STR/09 MatchRecord: full-match stat attribution', () => {
     expect(turnSeat(s)).toBe(X);
     lie(X);
     const fx1 = call(Y, X);
-    expect(first(fx1, 'REVEALED')).toMatchObject({ verdict: 'LIE', loserSeat: X, accusedSeat: X, challengerSeat: Y, forced: false });
-    expect(first(fx1, 'REVEALED')!.cards).toHaveLength(1);        // only the accused's LAST play
-    expect(first(fx1, 'SHOT_RESULT')).toMatchObject({ loserSeat: X, pullNo: 1, outcome: 'BLANK', died: false });
+    expect(first(fx1, 'REVEALED')).toMatchObject({
+      verdict: 'LIE',
+      loserSeat: X,
+      accusedSeat: X,
+      challengerSeat: Y,
+      forced: false,
+    });
+    expect(first(fx1, 'REVEALED')!.cards).toHaveLength(1); // only the accused's LAST play
+    expect(first(fx1, 'SHOT_RESULT')).toMatchObject({
+      loserSeat: X,
+      pullNo: 1,
+      outcome: 'BLANK',
+      died: false,
+    });
     expect(stat(s, Y).catches).toBe(1);
     expect(pullsOf(s, X)).toBe(1);
     expect(turnSeat(s)).toBe(X); // caught liar starts r2
@@ -82,10 +91,14 @@ describe('STR/09 MatchRecord: full-match stat attribution', () => {
     lie(X);
     truth(Y);
     const fx2 = call(Z, Y);
-    expect(first(fx2, 'REVEALED')).toMatchObject({ verdict: 'TRUTH', loserSeat: Z, accusedSeat: Y });
+    expect(first(fx2, 'REVEALED')).toMatchObject({
+      verdict: 'TRUTH',
+      loserSeat: Z,
+      accusedSeat: Y,
+    });
     expect(first(fx2, 'SHOT_ASSIGNED')).toMatchObject({ loserSeat: Z, shotKind: 'SELF' }); // false accuser
     expect(first(fx2, 'SHOT_RESULT')).toMatchObject({ loserSeat: Z, outcome: 'BLANK' });
-    expect(stat(s, X).bluffSuccesses).toBe(1);   // X's r2 lie passed, unchallenged & un-revealed
+    expect(stat(s, X).bluffSuccesses).toBe(1); // X's r2 lie passed, unchallenged & un-revealed
     expect(stat(s, Z).falseAccusations).toBe(1);
     expect(pullsOf(s, Z)).toBe(1);
     expect(turnSeat(s)).toBe(Y); // false-accusation branch: next-in-order after previous starter X
@@ -94,7 +107,12 @@ describe('STR/09 MatchRecord: full-match stat attribution', () => {
     lie(Y);
     const fx3 = call(Z, Y);
     expect(first(fx3, 'REVEALED')!.verdict).toBe('LIE');
-    expect(first(fx3, 'SHOT_RESULT')).toMatchObject({ loserSeat: Y, pullNo: 1, outcome: 'LIVE', died: true });
+    expect(first(fx3, 'SHOT_RESULT')).toMatchObject({
+      loserSeat: Y,
+      pullNo: 1,
+      outcome: 'LIVE',
+      died: true,
+    });
     expect(s.players.find((p) => p.seat === Y)!.alive).toBe(false);
     expect(turnSeat(s)).toBe(Z); // dead caught-liar Y → next living ccw
 
@@ -111,7 +129,11 @@ describe('STR/09 MatchRecord: full-match stat attribution', () => {
     expect(first(fx5, 'REVEALED')).toMatchObject({ verdict: 'TRUTH', loserSeat: X });
     expect(first(fx5, 'SHOT_ASSIGNED')).toMatchObject({ loserSeat: X, shotKind: 'SELF' });
     expect(first(fx5, 'SHOT_RESULT')).toMatchObject({
-      loserSeat: X, pullNo: 2, outcome: 'LIVE', died: true, deathCause: 'selfRoulette',
+      loserSeat: X,
+      pullNo: 2,
+      outcome: 'LIVE',
+      died: true,
+      deathCause: 'selfRoulette',
     });
     // call() already advanced; the match must now be over:
     expect(s.phase).toBe('GAME_END');

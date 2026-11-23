@@ -23,10 +23,14 @@ describe('State machine: illegal transitions are typed-rejected (doc-02 §9/R10 
   it('gameplay events are rejected before MATCH_START', () => {
     const s = emptyMatch(3);
     expect(errCode(s, { type: 'BEGIN_TURNS', at: T0 })).toBe('ERR_MATCH_NOT_STARTED');
-    expect(errCode(s, { type: 'PLAY', seat: 0, cardIds: ['K1'], at: T0 })).toBe('ERR_MATCH_NOT_STARTED');
+    expect(errCode(s, { type: 'PLAY', seat: 0, cardIds: ['K1'], at: T0 })).toBe(
+      'ERR_MATCH_NOT_STARTED',
+    );
     expect(errCode(s, { type: 'TURN_TIMEOUT', seat: 0, at: T0 })).toBe('ERR_MATCH_NOT_STARTED');
     expect(errCode(s, { type: 'NEXT_ROUND', at: T0 })).toBe('ERR_MATCH_NOT_STARTED');
-    expect(errCode(s, { type: 'STAGE', seat: 0, cardIds: [], at: T0 })).toBe('ERR_MATCH_NOT_STARTED');
+    expect(errCode(s, { type: 'STAGE', seat: 0, cardIds: [], at: T0 })).toBe(
+      'ERR_MATCH_NOT_STARTED',
+    );
     // presence events are tolerated in the lobby (they are just flags)
     expect(errCode(s, { type: 'DISCONNECT', seat: 0, at: T0 })).toBeUndefined();
   });
@@ -47,7 +51,12 @@ describe('State machine: illegal transitions are typed-rejected (doc-02 §9/R10 
     expect(errCode(s, { type: 'WINDOW_EXPIRE', at: T0 })).toBe('ERR_WRONG_PHASE');
 
     const A = turnSeat(s);
-    const s2 = ok(s, { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at: T0 + 5 }).s;
+    const s2 = ok(s, {
+      type: 'PLAY',
+      seat: A,
+      cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+      at: T0 + 5,
+    }).s;
     const C = turnSeat(s2);
     const liared = ok(s2, { type: 'LIAR', seat: C, at: T0 + 6 }).s;
     expect(liared.phase).toBe('REVEAL');
@@ -92,7 +101,12 @@ describe('State machine: illegal transitions are typed-rejected (doc-02 §9/R10 
     const s0 = startedMatch(3);
     const A = turnSeat(s0);
     const before = projection(s0);
-    const r = apply(s0, { type: 'PLAY', seat: (A + 1) % 3, cardIds: s0.players[(A + 1) % 3].hand.map((c) => c.id).slice(0, 1), at: T0 + 5 });
+    const r = apply(s0, {
+      type: 'PLAY',
+      seat: (A + 1) % 3,
+      cardIds: s0.players[(A + 1) % 3].hand.map((c) => c.id).slice(0, 1),
+      at: T0 + 5,
+    });
     expect(r.err?.code).toBe('ERR_NOT_YOUR_TURN');
     expect(projection(r.state)).toBe(before);
     expect(r.state.log).toHaveLength(s0.log.length + 1);
@@ -122,9 +136,19 @@ describe('State machine: illegal transitions are typed-rejected (doc-02 §9/R10 
     const seqs: number[] = [];
     const A = turnSeat(s);
     const events: GameEvent[] = [
-      { type: 'STAGE', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at: T0 + 2 },
+      {
+        type: 'STAGE',
+        seat: A,
+        cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+        at: T0 + 2,
+      },
       { type: 'PLAY', seat: 99, cardIds: [], at: T0 + 3 }, // rejected
-      { type: 'PLAY', seat: A, cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1), at: T0 + 4 },
+      {
+        type: 'PLAY',
+        seat: A,
+        cardIds: s.players[A].hand.map((c) => c.id).slice(0, 1),
+        at: T0 + 4,
+      },
     ];
     for (const ev of events) {
       s = apply(s, ev).state;

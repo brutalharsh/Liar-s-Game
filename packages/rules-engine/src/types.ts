@@ -56,14 +56,7 @@ export type ShotOutcome = 'BLANK' | 'LIVE';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type Phase =
-  | 'LOBBY'
-  | 'ROUND_NEW'
-  | 'TURN'
-  | 'WINDOW'
-  | 'REVEAL'
-  | 'SHOT'
-  | 'ROUND_END'
-  | 'GAME_END';
+  'LOBBY' | 'ROUND_NEW' | 'TURN' | 'WINDOW' | 'REVEAL' | 'SHOT' | 'ROUND_END' | 'GAME_END';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Config

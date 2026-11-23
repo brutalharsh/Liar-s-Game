@@ -22,8 +22,8 @@ units (49, never paise), `returnUrl = ${APP_URL}/billing/return`, `metadata
 grant ONLY when `status === 'paid'` AND `amountMinor` matches the saved record →
 idempotent wallet credit (`txId = checkout:<token>`). Checkouts expire after 30
 minutes; `failed` can flip to `paid` on retry — believe only the status endpoint,
-never the redirect. BLOCKED only on project registration (owner: `td_setup_…`
-  key OR manual creation on the provider dashboard — see private docs/payments-api.md); until then
+never the redirect. BLOCKED only on project registration (owner's project
+  setup key OR manual creation on the provider dashboard — see private docs/payments-api.md); until then
 `PAYMENTS_PROVIDER=mock` → informational modal, credits nothing, ever.
 
 ## 2. Earning coins (no farming)

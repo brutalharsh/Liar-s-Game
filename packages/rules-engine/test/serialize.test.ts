@@ -50,7 +50,9 @@ describe('Public serializer (STR/07 §3 — zero hidden data)', () => {
     expect(chamberBadge(s.players[0])).toEqual({ pulls: 0, chambers: 6, fatalNext: false });
     s.players[0].pulls = 5;
     expect(chamberBadge(s.players[0]).fatalNext).toBe(true);
-    expect(JSON.stringify(chamberBadge(s.players[0]))).toBe('{"pulls":5,"chambers":6,"fatalNext":true}');
+    expect(JSON.stringify(chamberBadge(s.players[0]))).toBe(
+      '{"pulls":5,"chambers":6,"fatalNext":true}',
+    );
   });
 
   it('MatchRecord (emitted at GAME_OVER) is bullet-free', () => {
