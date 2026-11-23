@@ -91,6 +91,13 @@ export interface GameStore extends GameStoreState {
   sendEmote: (emoteId: string) => Promise<EmitResult>;
   startGame: () => Promise<EmitResult>;
   rematch: () => Promise<EmitResult>;
+  /** Create a table (ack carries the minted roomCode; the create flow's submit seam). */
+  createRoom: (input: {
+    name: string;
+    capacity: number;
+    theme: LobbySnapshot["theme"];
+    visibility: LobbySnapshot["visibility"];
+  }) => Promise<EmitResult>;
   noteEmoteSent: () => void;
 
   // lobby-local host controls (DEV mock seams; S1 defines the real events)
@@ -193,7 +200,7 @@ function lobbyFromRoomState(room: RoomState): LobbySnapshot {
         pulled: seat.pulls,
         cardCount: seat.handCount,
         locked: false,
-        isBot: false,
+        isBot: seat.isBot ?? false, // shared ViewPlayerState.isBot (optional; bots only)
       }),
     ),
   };
@@ -565,6 +572,15 @@ export function createGameStore(
     startGame: () => emitter({ type: "game:start" }),
 
     rematch: () => emitter({ type: "game:start" }),
+
+    createRoom: (input) =>
+      emitter({
+        type: "room:create",
+        name: input.name,
+        capacity: input.capacity,
+        theme: input.theme,
+        visibility: input.visibility,
+      }),
 
     noteEmoteSent: () => set({ lastEmoteSentAt: Date.now() }),
 

@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { socket } from "@/lib/socket";
+import { socket, socketMode } from "@/lib/socket";
 import { useGameStore } from "@/store/game";
 import { useToasts } from "@/store/ui";
 import { isValidRoomCode } from "@/lib/sanitize";
+import { themeIdFromSlug } from "@/components/rooms/theme-slug";
 import { GameTableShell } from "@/components/game/GameTableShell";
 import { Panel } from "@/components/ui/Panel";
 import { InviteChip } from "@/components/ui/InviteChip";
@@ -15,16 +16,24 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton, ErrorState } from "@/components/ui/AsyncSection";
 import { themeMeta, THEMES } from "@/lib/mock/themes";
-import { estimateMatchMinutes } from "@/lib/mock/rooms";
 import { QUICK_RULES } from "@/lib/mock/rules-content";
 import type { SeatView, ThemeId } from "@/lib/wire";
 
-/** /lobby/[code] client island — joins the room, shows the waiting table. */
+/** 
+ * /lobby/[code] client island — joins the room, shows the waiting table.
+ * Live notes (S1): host lock/kick/bot-fill have NO wire events (programmatic
+ * only), so those controls render ONLY in mock mode; the phase flipping past
+ * lobby navigates to the table route (GameBridge owns re-sync once there).
+ */
 export function LobbyClient({ code }: { code: string }) {
   const router = useRouter();
   const push = useToasts();
   const lobby = useGameStore((s) => s.lobby);
   const connected = useGameStore((s) => s.connected);
+  const heroSeat = useGameStore((s) => s.heroSeat);
+  const spectator = useGameStore((s) => s.spectator);
+  const startGame = useGameStore((s) => s.startGame);
+  const live = socketMode() === "live";
   const [joined, setJoined] = useState(false);
   const [sheet, setSheet] = useState<null | "theme" | "rules" | { kick: SeatView }>(null);
   const [started, setStarted] = useState(false);
@@ -40,6 +49,9 @@ export function LobbyClient({ code }: { code: string }) {
           push({ title: res.errorMessage ?? "Couldn't join that room", tone: "bad" });
           return;
         }
+        if (res.spectator) {
+          push({ title: "Table's full — spectating from the rail", tone: "info" });
+        }
       }
       if (!cancelled) setJoined(true);
     })();
@@ -47,6 +59,24 @@ export function LobbyClient({ code }: { code: string }) {
       cancelled = true;
     };
   }, [connected, joined, code, push]);
+
+  // phase flip past lobby → the table route (round:new, or a catch-up
+  // snapshot that shows the match already live — a reconnected seat)
+  useEffect(() => {
+    const goTable = (): void => {
+      router.push(`/table/${code}`);
+    };
+    const off = socket.on((ev) => {
+      if (ev.event === "round:new") {
+        goTable();
+        return;
+      }
+      if (ev.event === "lobby:state" && ev.payload.roomCode === code && ev.payload.phase !== "lobby") {
+        goTable();
+      }
+    });
+    return off;
+  }, [code, router]);
 
   if (!isValidRoomCode(code)) {
     return (
@@ -76,12 +106,19 @@ export function LobbyClient({ code }: { code: string }) {
     );
   }
 
+  const displayTheme = themeIdFromSlug(lobby.theme);
   const seated = lobby.seats.filter((s) => s.nickname !== null);
-  const canStart = seated.length >= 2 && !started;
+  const isHost = !spectator && heroSeat === lobby.hostSeat;
+  const canStart = live ? isHost && seated.length >= 2 && !started : seated.length >= 2 && !started;
 
   const onStart = () => {
     setStarted(true);
-    void socket.emit({ type: "game:start" }).then(() => {
+    void startGame().then((res) => {
+      if (!res.ok) {
+        setStarted(false);
+        push({ title: startErrorTitle(res.errorCode), sub: res.errorMessage, tone: "bad" });
+        return;
+      }
       router.push(`/table/${code}`);
     });
   };
@@ -90,7 +127,7 @@ export function LobbyClient({ code }: { code: string }) {
     <>
       <GameTableShell
         seats={lobby.seats}
-        heroSeat={0}
+        heroSeat={spectator ? -1 : heroSeat}
         variant="lobby"
         topStrip={
           <div className="flex min-h-12 items-center gap-2 border-b-2 border-wood-mid/70 bg-wood/85 px-3 pt-safe">
@@ -109,23 +146,28 @@ export function LobbyClient({ code }: { code: string }) {
             <span className="ml-auto rounded-full border border-brass-deep bg-wood-deep px-2 py-0.5 font-body text-[10px] uppercase text-brass">
               {lobby.visibility}
             </span>
+            {spectator && (
+              <span className="rounded-full border border-blood/60 bg-wood-deep px-2 py-0.5 font-body text-[10px] uppercase text-blood-bright">
+                spectating
+              </span>
+            )}
           </div>
         }
         contextRibbon={
           <span>
-            {seated.length}/{lobby.capacity} SEATED · {themeMeta(lobby.theme).name.toUpperCase()} ·{" "}
-            {lobby.roomLocked ? "🔒 LOCKED" : "OPEN"}
+            {seated.length}/{lobby.capacity} SEATED · {themeMeta(displayTheme).name.toUpperCase()}
+            {!live && (lobby.roomLocked ? " · 🔒 LOCKED" : " · OPEN")}
           </span>
         }
         pile={
           <Panel tone="felt" className="max-w-xs p-4 text-center">
             <p className="font-body text-[10px] uppercase tracking-widest text-lamp">Host theme</p>
-            <p className="mt-1 font-display text-xl text-ivory">{themeMeta(lobby.theme).name}</p>
-            <p className="mt-1 font-body text-[11px] text-ink-dim">{themeMeta(lobby.theme).desc}</p>
+            <p className="mt-1 font-display text-xl text-ivory">{themeMeta(displayTheme).name}</p>
+            <p className="mt-1 font-body text-[11px] text-ink-dim">{themeMeta(displayTheme).desc}</p>
             <div
               className="mx-auto mt-3 h-10 w-full rounded-btn border border-wood-mid"
               style={{
-                background: `linear-gradient(135deg, ${themeMeta(lobby.theme).swatch.felt}, ${themeMeta(lobby.theme).swatch.wood})`,
+                background: `linear-gradient(135deg, ${themeMeta(displayTheme).swatch.felt}, ${themeMeta(displayTheme).swatch.wood})`,
               }}
               aria-hidden
             />
@@ -133,7 +175,9 @@ export function LobbyClient({ code }: { code: string }) {
         }
         banner={
           <span className="font-display text-sm tracking-widest text-brass">
-            WAITING FOR PLAYERS — FIRST THROW LANDS SOON
+            {spectator
+              ? "SPECTATING — SEATS OPEN UP AS PLAYERS LEAVE"
+              : "WAITING FOR PLAYERS — FIRST THROW LANDS SOON"}
           </span>
         }
         bottomBar={
@@ -157,8 +201,13 @@ export function LobbyClient({ code }: { code: string }) {
                     <Avatar spec={seat.avatar} size="sm" />
                     <span className="font-display text-base text-ivory">
                       {seat.nickname}
-                      {seat.seat === 0 && <em className="ml-1 not-italic text-xs text-brass">(you)</em>}
+                      {!spectator && seat.seat === heroSeat && <em className="ml-1 not-italic text-xs text-brass">(you)</em>}
                     </span>
+                    {seat.isBot && (
+                      <span aria-label="bot player" className="font-body text-[10px] uppercase text-lamp">
+                        🤖 bot
+                      </span>
+                    )}
                     {seat.isHost && <span aria-label="host">👑</span>}
                     <span
                       className={`ml-auto font-body text-[10px] ${
@@ -167,19 +216,21 @@ export function LobbyClient({ code }: { code: string }) {
                     >
                       {seat.connected ? "● seated" : "○ joining…"}
                     </span>
-                    {seat.seat !== 0 && (
+                    {!live && seat.seat !== 0 && (
                       <Button variant="ghost" size="sm" onClick={() => setSheet({ kick: seat })} aria-label={`Kick ${seat.nickname}`}>
                         KICK
                       </Button>
                     )}
-                    <Button
-                      variant="ghost"
-                      onClick={() => useGameStore.getState().toggleSeatLock(seat.seat)}
-                      aria-label={`Lock seat ${seat.seat + 1}`}
-                      className="px-3"
-                    >
-                      {seat.locked ? "🔒" : "🔓"}
-                    </Button>
+                    {!live && (
+                      <Button
+                        variant="ghost"
+                        onClick={() => useGameStore.getState().toggleSeatLock(seat.seat)}
+                        aria-label={`Lock seat ${seat.seat + 1}`}
+                        className="px-3"
+                      >
+                        {seat.locked ? "🔒" : "🔓"}
+                      </Button>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -188,11 +239,13 @@ export function LobbyClient({ code }: { code: string }) {
             {/* meta chips + host controls */}
             <div className="flex flex-wrap items-center justify-center gap-2">
               <span className="rounded-full border border-lamp/50 bg-lamp/10 px-3 py-1 font-body text-xs text-lamp">
-                ~{estimateMatchMinutes(Math.max(2, seated.length))} min at {Math.max(2, seated.length)} players
+                ~{lobby.estMatchMinutes} min at {seated.length} players
               </span>
-              <Button variant="outline" size="sm" onClick={() => useGameStore.getState().fillSeatWithBot()}>
-                🤖 BOT FILLS A SEAT
-              </Button>
+              {!live && (
+                <Button variant="outline" size="sm" onClick={() => useGameStore.getState().fillSeatWithBot()}>
+                  🤖 BOT FILLS A SEAT
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => setSheet("rules")}>
                 📖 RULES
               </Button>
@@ -201,9 +254,15 @@ export function LobbyClient({ code }: { code: string }) {
               </Button>
             </div>
 
-            <Button variant="brass" size="big" className="text-xl" disabled={!canStart} onClick={onStart}>
-              {started ? "DEALING…" : seated.length < 2 ? "WAITING FOR 1 MORE PLAYER…" : "START TABLE — YOUR CALL FIRST"}
-            </Button>
+            {spectator ? (
+              <p className="text-center font-body text-sm text-ink-dim">Spectating — a seat opens the moment one frees up.</p>
+            ) : live && !isHost ? (
+              <p className="text-center font-body text-sm text-ink-dim">Waiting for the host to deal… 👑</p>
+            ) : (
+              <Button variant="brass" size="big" className="text-xl" disabled={!canStart} onClick={onStart}>
+                {started ? "DEALING…" : seated.length < 2 ? "WAITING FOR 1 MORE PLAYER…" : "START TABLE — YOUR CALL FIRST"}
+              </Button>
+            )}
           </div>
         }
         aside={
@@ -211,9 +270,7 @@ export function LobbyClient({ code }: { code: string }) {
             <Panel tone="deep" className="p-3">
               <p className="font-body text-xs uppercase tracking-widest text-lamp">Invite</p>
               <p className="mt-1 font-display text-3xl tracking-[0.3em] text-brass">{lobby.code}</p>
-              <p className="mt-1 font-body text-[11px] text-ink-dim">
-                Share the link — code doubles as the room secret.
-              </p>
+              <p className="mt-1 font-body text-[11px] text-ink-dim">Share the link — code doubles as the room secret.</p>
             </Panel>
             <Panel tone="deep" className="p-3">
               <p className="mb-2 font-body text-xs uppercase tracking-widest text-lamp">House rules</p>
@@ -228,7 +285,7 @@ export function LobbyClient({ code }: { code: string }) {
             <Panel tone="deep" className="p-3">
               <p className="mb-2 font-body text-xs uppercase tracking-widest text-lamp">Match time</p>
               <p className="font-body text-sm text-ivory">
-                ~{estimateMatchMinutes(Math.max(2, seated.length))} min at {Math.max(2, seated.length)} players
+                ~{lobby.estMatchMinutes} min at {Math.max(2, seated.length)} players
               </p>
             </Panel>
           </>
@@ -238,7 +295,7 @@ export function LobbyClient({ code }: { code: string }) {
             void navigator.clipboard?.writeText(`${window.location.origin}/r/${lobby.code}`).then(() =>
               push({ title: "Invite link copied", tone: "good" }),
             );
-          } else if (seat.nickname && seat.seat !== 0) {
+          } else if (!live && seat.nickname && seat.seat !== 0) {
             setSheet({ kick: seat });
           }
         }}
@@ -248,11 +305,15 @@ export function LobbyClient({ code }: { code: string }) {
       <Sheet open={sheet === "theme"} onClose={() => setSheet(null)} title="Pick a table theme">
         <div className="grid grid-cols-2 gap-2">
           {THEMES.map((theme) => {
-            const current = lobby.theme === theme.id;
+            const current = displayTheme === theme.id;
             return (
               <button
                 key={theme.id}
                 onClick={() => {
+                  if (live) {
+                    push({ title: "Theme swaps arrive with host controls", sub: "For now the host's pick stands.", tone: "info" });
+                    return;
+                  }
                   if (!theme.free) {
                     push({ title: `${theme.name} costs ${theme.price} coins`, sub: "Unlock it in the Shop", tone: "info" });
                     return;
@@ -288,9 +349,9 @@ export function LobbyClient({ code }: { code: string }) {
         </Link>
       </Sheet>
 
-      {/* kick confirm */}
+      {/* kick confirm (mock-dev host control — no live wire event) */}
       <Sheet
-        open={sheet !== null && typeof sheet === "object" && "kick" in sheet}
+        open={!live && sheet !== null && typeof sheet === "object" && "kick" in sheet}
         onClose={() => setSheet(null)}
         title={`Kick ${typeof sheet === "object" && sheet && "kick" in sheet ? sheet.kick.nickname : ""}?`}
       >
@@ -305,7 +366,7 @@ export function LobbyClient({ code }: { code: string }) {
             variant="danger"
             className="flex-1"
             onClick={() => {
-              if (typeof sheet === "object" && sheet && "kick" in sheet) {
+              if (!live && typeof sheet === "object" && sheet && "kick" in sheet) {
                 useGameStore.getState().kickSeat(sheet.kick.seat);
                 push({ title: `${sheet.kick.nickname} was shown the door`, tone: "info" });
               }
@@ -318,4 +379,22 @@ export function LobbyClient({ code }: { code: string }) {
       </Sheet>
     </>
   );
+}
+
+/** game:start rejection codes → friendly copy (router is the authority). */
+function startErrorTitle(errorCode?: string): string {
+  switch (errorCode) {
+    case "INSUFFICIENT_PLAYERS":
+      return "Need at least 2 seated";
+    case "NOT_HOST":
+      return "Only the host deals";
+    case "NOT_IN_ROOM":
+      return "You're not in a room";
+    case "ILLEGAL_MOVE":
+      return "The table's already dealing";
+    case "AUTH_REQUIRED":
+      return "Login to deal";
+    default:
+      return "Couldn't start the table";
+  }
 }

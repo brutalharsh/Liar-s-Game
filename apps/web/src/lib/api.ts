@@ -27,6 +27,7 @@ import {
   validateUpload,
 } from "@/lib/mock/admin-fixtures";
 import { mockLeaderboard, mockProfile } from "@/lib/mock/profile-fixtures";
+import { makePublicRooms } from "@/lib/mock/rooms";
 
 // ══════════════════════════════ wire types ══════════════════════════════════
 
@@ -672,4 +673,98 @@ export async function getLeaderboard(
 export async function getProfile(): Promise<ProfileResponse> {
   if (getApiMode() === "mock") return mockProfile.get();
   return apiFetch<ProfileResponse>("/api/me");
+}
+
+// ═════════════════════ rooms + entitlements (S1 live game REST) ════════════════
+
+/**
+ * One GET /api/rooms row — public browser fields ONLY (STR/08 §1): the room
+ * code, display name, host nickname, theme slug, capacity and seats taken.
+ * No members, no invites, no hidden state ever ride this list.
+ */
+export interface PublicRoomRow {
+  roomCode: string;
+  name: string;
+  hostNickname: string;
+  theme: string;
+  capacity: number;
+  seatsTaken: number;
+  updatedAt: string;
+  /** mock-browser extras (never on the wire): lock badge + idle tag. */
+  locked?: boolean;
+  idleMinutes?: number;
+}
+
+export interface RoomsPage {
+  rooms: PublicRoomRow[];
+  page: number;
+  perPage: number;
+  total: number;
+}
+
+/**
+ * GET /api/rooms — the public room browser (STR/07 §0 "Game/store" REST,
+ * just landed). Public route, paginated; rooms auto-expire ~10 min idle
+ * server-side. The mock adapter keeps serving the same shape from the
+ * deterministic fixture list so /rooms stays clickable before login/S1.
+ */
+export async function getRooms(params: { page?: number; perPage?: number } = {}): Promise<RoomsPage> {
+  const page = Math.max(1, params.page ?? 1);
+  const perPage = Math.min(50, Math.max(1, params.perPage ?? 24));
+  if (getApiMode() === "mock") {
+    const rooms = makePublicRooms().map(
+      (r): PublicRoomRow => ({
+        roomCode: r.code,
+        name: r.name,
+        hostNickname: r.hostName,
+        theme: r.theme,
+        capacity: r.capacity,
+        seatsTaken: r.seats,
+        updatedAt: new Date(Date.now() - r.idleMinutes * 60_000).toISOString(),
+        locked: r.locked,
+        idleMinutes: r.idleMinutes,
+      }),
+    );
+    return {
+      rooms: rooms.slice((page - 1) * perPage, page * perPage),
+      page,
+      perPage,
+      total: rooms.length,
+    };
+  }
+  return apiFetch<RoomsPage>(`/api/rooms${qs({ page, perPage })}`);
+}
+
+/** GET /api/me/entitlements row — what the account owns (shop/earned). */
+export interface UserEntitlement {
+  kind: string; // 'item' | 'theme' | 'title' | 'capacity'
+  key: string;
+  source?: string;
+  at?: string;
+}
+
+export interface EntitlementsResponse {
+  entitlements: UserEntitlement[];
+}
+
+/**
+ * GET /api/me/entitlements — gates behind ownership (Big Table 8–10, premium
+ * themes). Signed-out (401) surfaces as an empty list: you simply don't hold
+ * the pass yet — the UI shows the locked tile + hint.
+ */
+export async function getEntitlements(): Promise<EntitlementsResponse> {
+  if (getApiMode() === "mock") return { entitlements: [] }; // demo: only the free rails
+  try {
+    return await apiFetch<EntitlementsResponse>("/api/me/entitlements");
+  } catch (err) {
+    if (isApiError(err) && (err.status === 401 || err.error === "AUTH_REQUIRED" || err.status === 403)) {
+      return { entitlements: [] };
+    }
+    throw err;
+  }
+}
+
+/** Membership test against the entitlement list the server returned. */
+export function hasEntitlement(list: UserEntitlement[], kind: string, key: string): boolean {
+  return list.some((e) => e.kind === kind && e.key === key);
 }

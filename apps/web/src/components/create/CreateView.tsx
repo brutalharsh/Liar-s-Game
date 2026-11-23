@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { Avatar } from "@/components/ui/Avatar";
-import { socket } from "@/lib/socket";
+import { themeSlugFromId } from "@/components/rooms/theme-slug";
+import { getEntitlements, hasEntitlement } from "@/lib/api";
+import { useGameStore } from "@/store/game";
 import { useIdentityStore } from "@/store/identity";
+import { socketMode } from "@/lib/socket";
 import { useToasts } from "@/store/ui";
 import { sanitizeNickname } from "@/lib/sanitize";
 import { THEMES } from "@/lib/mock/themes";
@@ -14,6 +17,7 @@ import { ANIMALS } from "@/lib/mock/avatar";
 import type { ThemeId, Visibility } from "@/lib/wire";
 
 const CAPACITIES = [2, 3, 4, 5, 6, 7] as const;
+const BIG_TABLES = [8, 9, 10] as const;
 
 export function CreateView() {
   const router = useRouter();
@@ -22,12 +26,30 @@ export function CreateView() {
   const avatar = useIdentityStore((s) => s.avatar);
   const setNickname = useIdentityStore((s) => s.setNickname);
   const setAvatar = useIdentityStore((s) => s.setAvatar);
+  const createRoom = useGameStore((s) => s.createRoom);
+  const live = socketMode() === "live";
 
   const [draft, setDraft] = useState(nickname);
   const [capacity, setCapacity] = useState<number>(7);
   const [theme, setTheme] = useState<ThemeId>("saloon");
   const [visibility, setVisibility] = useState<Visibility>("private");
   const [pending, setPending] = useState(false);
+  const [bigTableUnlocked, setBigTableUnlocked] = useState(false);
+
+  // Big Table 8–10: gated by the big-table host entitlement (GET /api/me/entitlements).
+  // Mock mode has no entitlement rails — the tiles stay locked with the hint.
+  useEffect(() => {
+    if (!live) return;
+    let cancelled = false;
+    getEntitlements()
+      .then((res) => {
+        if (!cancelled) setBigTableUnlocked(hasEntitlement(res.entitlements, "capacity", "big-table"));
+      })
+      .catch(() => undefined); // offline/unauth → locked tile + hint, never a dead page
+    return () => {
+      cancelled = true;
+    };
+  }, [live]);
 
   const sanitized = sanitizeNickname(draft);
 
@@ -38,16 +60,17 @@ export function CreateView() {
     }
     setNickname(sanitized.value);
     setPending(true);
-    const res = await socket.emit({
-      type: "room:create",
+    const res = await createRoom({
       name: `${sanitized.value}'S TABLE`,
       capacity,
-      theme,
+      // wire theme strings are opaque (shared zod: z.string()); the server
+      // validates slugs — 'house' rides out as 'house-table' (theme-slug seam)
+      theme: themeSlugFromId(theme) as ThemeId,
       visibility,
     });
     setPending(false);
     if (!res.ok || !res.code) {
-      push({ title: res.errorMessage ?? "Couldn't open the table", tone: "bad" });
+      push({ title: createErrorTitle(res.errorCode), sub: res.errorMessage, tone: "bad" });
       return;
     }
     push({ title: `Table ${res.code} is open`, sub: "Invite links, please.", tone: "good" });
@@ -139,9 +162,50 @@ export function CreateView() {
                   {cap}
                 </button>
               ))}
+              {BIG_TABLES.map((cap) => {
+                const unlocked = live && bigTableUnlocked;
+                const selected = capacity === cap;
+                return (
+                  <button
+                    key={cap}
+                    role="radio"
+                    aria-checked={selected}
+                    aria-label={`Big Table capacity ${cap}${unlocked ? "" : " — locked"}`}
+                    onClick={() => {
+                      if (!unlocked) {
+                        push({
+                          title: "Big Table is a host pass",
+                          sub: "8–10 seats unlock with the big-table pass from the shop.",
+                          tone: "info",
+                        });
+                        return;
+                      }
+                      setCapacity(cap);
+                    }}
+                    className={`relative flex h-14 w-14 items-center justify-center rounded-btn border-2 font-display text-lg ${
+                      selected
+                        ? "border-brass bg-brass/15 text-brass"
+                        : unlocked
+                          ? "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
+                          : "cursor-not-allowed border-wood-mid/50 bg-wood-deep/60 text-ink-dim/50"
+                    }`}
+                  >
+                    {cap}
+                    {!unlocked && (
+                      <span className="absolute -right-1 -top-1 text-sm" aria-hidden>
+                        🔒
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
             <p className="mt-2 font-body text-[11px] text-ink-dim">
-              Free tables seat 2–7. Big Table 8–10 arrives with a premium host pass (v1.x).
+              Free tables seat 2–7. Big Table 8–10 needs the big-table host pass —{" "}
+              <a href="/shop" className="underline text-brass">
+                shop
+              </a>{" "}
+              when it's stocked.
             </p>
           </section>
 
@@ -212,11 +276,31 @@ export function CreateView() {
             {pending ? "OPENING…" : "DEAL THE FIRST HAND"}
           </Button>
           <p className="text-center font-body text-[11px] text-ink-dim">
-            Opens lobby <strong className="text-brass">DUMMY</strong> in this build (mock server —
-            the real room service lands with wave S1).
+            {live
+              ? "Your table gets a 5-character code — that code IS the invite."
+              : "Opens lobby DUMMY in this build (mock server — the real room service lands with wave S1)."}
           </p>
         </Panel>
       </div>
     </div>
   );
+}
+
+/** Router error codes (STR/07 §2) → friendly copy. */
+function createErrorTitle(errorCode?: string): string {
+  switch (errorCode) {
+    case "VALIDATION":
+      return "The bouncer says no";
+    case "ILLEGAL_MOVE":
+      return "That lock's not yours";
+    case "RATE_LIMITED":
+      return "Easy on the door";
+    case "AUTH_REQUIRED":
+      return "Login first";
+    case "NO_CONNECTION":
+    case "ACK_TIMEOUT":
+      return "The saloon didn't answer";
+    default:
+      return "Couldn't open the table";
+  }
 }

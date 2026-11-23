@@ -1,29 +1,35 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { Panel } from "@/components/ui/Panel";
-import { socket } from "@/lib/socket";
+import { joinErrorCopy, joinRoomByCode } from "@/components/join/join-flow";
 import { useToasts } from "@/store/ui";
 import { parseCodeFromPasted, sanitizeRoomCode, ROOM_CODE_CHARSET } from "@/lib/sanitize";
 
 /**
  * Join by 5-char code: tap-to-type boxes with auto-uppercase + auto-advance,
- * paste-box parses raw text OR invite links (/r/ABCDE).
+ * paste-box parses raw text OR invite links (/r/ABCDE). /join?code=PREFI
+ * prefills the boxes (invite links land here). Live acks route by snapshot
+ * phase: lobby-phase → lobby, mid-match rejoin → table (reconnected seat).
  */
 export function JoinView() {
   const router = useRouter();
   const push = useToasts();
+  const searchParams = useSearchParams();
   const [code, setCode] = useState("");
   const [pasted, setPasted] = useState("");
   const [pending, setPending] = useState(false);
+  const [failed, setFailed] = useState<{ title: string; sub?: string } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // focus the hidden combiner input on mount
+  // focus the hidden combiner input on mount; ?code= prefills the row
   useEffect(() => {
+    const prefill = searchParams.get("code");
+    if (prefill) setCode(sanitizeRoomCode(prefill));
     inputRef.current?.focus();
-  }, []);
+  }, [searchParams]);
 
   const join = async (rawCode: string) => {
     const final = sanitizeRoomCode(rawCode);
@@ -32,14 +38,21 @@ export function JoinView() {
       return;
     }
     setPending(true);
-    const res = await socket.emit({ type: "room:join", code: final });
-    if (!res.ok) {
-      setPending(false);
-      push({ title: res.errorMessage ?? "Couldn't join that room", tone: "bad" });
+    setFailed(null);
+    const outcome = await joinRoomByCode(final);
+    setPending(false);
+    if (!outcome.ok) {
+      const copy = joinErrorCopy(outcome.errorCode);
+      setFailed(copy);
+      push({ title: copy.title, sub: outcome.errorMessage, tone: "bad" });
       return;
     }
-    // mock accepts any well-formed code; navigate to its lobby
-    router.push(`/lobby/${final}`);
+    if (outcome.spectator) {
+      push({ title: "That table's packed — spectating", sub: "You'll get a seat the moment one opens.", tone: "info" });
+    } else if (outcome.destination === "table") {
+      push({ title: "Welcome back — your seat's still warm", tone: "good" });
+    }
+    router.push(`/${outcome.destination}/${final}`);
   };
 
   return (
@@ -96,8 +109,27 @@ export function JoinView() {
           {pending ? "PULLING UP A CHAIR…" : "JOIN TABLE"}
         </Button>
 
+        {/* code-level failure — friendly, with retry + rooms CTAs */}
+        {failed && (
+          <div role="alert" className="mt-4 flex flex-col items-center gap-2 rounded-card border-2 border-blood/70 bg-wood/70 px-4 py-3 text-center">
+            <p className="font-display text-base text-ivory">{failed.title}</p>
+            {failed.sub && <p className="font-body text-xs text-ink-dim">{failed.sub}</p>}
+            <div className="mt-1 flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => void join(code)}>
+                RETRY
+              </Button>
+              <a
+                href="/rooms"
+                className="flex min-h-12 items-center rounded-btn border-2 border-brass bg-brass px-4 font-display text-sm text-wood-deep"
+              >
+                BROWSE ROOMS
+              </a>
+            </div>
+          </div>
+        )}
+
         <p className="mt-3 text-center font-body text-[11px] text-ink-dim">
-          charset: <strong className="text-lamp">{ROOM_CODE_CHARSET.split("").slice(0, 12).join("")}…</strong> (25
+          charset: <strong className="text-lamp">{ROOM_CODE_CHARSET.split("").slice(0, 12).join("")}…</strong> (31
           letters/digits)
         </p>
       </Panel>
