@@ -39,9 +39,17 @@ export function Sheet({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            initial={mode === "mobile" ? { y: "100%" } : { scale: 0.92, opacity: 0 }}
-            animate={mode === "mobile" ? { y: 0 } : { scale: 1, opacity: 1 }}
-            exit={mode === "mobile" ? { y: "100%" } : { scale: 0.94, opacity: 0 }}
+            initial={
+              mode === "desktop"
+                ? { y: 0, scale: 0.92, opacity: 0 }
+                : { y: "100%", scale: 1, opacity: 1 }
+            }
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={
+              mode === "desktop"
+                ? { y: 0, scale: 0.94, opacity: 0 }
+                : { y: "100%", scale: 1, opacity: 1 }
+            }
             transition={{ type: "spring", stiffness: 380, damping: 36 }}
             onKeyDown={(e) => {
               if (e.key === "Escape" && dismissible) onClose();
