@@ -232,7 +232,8 @@ export type RoundEndPayload = z.infer<typeof RoundEndPayloadSchema>;
 
 export const GameOverPayloadSchema = z.strictObject({
   seq: SeqSchema,
-  winnerSeat: SeatSchema,
+  /** null = zero-survivor abort (STR/01 §7: <2 connected-alive with no winner). */
+  winnerSeat: SeatSchema.nullable(),
   /** Public stats written to match_records (STR/09). Ledger writes happen server-side. */
   matchRecord: MatchRecordSchema,
   rewards: z.array(MatchRewardSchema).max(10),

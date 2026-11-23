@@ -10,6 +10,7 @@ import { startServer } from './app.js';
 import { printRoutes } from './lib/printRoutes.js';
 import { createAuthMiddleware } from './middleware/auth.js';
 import { registerGame } from './game/index.js';
+import { economy } from './economy/index.js';
 
 async function main(): Promise<void> {  const config = loadConfig();
   const envFile = resolveEnvFile();
@@ -24,15 +25,15 @@ async function main(): Promise<void> {  const config = loadConfig();
   console.log(`[boot] Liar's Game server listening on :${config.port}`);
   console.log(`[boot] env file: ${envFile ?? '(none — real environment only)'}`);
   console.log(`[boot] payments provider: ${config.payments.provider}`);
-  console.log('[boot] socket.io mounted on the same HTTP server (game handlers land in S1)');
+  console.log('[boot] socket.io mounted on the same HTTP server');
   printRoutes(routes);
 
-  // S1 registration: authoritative game rooms (RoomManager + event router).
-  registerGame(io, {
+  // S1 + E1: authoritative game rooms, rewards wired end-to-end.
+  // grantMatchRewards is idempotent per user+match; bot: seats fail the
+  // ObjectId check inside the grant → skipped-unknown-user (never rewarded).
+  const game = registerGame(io, {
     authenticateSocket: createAuthMiddleware(config.authSecret).authenticateSocket,
-    // TODO-E1: onMatchEnd (MatchEndPayload → E1's grantMatchRewards) is wired
-    // at the integration pass; until then the seam is also observable via
-    // RoomManager.addMatchEndListener for ops/tests.
+    onMatchEnd: economy.grantMatchRewards,
   });
 
   // Unique indexes are the idempotency backbone — sync without blocking boot.
@@ -43,6 +44,7 @@ async function main(): Promise<void> {  const config = loadConfig();
     if (shuttingDown) return;
     shuttingDown = true;
     console.log(`[boot] ${signal} received — shutting down`);
+    game.close(); // dissolve all rooms (no partial match rewards)
     io.close();
     server.close();
     setTimeout(() => {

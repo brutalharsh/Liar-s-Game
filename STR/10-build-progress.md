@@ -76,14 +76,17 @@
    `house-wins` deferred), no public per-account profile (board rows static),
    server sends bare {error:CODE} bodies (client messages generic — acceptable
    v1)
-4. **Integration pass**: web ↔ server smoke over real sockets (after S1 lands);
-   pin catalog item id format (`category:slug` per STR/09 — S-A1 + W-AUTH
-   aligned; W1-era dash-format fixtures to reconcile); reconcile the auth
-   callback default target (`/` — no code-less lobby route exists); fold
-   lib/oauth.ts's 4 process.env reads into the shared config; wire S1's
-   onMatchEnd hook to E1's grantMatchRewards in index.ts; add
-   rules-engine dep to apps/server + keep dist built; rooms/lobby live
-   socket wiring after S1's contract lands; W3 flags above
+4. **Integration pass** (orchestrator): ✅ hook wired —
+   `onMatchEnd: economy.grantMatchRewards` in index.ts (bot seats fail the
+   ObjectId check → skipped-unknown-user; game.close() dissolves rooms on
+   SIGTERM before io.close); ✅ shared schema patch landed (seat-view isBot
+   optional, game:over winnerSeat nullable + web "Nobody survived" variant,
+   summary rounds min 0 — webs store/overlay fixed, dist rebuilt, 59/59);
+   ✅ GET /api/rooms mounted (public_rooms mirror, page envelope, 3 tests →
+   241/241; boot smoke: rooms route live, game layer registered, graceful
+   SIGTERM); ✅ rules-engine dep added by S1. **Remaining**: rooms/lobby/
+   create/join live wiring (W4 running), oauth env fold, dead-mock cleanup
+   + titles registry reconcile 12→11, catalog id pin, real-socket smoke
 5. *(M1 motion pass absorbed into W2's mission)*
 
 ## Open items (owner, no rush)

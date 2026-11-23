@@ -166,7 +166,8 @@ export interface RoundEndState {
 }
 
 export interface GameOverState {
-  winnerSeat: number;
+  /** null = zero-survivor abort (STR/01 §7 — <2 connected-alive, no winner). */
+  winnerSeat: number | null;
   matchRecord: import("@liars-game/shared").MatchRecord;
   rewards: import("@liars-game/shared").MatchReward[];
 }

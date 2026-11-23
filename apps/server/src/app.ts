@@ -23,6 +23,7 @@ import { createAuthRouter } from './routes/auth.js';
 import { createAdminRouter } from './routes/admin.js';
 import { createBillingRouter } from './routes/billing.js';
 import { createShopRouter } from './routes/shop.js';
+import { createRoomsRouter } from './routes/rooms.js';
 import { createEconomyRouter } from './routes/economy.js';
 import { collectRoutes, printRoutes, type RouteInfo } from './lib/printRoutes.js';
 import { jsonError } from './lib/api.js';
@@ -110,12 +111,14 @@ export function createApp(config: AppConfig, deps: AppDeps = {}): Express {
   const shopRouter = createShopRouter(config);
 
   const economyRouter = createEconomyRouter(config);
+  const roomsRouter = createRoomsRouter();
   const mounts: ReadonlyArray<readonly [string, Router]> = [
     ['/api/auth', authRouter],
     ['/api/admin', adminRouter],
     ['/api/billing', billingRouter],
     ['/api', shopRouter],
     ['/api', economyRouter],
+    ['/api', roomsRouter],
   ];
   const routes: RouteInfo[] = [
     { methods: ['GET'], path: '/api/health' },

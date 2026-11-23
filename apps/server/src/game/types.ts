@@ -40,7 +40,7 @@ export interface MatchEndPayload {
 
 /** Optional dependency of the game layer; `grantMatchRewards` (E1) lands here. */
 // TODO-E1: wired at integration — index.ts will pass E1's grantMatchRewards.
-export type OnMatchEnd = (payload: MatchEndPayload) => void | Promise<void>;
+export type OnMatchEnd = (payload: MatchEndPayload) => void | Promise<unknown>;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Injectable dependencies (tests stub every one; real wiring in ./index.ts)

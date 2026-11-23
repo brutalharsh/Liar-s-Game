@@ -64,9 +64,11 @@ export function GameOverOverlay() {
   const xpShown = useCountUp(xp, active, 1400, reduced);
 
   if (!gameOver) return null;
-  const winnerName = nicknameOf(gameOver.winnerSeat);
-  const iWon = gameOver.winnerSeat === heroSeat;
-  const winnerEmoji = emojiForSpec(seatByNumber(gameOver.winnerSeat)?.avatar ?? null);
+  const winnerSeat = gameOver.winnerSeat;
+  const nobodySurvived = winnerSeat === null; // zero-survivor abort (STR/01 §7)
+  const winnerName = nobodySurvived ? null : nicknameOf(winnerSeat);
+  const iWon = !nobodySurvived && winnerSeat === heroSeat;
+  const winnerEmoji = nobodySurvived ? "💀" : emojiForSpec(seatByNumber(winnerSeat)?.avatar ?? null);
 
   return (
     <AnimatePresence>
@@ -89,7 +91,7 @@ export function GameOverOverlay() {
             animate="on"
             transition={winnerTransition}
           >
-            {/* crown drop */}
+            {/* crown drop (skull when nobody survived) */}
             <motion.span
               className="text-6xl"
               initial={reduced ? { opacity: 0 } : "above"}
@@ -98,14 +100,15 @@ export function GameOverOverlay() {
               transition={reduced ? { duration: 0 } : crownTransition}
               aria-hidden
             >
-              👑
+              {nobodySurvived ? "💀" : "👑"}
             </motion.span>
 
             <p className="font-body text-xs uppercase tracking-widest text-lamp">
-              last one standing
+              {nobodySurvived ? "the room dissolves" : "last one standing"}
             </p>
             <h2 className="flex items-center gap-2 font-display text-3xl tracking-wider text-ivory">
-              <span aria-hidden>{winnerEmoji}</span> {winnerName} WINS
+              <span aria-hidden>{winnerEmoji}</span>{" "}
+              {nobodySurvived ? "NOBODY SURVIVED" : `${winnerName} WINS`}
             </h2>
             {iWon && <p className="font-display text-sm text-brass">the table is yours — 🪙 {coinsShown} in your pocket</p>}
 

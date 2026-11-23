@@ -111,6 +111,8 @@ export const ViewPlayerStateSchema = z.strictObject({
   connected: z.boolean(),
   afk: z.boolean(),
   isHost: z.boolean(),
+  /** Bot seats (host bot-fill, STR/02). Absent = human seat. */
+  isBot: z.boolean().optional(),
   /** Cards currently in this player's hand. Count only — ranks stay server-side. */
   handCount: z.number().int().min(0).max(5),
   /** Public revolver counter `(pulled/6)` — never the chamber position. */
@@ -206,7 +208,8 @@ export const MatchPlayerRecordSchema = z.strictObject({
 export type MatchPlayerRecord = z.infer<typeof MatchPlayerRecordSchema>;
 
 export const MatchSummarySchema = z.strictObject({
-  rounds: z.number().int().min(1),
+  /** 0 is legal: a match aborted in round 1 (STR/01 §7 abort paths). */
+  rounds: z.number().int().min(0),
   totalPulls: z.number().int().min(0),
   dareDevilMoments: z.number().int().min(0),
 });

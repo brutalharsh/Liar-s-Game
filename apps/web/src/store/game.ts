@@ -485,7 +485,12 @@ export function createGameStore(
             },
             window: null,
             forcedCall: false,
-            feed: pushFeed(prev.feed, `${prev.nicknameOf(ev.payload.winnerSeat)} wins the table`),
+            feed: pushFeed(
+              prev.feed,
+              ev.payload.winnerSeat === null
+                ? "The table falls silent — nobody survived"
+                : `${prev.nicknameOf(ev.payload.winnerSeat)} wins the table`,
+            ),
           });
           playSfx("win");
           return;
