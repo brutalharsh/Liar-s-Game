@@ -1,8 +1,14 @@
 "use client";
 
+import type { ReactNode } from "react";
+import type { IconProps } from "@/components/ui/icons";
+
 export interface TabItem<T extends string> {
   id: T;
   label: string;
+  /** Icon element (lucide wrapper — preferred over the emoji glyph). */
+  icon?: (props: IconProps) => ReactNode;
+  /** Legacy emoji glyph — survives until every caller passes `icon`. */
   emoji?: string;
 }
 
@@ -34,7 +40,15 @@ export function Tabs<T extends string>({
                 : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
             }`}
           >
-            {tab.emoji && <span aria-hidden className="mr-1">{tab.emoji}</span>}
+            {tab.icon ? (
+              <span aria-hidden className="mr-1 inline-flex items-center">
+                <tab.icon />
+              </span>
+            ) : tab.emoji ? (
+              <span aria-hidden className="mr-1">
+                {tab.emoji}
+              </span>
+            ) : null}
             {tab.label}
           </button>
         );

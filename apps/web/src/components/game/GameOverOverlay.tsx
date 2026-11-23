@@ -12,6 +12,7 @@ import { emojiForSpec } from "@/lib/mock/avatar";
 import { crownTransition, crownVariants, winnerCardVariants, winnerTransition } from "@/motion/table";
 import { useCountUp } from "@/motion/useCountUp";
 import { Button } from "@/components/ui/Button";
+import { CandleIcon, CoinIcon, CrownIcon, MedalIcon, RematchIcon, SkullIcon } from "@/components/ui/icons";
 
 /**
  * GAME-OVER — the winner ceremony (STR/03 §4): winner crown drop + confetti
@@ -70,7 +71,7 @@ export function GameOverOverlay() {
   const nobodySurvived = winnerSeat === null; // zero-survivor abort (STR/01 §7)
   const winnerName = nobodySurvived ? null : nicknameOf(winnerSeat);
   const iWon = !nobodySurvived && winnerSeat === heroSeat;
-  const winnerEmoji = nobodySurvived ? "💀" : emojiForSpec(seatByNumber(winnerSeat)?.avatar ?? null);
+  const winnerAvatar = nobodySurvived ? null : emojiForSpec(seatByNumber(winnerSeat)?.avatar ?? null);
 
   return (
     <AnimatePresence>
@@ -95,33 +96,48 @@ export function GameOverOverlay() {
           >
             {/* crown drop (skull when nobody survived) */}
             <motion.span
-              className="text-6xl"
               initial={reduced ? { opacity: 0 } : "above"}
               animate={reduced ? { opacity: 1 } : "crowned"}
               variants={crownVariants}
               transition={reduced ? { duration: 0 } : crownTransition}
               aria-hidden
+              className={nobodySurvived ? "text-ivory" : "text-brass"}
             >
-              {nobodySurvived ? "💀" : "👑"}
+              {nobodySurvived ? <SkullIcon size={56} /> : <CrownIcon size={56} />}
             </motion.span>
 
             <p className="font-body text-xs uppercase tracking-widest text-lamp">
               {nobodySurvived ? "the room dissolves" : "last one standing"}
             </p>
             <h2 className="flex items-center gap-2 font-display text-3xl tracking-wider text-ivory">
-              <span aria-hidden>{winnerEmoji}</span>{" "}
+              {nobodySurvived ? (
+                <SkullIcon size={28} className="text-ivory" />
+              ) : (
+                <span aria-hidden>{winnerAvatar}</span>
+              )}{" "}
               {nobodySurvived ? "NOBODY SURVIVED" : iWon ? "YOU WIN" : `${winnerName} WINS`}
             </h2>
-            {iWon && <p className="font-display text-sm text-brass">the table is yours — 🪙 {coinsShown} in your pocket</p>}
+            {iWon && (
+              <p className="flex items-center justify-center gap-1 font-display text-sm text-brass">
+                the table is yours — <CoinIcon size={16} /> {coinsShown} in your pocket
+              </p>
+            )}
 
             {reduced ? (
-              <p className="text-xl" aria-label="candles">🕯🕯🕯🕯</p>
+              <p className="flex justify-center gap-4 text-lamp" aria-label="candles">
+                <CandleIcon size={22} />
+                <CandleIcon size={22} />
+                <CandleIcon size={22} />
+                <CandleIcon size={22} />
+              </p>
             ) : null}
 
             {/* rewards reveal — coins count-up + XP flash (STR/03 §4) */}
             <div className="flex items-center gap-4 rounded-btn border-2 border-brass-deep bg-wood-deep/70 px-6 py-3">
               <span className="flex flex-col items-center">
-                <span className="font-display text-2xl text-brass">🪙 {coinsShown}</span>
+                <span className="flex items-center gap-1 font-display text-2xl text-brass">
+                  <CoinIcon size={20} /> {coinsShown}
+                </span>
                 <span className="font-body text-[10px] text-ink-dim">coins earned</span>
               </span>
               <span className="h-8 w-px bg-wood-mid" aria-hidden />
@@ -133,7 +149,9 @@ export function GameOverOverlay() {
                 <>
                   <span className="h-8 w-px bg-wood-mid" aria-hidden />
                   <span className="flex flex-col items-center">
-                    <span className="font-display text-base text-ivory">🎖 {myReward.unlockedTitles[0]}</span>
+                    <span className="flex items-center gap-1 font-display text-base text-ivory">
+                      <MedalIcon size={16} /> {myReward.unlockedTitles[0]}
+                    </span>
                     <span className="font-body text-[10px] text-ink-dim">title unlocked</span>
                   </span>
                 </>
@@ -169,7 +187,10 @@ export function GameOverOverlay() {
                 seat — the same exit path TableClient's confirm sheet runs */}
             <div className="mt-1 flex w-full flex-col gap-2">
               <Button variant="brass" size="big" className="w-full text-xl" onClick={() => void rematch()}>
-                ⟳ REMATCH — BACK TO THE FELT
+                <span className="inline-flex items-center gap-2">
+                  <RematchIcon size={18} />
+                  REMATCH — BACK TO THE FELT
+                </span>
               </Button>
               <Link
                 href="/rooms"

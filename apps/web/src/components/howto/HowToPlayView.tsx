@@ -5,16 +5,17 @@ import Link from "next/link";
 import { motion } from "motion/react";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { RULE_SECTIONS, DECK_TABLE } from "@/lib/mock/rules-content";
+import { RULE_ICON, type RuleIconSlug } from "@/components/ui/icons";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
-const LOOP = [
-  { icon: "🃏", label: "DEAL", detail: "table card drawn · 5 cards each" },
-  { icon: "🤞", label: "THROW", detail: "claim they match the table card" },
-  { icon: "🗣️", label: "CALL", detail: "cry LIAR on the previous play" },
-  { icon: "🔍", label: "REVEAL", detail: "the accused flips, one by one" },
-  { icon: "🔫", label: "SHOT", detail: "loser pulls the trigger" },
-  { icon: "🏆", label: "SURVIVE… OR WIN", detail: "last one standing takes the table" },
-] as const;
+const LOOP: readonly { icon: RuleIconSlug; label: string; detail: string }[] = [
+  { icon: "deal", label: "DEAL", detail: "table card drawn · 5 cards each" },
+  { icon: "throw", label: "THROW", detail: "claim they match the table card" },
+  { icon: "call", label: "CALL", detail: "cry LIAR on the previous play" },
+  { icon: "reveal", label: "REVEAL", detail: "the accused flips, one by one" },
+  { icon: "shot", label: "SHOT", detail: "loser pulls the trigger" },
+  { icon: "win", label: "SURVIVE… OR WIN", detail: "last one standing takes the table" },
+];
 
 /**
  * The numbered game-loop diagram (pure CSS + props-driven highlight — no
@@ -39,6 +40,7 @@ function LoopDiagram() {
       <ol className="flex flex-col items-stretch justify-center gap-3 md:grid md:grid-cols-3 md:items-center xl:flex xl:flex-row">
         {LOOP.map((step, i) => {
           const lit = reduced ? i === 0 : i === active;
+          const Glyph = RULE_ICON[step.icon];
           return (
             <li key={step.label} className="flex flex-col items-stretch xl:flex-1 xl:flex-row xl:items-center">
               <div className="flex items-center gap-3 xl:flex-col xl:gap-1">
@@ -51,8 +53,8 @@ function LoopDiagram() {
                       : "border-wood-mid bg-wood-deep/60 text-ink-dim"
                   }`}
                 >
-                  <span aria-hidden className="text-2xl">
-                    {step.icon}
+                  <span aria-hidden>
+                    <Glyph size={26} />
                   </span>
                 </motion.span>
                 <div className="xl:text-center">
@@ -90,31 +92,34 @@ export function HowToPlayView() {
       <LoopDiagram />
 
       <section className="flex flex-col gap-6">
-        {RULE_SECTIONS.map((rule) => (
-          <Panel key={rule.id} className="flex flex-col gap-3 p-5 md:flex-row md:gap-8 md:p-7">
-            <div className="flex min-w-32 items-start gap-4 md:flex-col">
-              <span className="font-display text-5xl text-brass/80 md:text-6xl">{rule.step}</span>
-              <span className="text-4xl md:mt-2 md:text-5xl" aria-hidden>
-                {rule.icon}
-              </span>
-            </div>
-            <div className="max-w-2xl">
-              <h2 className="font-display text-2xl text-ivory md:text-3xl">{rule.title}</h2>
-              <ul className="mt-3 flex flex-col gap-2">
-                {rule.body.map((para, i) => (
-                  <li key={i} className="font-body text-sm leading-relaxed text-ink-dim">
-                    · {para}
-                  </li>
-                ))}
-              </ul>
-              {rule.callout && (
-                <p className="mt-3 rounded-btn border-l-4 border-brass bg-brass/10 px-4 py-2 font-body text-sm italic text-lamp">
-                  “{rule.callout}”
-                </p>
-              )}
-            </div>
-          </Panel>
-        ))}
+        {RULE_SECTIONS.map((rule) => {
+          const Glyph = RULE_ICON[rule.icon];
+          return (
+            <Panel key={rule.id} className="flex flex-col gap-3 p-5 md:flex-row md:gap-8 md:p-7">
+              <div className="flex min-w-32 items-start gap-4 md:flex-col">
+                <span className="font-display text-5xl text-brass/80 md:text-6xl">{rule.step}</span>
+                <span className="mt-1 text-brass/70 md:mt-2" aria-hidden>
+                  <Glyph size={40} />
+                </span>
+              </div>
+              <div className="max-w-2xl">
+                <h2 className="font-display text-2xl text-ivory md:text-3xl">{rule.title}</h2>
+                <ul className="mt-3 flex flex-col gap-2">
+                  {rule.body.map((para, i) => (
+                    <li key={i} className="font-body text-sm leading-relaxed text-ink-dim">
+                      · {para}
+                    </li>
+                  ))}
+                </ul>
+                {rule.callout && (
+                  <p className="mt-3 rounded-btn border-l-4 border-brass bg-brass/10 px-4 py-2 font-body text-sm italic text-lamp">
+                    “{rule.callout}”
+                  </p>
+                )}
+              </div>
+            </Panel>
+          );
+        })}
       </section>
 
       <section>

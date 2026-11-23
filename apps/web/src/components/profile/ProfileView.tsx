@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
@@ -18,6 +18,27 @@ import { useCountUp } from "@/motion/useCountUp";
 import { formatCoins, titleCase } from "@/lib/format";
 import { THEMES } from "@/lib/mock/themes";
 import { formatWhen, memberSince, titleLabel } from "./display";
+import {
+  BannedIcon,
+  BluffIcon,
+  CandleIcon,
+  CheckIcon,
+  CloseIcon,
+  CoinIcon,
+  EmptySeatIcon,
+  KillsIcon,
+  MedalIcon,
+  MissIcon,
+  PullsIcon,
+  RevealIcon,
+  SettingsIcon,
+  ShopIcon,
+  SparkleIcon,
+  TargetIcon,
+  ThemeIcon,
+  TrophyIcon,
+  UsersIcon,
+} from "@/components/ui/icons";
 
 /**
  * Own profile (GET /api/me — E1). Identity + level bar + wallet + the last 10
@@ -58,7 +79,7 @@ export function ProfileView() {
       <div className="flex flex-col items-center gap-4 py-16">
         <h1 className="sr-only">Your rack</h1>
         <EmptyState
-          icon="🪑"
+          icon={<EmptySeatIcon size={28} />}
           title="Your seat vanished"
           sub="The ledger holds your coins but couldn't find the account. Signing out and back in usually resets the door."
           action={
@@ -101,7 +122,7 @@ export function ProfileView() {
         isEmpty={(p) => !p}
         empty={
           <EmptyState
-            icon="🕯️"
+            icon={<CandleIcon size={28} />}
             title="Nothing at this seat"
             sub="The account read came back empty. Try again in a beat."
           />
@@ -134,10 +155,10 @@ export function ProfileView() {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <LevelBadge level={profile.level} />
                       <span
-                        className="rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass"
                         title="titles unlocked server-side"
                       >
-                        🎖 {profile.unlockedTitleCount} titles
+                        <MedalIcon size={14} /> {profile.unlockedTitleCount} titles
                       </span>
                       <CoinBadge amount={coinsShown} size="lg" />
                     </div>
@@ -189,19 +210,19 @@ export function ProfileView() {
                   href="/shop"
                   className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-5 font-display text-base tracking-wide text-wood-deep hover:brightness-110"
                 >
-                  🛍 VISIT THE SHOP
+                  <ShopIcon size={18} /> VISIT THE SHOP
                 </Link>
                 <Link
                   href="/leaderboard"
                   className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
                 >
-                  🏆 SEE THE RANKS
+                  <TrophyIcon size={18} /> SEE THE RANKS
                 </Link>
                 <Link
                   href="/settings"
                   className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
                 >
-                  ⚙️ SETTINGS
+                  <SettingsIcon size={18} /> SETTINGS
                 </Link>
               </div>
             </>
@@ -233,10 +254,10 @@ function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
   const themeName =
     THEMES.find((t) => t.id === rec.theme)?.name ?? titleCase(rec.theme || "saloon");
   const outcome = stats.won
-    ? { label: "🏆 WON", cls: "border-brass text-brass" }
+    ? { icon: <TrophyIcon size={12} />, label: "WON", cls: "border-brass text-brass" }
     : stats.deaths > 0
-      ? { label: "✖ DIED", cls: "border-blood-bright text-blood-bright" }
-      : { label: "✓ SURVIVED", cls: "border-verdict text-verdict" };
+      ? { icon: <CloseIcon size={12} />, label: "DIED", cls: "border-blood-bright text-blood-bright" }
+      : { icon: <CheckIcon size={12} />, label: "SURVIVED", cls: "border-verdict text-verdict" };
   const playedTitle = titleLabel(rec.you.titleAtPlay);
 
   return (
@@ -247,8 +268,8 @@ function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
     >
       <Panel className="flex flex-col gap-2 p-3">
         <div className="flex min-h-12 items-center gap-2">
-          <span className={`shrink-0 rounded-btn border-2 px-2 py-0.5 font-display text-xs ${outcome.cls}`}>
-            {outcome.label}
+          <span className={`inline-flex items-center gap-1 shrink-0 rounded-btn border-2 px-2 py-0.5 font-display text-xs ${outcome.cls}`}>
+            {outcome.icon} {outcome.label}
           </span>
           <span
             className="shrink-0 rounded-btn border-2 border-wood-mid bg-wood-deep px-2 font-display text-xs tracking-widest text-ivory"
@@ -262,12 +283,15 @@ function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
         </div>
 
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-[11px] text-ink-dim">
-          <span>🎪 {themeName}</span>
-          <span>
-            👥 {rec.capacity}-seat · your seat {rec.you.seat}
+          <span className="inline-flex items-center gap-1">
+            <ThemeIcon size={12} className="text-lamp" /> {themeName}
           </span>
-          <span>
-            🎯 {rec.summary.rounds} rounds · {rec.summary.totalPulls} pulls
+          <span className="inline-flex items-center gap-1">
+            <UsersIcon size={12} className="text-lamp" /> {rec.capacity}-seat · your seat {rec.you.seat}
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <TargetIcon size={12} className="text-lamp" /> {rec.summary.rounds} rounds ·{" "}
+            {rec.summary.totalPulls} pulls
             {rec.summary.dareDevilMoments > 0
               ? ` · ${rec.summary.dareDevilMoments} daredevil`
               : ""}
@@ -276,15 +300,15 @@ function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
         </div>
 
         <div className="flex flex-wrap gap-1.5">
-          <StatChip icon="🗡" label={`${stats.kills} kills`} value={stats.kills} />
-          <StatChip icon="🔍" label={`${stats.catches} liars caught`} value={stats.catches} />
-          <StatChip icon="🎭" label={`${stats.bluffSuccesses} bluffs unchallenged`} value={stats.bluffSuccesses} />
-          <StatChip icon="🎲" label={`${stats.pullsSurvived} trigger pulls survived`} value={stats.pullsSurvived} />
+          <StatChip icon={<KillsIcon size={12} />} label={`${stats.kills} kills`} value={stats.kills} />
+          <StatChip icon={<RevealIcon size={12} />} label={`${stats.catches} liars caught`} value={stats.catches} />
+          <StatChip icon={<BluffIcon size={12} />} label={`${stats.bluffSuccesses} bluffs unchallenged`} value={stats.bluffSuccesses} />
+          <StatChip icon={<PullsIcon size={12} />} label={`${stats.pullsSurvived} trigger pulls survived`} value={stats.pullsSurvived} />
           {stats.falseAccusations > 0 && (
-            <StatChip icon="😬" label={`${stats.falseAccusations} false calls`} value={stats.falseAccusations} tone="bad" />
+            <StatChip icon={<MissIcon size={12} />} label={`${stats.falseAccusations} false calls`} value={stats.falseAccusations} tone="bad" />
           )}
-          <StatChip icon="✨" label={`${stats.xpEarned} XP earned`} value={stats.xpEarned} always />
-          <StatChip icon="🪙" label={`${stats.coinsEarned} coins earned`} value={stats.coinsEarned} always />
+          <StatChip icon={<SparkleIcon size={12} />} label={`${stats.xpEarned} XP earned`} value={stats.xpEarned} always />
+          <StatChip icon={<CoinIcon size={12} />} label={`${stats.coinsEarned} coins earned`} value={stats.coinsEarned} always />
         </div>
       </Panel>
     </motion.li>
@@ -299,7 +323,7 @@ function StatChip({
   tone = "plain",
   always = false,
 }: {
-  icon: string;
+  icon: ReactNode;
   label: string;
   value: number;
   tone?: "plain" | "bad";
@@ -312,7 +336,7 @@ function StatChip({
         tone === "bad" ? "border-blood-bright/70 text-blood-bright" : "border-wood-mid text-ink-dim"
       }`}
     >
-      <span aria-hidden>{icon}</span> {label}
+      <span aria-hidden className="inline-flex items-center">{icon}</span> {label}
     </span>
   );
 }
@@ -322,8 +346,8 @@ function BannedState({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="mx-auto flex max-w-md flex-col items-center px-4 py-16">
       <Panel className="w-full p-8 text-center">
-        <span className="text-6xl" aria-hidden>
-          🎩🚫
+        <span className="inline-flex justify-center text-blood-bright" aria-hidden>
+          <BannedIcon size={48} />
         </span>
         <h1 className="mt-4 font-display text-3xl text-ivory">The house 86'd you</h1>
         <p className="mt-2 font-body text-sm text-ink-dim">

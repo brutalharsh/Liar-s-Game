@@ -19,6 +19,7 @@ import {
 import { useAuthStore } from "@/store/auth-store";
 import { formatCoins } from "@/lib/format";
 import { titleLabel } from "@/components/profile/display";
+import { MedalIcon, SparkleIcon, FlameIcon, TrophyIcon } from "@/components/ui/icons";
 
 /** perPage is fixed client-side (URL keeps only metric + page — STR/07 §0). */
 const PER_PAGE = LEADERBOARD_PER_PAGE_DEFAULT;
@@ -26,13 +27,14 @@ const PER_PAGE = LEADERBOARD_PER_PAGE_DEFAULT;
 const METRICS: readonly string[] = ["wins", "kills", "xp", "titles"];
 
 const METRIC_TABS: readonly TabItem<LeaderboardMetric>[] = [
-  { id: "xp", label: "XP", emoji: "✨" },
-  { id: "wins", label: "Wins", emoji: "🏆" },
-  { id: "kills", label: "Kills", emoji: "🔥" },
-  { id: "titles", label: "Titles", emoji: "🎖️" },
+  { id: "xp", label: "XP", icon: SparkleIcon },
+  { id: "wins", label: "Wins", icon: TrophyIcon },
+  { id: "kills", label: "Kills", icon: FlameIcon },
+  { id: "titles", label: "Titles", icon: MedalIcon },
 ];
 
-const MEDALS: readonly string[] = ["🥇", "🥈", "🥉"];
+/** Rank 1–3 medal tints — token classes only (brass / ivory / lamp). */
+const MEDALS: readonly string[] = ["text-brass", "text-ivory", "text-lamp"];
 
 function parseMetric(raw: string | null): LeaderboardMetric {
   return METRICS.includes(raw ?? "") ? (raw as LeaderboardMetric) : "xp";
@@ -97,7 +99,7 @@ export function LeaderboardView() {
         isEmpty={(data) => !data || data.leaderboard.length === 0}
         empty={
           <EmptyState
-            icon="🏆"
+            icon={<TrophyIcon size={28} />}
             title={page > 1 ? `Nothing on page ${page}` : "The board's bare"}
             sub={
               page > 1
@@ -164,7 +166,7 @@ function LeaderboardRow({
   me: boolean;
   index: number;
 }) {
-  const medal = row.rank <= 3 ? MEDALS[row.rank - 1] : null;
+  const medalTint = row.rank <= 3 ? MEDALS[row.rank - 1] : null;
   return (
     <motion.li
       initial={{ opacity: 0, y: 8 }}
@@ -173,23 +175,21 @@ function LeaderboardRow({
     >
       <Panel
         className={`flex min-h-16 items-center gap-3 p-3 ${
-          me ? "ring-2 ring-lamp" : medal ? "ring-2 ring-brass/70" : ""
+          me ? "ring-2 ring-lamp" : medalTint ? "ring-2 ring-brass/70" : ""
         }`}
       >
         <span
           className={`flex w-10 shrink-0 flex-col items-center justify-center rounded-btn border-2 py-1 ${
-            medal ? "border-brass bg-brass/10 text-brass" : "border-wood-mid text-ink-dim"
+            medalTint ? "border-brass bg-brass/10 text-brass" : "border-wood-mid text-ink-dim"
           }`}
           aria-label={`rank ${row.rank}`}
         >
-          {medal ? (
-            <span className="text-base leading-none" aria-hidden>
-              {medal}
-            </span>
+          {medalTint ? (
+            <MedalIcon size={18} className={medalTint} />
           ) : (
             <span className="font-display text-lg leading-none">{row.rank}</span>
           )}
-          {medal && <span className="font-display text-[10px] leading-tight">{row.rank}</span>}
+          {medalTint && <span className="font-display text-[10px] leading-tight">{row.rank}</span>}
         </span>
 
         <Avatar spec={toDisplaySpec(row.avatarSpec)} size="md" />

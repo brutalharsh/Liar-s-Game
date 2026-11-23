@@ -1,4 +1,5 @@
 import { formatCoins } from "@/lib/format";
+import { CoinIcon } from "@/components/ui/icons";
 
 /** Brass coin wallet/price badge. */
 export function CoinBadge({
@@ -15,12 +16,13 @@ export function CoinBadge({
     md: "h-7 min-w-7 text-sm",
     lg: "h-10 min-w-10 text-lg",
   } as const;
+  const iconSizes = { sm: 12, md: 14, lg: 18 } as const;
   return (
     <span
       className={`inline-flex items-center justify-center gap-1 rounded-full border-2 border-brass-deep bg-wood-deep px-2 font-display text-brass ${sizes[size]} ${className}`}
       aria-label={`${amount} coins`}
     >
-      🪙 {formatCoins(amount)}
+      <CoinIcon size={iconSizes[size]} /> {formatCoins(amount)}
     </span>
   );
 }
@@ -35,7 +37,7 @@ export function PriceChip({ price, className = "" }: { price: number; className?
   }
   return (
     <span className={`inline-flex items-center gap-1 rounded-full bg-wood-deep px-2 py-0.5 font-body text-xs text-brass ${className}`}>
-      🪙 <strong className="font-display">{price}</strong>
+      <CoinIcon size={12} /> <strong className="font-display">{price}</strong>
     </span>
   );
 }

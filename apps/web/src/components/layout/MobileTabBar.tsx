@@ -2,14 +2,22 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import {
+  HomeIcon,
+  RoomsIcon,
+  ShopIcon,
+  TrophyIcon,
+  UserIcon,
+  type IconComponent,
+} from "@/components/ui/icons";
 
-const TABS = [
-  { href: "/", label: "HOME", emoji: "🏠" },
-  { href: "/rooms", label: "ROOMS", emoji: "🎪" },
-  { href: "/shop", label: "SHOP", emoji: "🛍️" },
-  { href: "/leaderboard", label: "RANKS", emoji: "🏆" },
-  { href: "/profile", label: "YOU", emoji: "👤" },
-] as const;
+const TABS: readonly { href: string; label: string; icon: IconComponent }[] = [
+  { href: "/", label: "HOME", icon: HomeIcon },
+  { href: "/rooms", label: "ROOMS", icon: RoomsIcon },
+  { href: "/shop", label: "SHOP", icon: ShopIcon },
+  { href: "/leaderboard", label: "RANKS", icon: TrophyIcon },
+  { href: "/profile", label: "YOU", icon: UserIcon },
+];
 
 /** Mobile bottom tab bar (48px targets, safe-area aware). */
 export function MobileTabBar() {
@@ -30,8 +38,8 @@ export function MobileTabBar() {
               active ? "text-brass" : "text-ink-dim"
             }`}
           >
-            <span aria-hidden className="text-lg leading-none">
-              {tab.emoji}
+            <span aria-hidden className="leading-none">
+              <tab.icon size={22} />
             </span>
             <span className="font-body text-xs tracking-widest">{tab.label}</span>
           </Link>

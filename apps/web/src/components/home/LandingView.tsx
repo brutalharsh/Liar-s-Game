@@ -9,6 +9,7 @@ import { mockFetch } from "@/lib/mock/api";
 import { makePublicRooms, type PublicRoomCard } from "@/lib/mock/rooms";
 import { themeMeta } from "@/lib/mock/themes";
 import { HOW_IT_WORKS } from "@/lib/mock/rules-content";
+import { RULE_ICON, LockIcon, RoomsIcon, ShotIcon } from "@/components/ui/icons";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
 function LiveRoomsStrip() {
@@ -26,7 +27,7 @@ function LiveRoomsStrip() {
       isEmpty={(data) => data.length === 0}
       empty={
         <EmptyState
-          icon="🎪"
+          icon={<RoomsIcon size={28} />}
           title="No public tables right now"
           sub="Be the one who opens the first room tonight."
         />
@@ -42,7 +43,7 @@ function LiveRoomsStrip() {
             >
               <div className="flex items-center justify-between">
                 <span className="font-display text-lg text-ivory group-hover:text-brass">{room.name}</span>
-                {room.locked && <span aria-label="locked">🔒</span>}
+                {room.locked && <LockIcon size={14} label="locked" className="text-ink-dim" />}
               </div>
               <div className="mt-1 font-body text-xs text-ink-dim">
                 {room.hostName} hosting · {themeMeta(room.theme).name}
@@ -98,7 +99,7 @@ export function LandingView() {
         <motion.h1
           {...rise(0.15)}
           className="mt-3 font-display text-6xl text-ivory md:text-8xl"
-          style={{ textShadow: "0 6px 30px rgb(0 0 0 / 0.6)" }}
+          style={{ textShadow: "0 6px 30px color-mix(in srgb, var(--color-wood-deep) 60%, transparent)" }}
         >
           LIAR'S GAME
         </motion.h1>
@@ -140,22 +141,25 @@ export function LandingView() {
       <section>
         <SectionTitle kicker="the con">How the table works</SectionTitle>
         <div className="grid gap-4 md:grid-cols-3">
-          {HOW_IT_WORKS.map((step, i) => (
-            <motion.div key={step.step} {...rise(0.2 + i * 0.15)} className="h-full">
-              <Panel className="h-full p-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brass-deep bg-wood-deep font-display text-lg text-brass">
-                    {step.step}
-                  </span>
-                  <span className="text-3xl" aria-hidden>
-                    {step.icon}
-                  </span>
-                </div>
-                <h3 className="mt-3 font-display text-xl text-ivory">{step.title}</h3>
-                <p className="mt-1 font-body text-sm text-ink-dim">{step.desc}</p>
-              </Panel>
-            </motion.div>
-          ))}
+          {HOW_IT_WORKS.map((step, i) => {
+            const Glyph = RULE_ICON[step.icon];
+            return (
+              <motion.div key={step.step} {...rise(0.2 + i * 0.15)} className="h-full">
+                <Panel className="h-full p-5">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brass-deep bg-wood-deep font-display text-lg text-brass">
+                      {step.step}
+                    </span>
+                    <span className="text-lamp" aria-hidden>
+                      <Glyph size={30} />
+                    </span>
+                  </div>
+                  <h3 className="mt-3 font-display text-xl text-ivory">{step.title}</h3>
+                  <p className="mt-1 font-body text-sm text-ink-dim">{step.desc}</p>
+                </Panel>
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 
@@ -164,7 +168,7 @@ export function LandingView() {
         <SectionTitle kicker="tonight">Tables already dealing</SectionTitle>
         <LiveRoomsStrip />
         <div className="mt-4 text-center">
-          <Link href="/rooms" className="inline-flex min-h-12 items-center font-body text-sm text-brass underline">
+          <Link href="/rooms" className="inline-flex min-h-12 items-center font-body text-sm text-red-text underline">
             Browse all public rooms →
           </Link>
         </div>
@@ -174,8 +178,8 @@ export function LandingView() {
       <section>
         <Panel className="overflow-hidden p-6 md:p-10">
           <div className="mx-auto flex max-w-3xl flex-col items-center gap-6 text-center md:flex-row md:text-left">
-            <span className="text-6xl md:text-8xl" aria-hidden>
-              🔫
+            <span className="shrink-0 text-blood-bright" aria-hidden>
+              <ShotIcon size={64} className="size-16 md:size-24" />
             </span>
             <div>
               <SectionTitle kicker="the stakes">One revolver, six chambers</SectionTitle>

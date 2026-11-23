@@ -21,6 +21,7 @@ import {
 } from "@/lib/mock/catalog";
 import { checkoutPack, getCatalogPage, type CatalogPage, type CoinPackRecord } from "@/lib/api";
 import { formatInr, formatCoins } from "@/lib/format";
+import { CoinIcon, HourglassIcon, WrenchIcon } from "@/components/ui/icons";
 
 function TryOnSheet({ item, open, onClose }: { item: ShopItem | null; open: boolean; onClose: () => void }) {
   const buy = useEconomyStore((s) => s.buy);
@@ -61,7 +62,9 @@ function TryOnSheet({ item, open, onClose }: { item: ShopItem | null; open: bool
               LEVEL {item.levelReq} — EARNED ONLY
             </span>
           )}
-          <span className="font-body text-[11px] text-ink-dim">wallet: {formatCoins(coins)} 🪙</span>
+          <span className="inline-flex items-center gap-1 font-body text-[11px] text-ink-dim">
+            wallet: {formatCoins(coins)} <CoinIcon size={13} />
+          </span>
         </div>
         <div className="flex w-full gap-3">
           {equipped ? (
@@ -80,7 +83,9 @@ function TryOnSheet({ item, open, onClose }: { item: ShopItem | null; open: bool
                 if (buy(item.id, item.price)) push({ title: `${item.name} yours`, tone: "good" });
               }}
             >
-              BUY — 🪙 {item.price}
+              <span className="inline-flex items-center gap-1">
+                BUY — <CoinIcon size={16} /> {item.price}
+              </span>
             </Button>
           )}
         </div>
@@ -287,8 +292,9 @@ export function ShopView() {
         >
           {payResult && (
             <div className="flex flex-col items-center gap-3 text-center">
-              <span className="text-5xl" aria-hidden>
-                {payResult.note ? "🪙⏳" : "🪙🛠️"}
+              <span className="flex items-center gap-1 text-brass" aria-hidden>
+                <CoinIcon size={36} />
+                {payResult.note ? <HourglassIcon size={36} /> : <WrenchIcon size={36} />}
               </span>
               <p className="font-body text-sm text-ivory">{payResult.body}</p>
               {payResult.note && (

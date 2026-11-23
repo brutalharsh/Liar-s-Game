@@ -9,6 +9,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useToasts } from "@/store/ui";
 import { Avatar } from "@/components/ui/Avatar";
 import { toDisplaySpec } from "@/components/auth/viewer";
+import { LogoutIcon, SettingsIcon } from "@/components/ui/icons";
 import { useEffect } from "react";
 
 const NAV = [
@@ -73,7 +74,7 @@ export function SiteHeader() {
             aria-label="Settings"
             className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl hover:bg-wood"
           >
-            ⚙️
+            <SettingsIcon size={20} />
           </Link>
           {signedOut ? (
             <Link
@@ -101,7 +102,7 @@ export function SiteHeader() {
                 aria-label="Sign out"
                 className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-xl text-ink-dim hover:bg-wood hover:text-blood-bright"
               >
-                🚪
+                <LogoutIcon size={20} />
               </button>
             </>
           ) : (

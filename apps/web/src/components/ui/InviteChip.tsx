@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useToasts } from "@/store/ui";
 import { isValidRoomCode } from "@/lib/sanitize";
 import { ROOM_CODE_CHARSET } from "@/lib/sanitize";
+import { CheckIcon, CopyIcon, ShareIcon } from "@/components/ui/icons";
 
 /** Room code chip with copy-to-clipboard (+ share where supported). */
 export function InviteChip({ code, origin }: { code: string; origin: string }) {
@@ -44,16 +45,16 @@ export function InviteChip({ code, origin }: { code: string; origin: string }) {
         className="flex items-center gap-2 rounded-btn border-2 border-dashed border-brass-deep bg-wood-deep px-4 py-2 font-display text-2xl tracking-[0.35em] text-brass hover:bg-wood"
       >
         {valid ? code : "—"}
-        <span aria-hidden className="text-sm">
-          {copied ? "✓" : "⧉"}
+        <span aria-hidden className="ml-1 inline-flex">
+          {copied ? <CheckIcon size={14} /> : <CopyIcon size={14} />}
         </span>
       </button>
       <button
         onClick={share}
         aria-label="Share invite"
-        className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-wood-mid bg-wood/70 text-xl hover:border-brass"
+        className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-wood-mid bg-wood/70 hover:border-brass"
       >
-        ⤴
+        <ShareIcon size={20} />
       </button>
     </div>
   );

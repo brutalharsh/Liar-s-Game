@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/Button";
 import { Sheet } from "@/components/ui/Sheet";
 import { Avatar } from "@/components/ui/Avatar";
 import { Skeleton, ErrorState } from "@/components/ui/AsyncSection";
+import { BotIcon, CoinIcon, CrownIcon, LockIcon, LockOpenIcon, RulesIcon, ThemeIcon } from "@/components/ui/icons";
 import { themeMeta, THEMES } from "@/lib/mock/themes";
 import { QUICK_RULES } from "@/lib/mock/rules-content";
 import type { SeatView, ThemeId } from "@/lib/wire";
@@ -154,9 +155,19 @@ export function LobbyClient({ code }: { code: string }) {
           </div>
         }
         contextRibbon={
-          <span>
+          <span className="inline-flex items-center">
             {seated.length}/{lobby.capacity} SEATED · {themeMeta(displayTheme).name.toUpperCase()}
-            {!live && (lobby.roomLocked ? " · 🔒 LOCKED" : " · OPEN")}
+            {!live && (
+              <>
+                {lobby.roomLocked ? (
+                  <span className="ml-1 inline-flex items-center gap-0.5">
+                    <LockIcon size={12} className="text-brass" /> LOCKED
+                  </span>
+                ) : (
+                  " · OPEN"
+                )}
+              </>
+            )}
           </span>
         }
         pile={
@@ -204,11 +215,11 @@ export function LobbyClient({ code }: { code: string }) {
                       {!spectator && seat.seat === heroSeat && <em className="ml-1 not-italic text-xs text-brass">(you)</em>}
                     </span>
                     {seat.isBot && (
-                      <span aria-label="bot player" className="font-body text-[10px] uppercase text-lamp">
-                        🤖 bot
+                      <span aria-label="bot player" className="inline-flex items-center gap-1 font-body text-[10px] uppercase text-lamp">
+                        <BotIcon size={12} /> bot
                       </span>
                     )}
-                    {seat.isHost && <span aria-label="host">👑</span>}
+                    {seat.isHost && <CrownIcon size={14} label="host" className="text-brass" />}
                     <span
                       className={`ml-auto font-body text-[10px] ${
                         seat.connected ? "text-verdict" : "text-ink-dim"
@@ -228,7 +239,7 @@ export function LobbyClient({ code }: { code: string }) {
                         aria-label={`Lock seat ${seat.seat + 1}`}
                         className="px-3"
                       >
-                        {seat.locked ? "🔒" : "🔓"}
+                        {seat.locked ? <LockIcon size={16} label="seat locked" /> : <LockOpenIcon size={16} label="seat open" />}
                       </Button>
                     )}
                   </li>
@@ -244,21 +255,32 @@ export function LobbyClient({ code }: { code: string }) {
               </span>
               {!live && (
                 <Button variant="outline" size="sm" onClick={() => useGameStore.getState().fillSeatWithBot()}>
-                  🤖 BOT FILLS A SEAT
+                  <span className="inline-flex items-center gap-2">
+                    <BotIcon size={16} />
+                    BOT FILLS A SEAT
+                  </span>
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={() => setSheet("rules")}>
-                📖 RULES
+                <span className="inline-flex items-center gap-2">
+                  <RulesIcon size={16} />
+                  RULES
+                </span>
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setSheet("theme")}>
-                🎨 THEME
+                <span className="inline-flex items-center gap-2">
+                  <ThemeIcon size={16} />
+                  THEME
+                </span>
               </Button>
             </div>
 
             {spectator ? (
               <p className="text-center font-body text-sm text-ink-dim">Spectating — a seat opens the moment one frees up.</p>
             ) : live && !isHost ? (
-              <p className="text-center font-body text-sm text-ink-dim">Waiting for the host to deal… 👑</p>
+              <p className="inline-flex items-center gap-1 text-center font-body text-sm text-ink-dim">
+                Waiting for the host to deal… <CrownIcon size={14} className="text-brass" />
+              </p>
             ) : (
               <Button variant="brass" size="big" className="text-xl" disabled={!canStart} onClick={onStart}>
                 {started ? "DEALING…" : seated.length < 2 ? "WAITING FOR 1 MORE PLAYER…" : "START TABLE — YOUR CALL FIRST"}
@@ -326,8 +348,8 @@ export function LobbyClient({ code }: { code: string }) {
                 }`}
               >
                 <span className="font-display text-base text-ivory">{theme.name}</span>
-                <span className="font-body text-[10px] text-ink-dim">
-                  {theme.free ? "FREE" : `🪙 ${theme.price}`}
+                <span className="inline-flex items-center gap-1 font-body text-[10px] text-ink-dim">
+                  {theme.free ? "FREE" : (<><CoinIcon size={12} /> {theme.price}</>)}
                 </span>
               </button>
             );

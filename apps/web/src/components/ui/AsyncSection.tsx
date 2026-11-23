@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { MockQuery } from "@/hooks/useMockQuery";
 import { Button } from "@/components/ui/Button";
+import { CardIcon, EmptySeatIcon, SweatIcon } from "@/components/ui/icons";
 
 /** Shimmering placeholder block. */
 export function Skeleton({ className = "" }: { className?: string }) {
@@ -52,8 +53,12 @@ export function ErrorState({
       role="alert"
       className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-card border-2 border-blood/70 bg-wood/70 px-6 py-8 text-center"
     >
-      <span className="text-4xl" aria-hidden>
-        🃏💦
+      <span
+        className="flex items-center justify-center gap-2 text-blood-bright"
+        aria-hidden
+      >
+        <CardIcon size={36} />
+        <SweatIcon size={36} />
       </span>
       <h3 className="font-display text-2xl text-ivory">{title}</h3>
       <p className="font-body text-sm text-ink-dim">{sub ?? "Something went wrong. The dealer is checking the deck."}</p>
@@ -69,12 +74,12 @@ export function ErrorState({
 export function EmptyState({
   title,
   sub,
-  icon = "🪑",
+  icon,
   action,
 }: {
   title: string;
   sub?: string;
-  icon?: string;
+  icon?: ReactNode;
   action?: ReactNode;
 }) {
   return (
@@ -82,8 +87,8 @@ export function EmptyState({
       role="status"
       className="mx-auto flex max-w-sm flex-col items-center gap-3 rounded-card border-2 border-dashed border-ink-dim/40 bg-wood/50 px-6 py-8 text-center"
     >
-      <span className="text-4xl" aria-hidden>
-        {icon}
+      <span className="text-ink-dim" aria-hidden>
+        {icon ?? <EmptySeatIcon size={32} />}
       </span>
       <h3 className="font-display text-2xl text-ivory">{title}</h3>
       {sub && <p className="font-body text-sm text-ink-dim">{sub}</p>}

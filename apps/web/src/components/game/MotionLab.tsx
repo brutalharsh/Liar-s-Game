@@ -7,6 +7,7 @@ import { useSettingsStore } from "@/store/settings";
 import { socket } from "@/lib/socket";
 import { parseServerEvent, type ServerEvent, type ServerEventName } from "@/lib/wire";
 import { TableView } from "@/components/table/TableView";
+import { PlayIcon } from "@/components/ui/icons";
 
 /**
  * MOTION LAB — dev-only cinematic bench (app/motion-lab). Every button drives
@@ -228,7 +229,9 @@ export function MotionLab() {
           12 · ghost lounge
         </button>
         <button type="button" onClick={() => void runFullMockRound()} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-brass hover:bg-brass/30">
-          ▶ FULL MOCK ROUND (adapter)
+          <span className="inline-flex items-center gap-1">
+            <PlayIcon size={12} /> FULL MOCK ROUND (adapter)
+          </span>
         </button>
         <button
           type="button"

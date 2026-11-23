@@ -3,6 +3,7 @@
 import { motion } from "motion/react";
 import { useGameStore } from "@/store/game";
 import { rankWord } from "@/lib/format";
+import { HourglassIcon } from "@/components/ui/icons";
 
 const SUIT: Record<string, string> = { K: "♠", Q: "♥", A: "♦" };
 
@@ -19,9 +20,9 @@ export function TableBanner() {
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="font-display text-sm tracking-widest text-brass"
+        className="inline-flex items-center gap-2 font-display text-sm tracking-widest text-brass"
       >
-        ⏳ {roundEnd.reason.toUpperCase()}
+        <HourglassIcon size={16} /> {roundEnd.reason.toUpperCase()}
       </motion.span>
     );
   }

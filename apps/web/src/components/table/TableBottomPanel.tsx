@@ -15,6 +15,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useGhostMode } from "@/components/game/GhostLounge";
 import { EmoteWheel } from "@/components/game/EmoteWheel";
 import { TimerArc } from "@/components/game/TimerArc";
+import { CrownIcon, EmoteIcon, MuteIcon } from "@/components/ui/icons";
 
 /**
  * Hero strip + fanned hand + the two critical buttons (research/09 §§2–3,
@@ -138,7 +139,7 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
             {hero?.nickname ?? "YOU"}
             {ghost && <em className="ml-1 not-italic font-body text-[10px] text-ink-dim">(ghost)</em>}
           </span>
-          {hero?.isHost && <span aria-label="host">👑</span>}
+          {hero?.isHost && <CrownIcon size={16} label="host" className="text-brass" />}
         </div>
         <ChamberPips pulled={hero?.pulled ?? 0} />
         <Button
@@ -147,7 +148,7 @@ export function TableBottomPanel({ onCheck }: { onCheck: () => void }) {
           onClick={() => setEmoteOpen(true)}
           aria-label={emoteMuted ? "Emotes (muted)" : "Open emote wheel"}
         >
-          {emoteMuted ? "🔇" : "💬"} EMOTE
+          {emoteMuted ? <MuteIcon size={16} /> : <EmoteIcon size={16} />} EMOTE
         </Button>
       </div>
 

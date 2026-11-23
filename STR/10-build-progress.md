@@ -562,6 +562,21 @@ here receives the directive before any further work.
 
 ### Noir + avatars wave 1 — T2 landed
 
+- **T1** ✅ icon system (owner directive: no emoji as UI icons): lucide-react
+  ^1.77 (the one justified dep — tree-shaken) + components/ui/icons.tsx
+  makeIcon factory (currentColor, strokeWidth 2, aria-hidden unless a
+  label is passed, 20px game / 18px chrome). 18 territory files migrated
+  (layout trio + tab bar, landing + how-to loops + rules-content slugs,
+  game-over crown/skull/coins/candles/medal, ghost lounge, table banner/
+  panel, lobby 12 glyphs, shop, profile 21 glyphs, leaderboard medals,
+  motion-lab, CoinBadge, InviteChip, AsyncSection+Tabs — Tabs' icon prop
+  widened to ReactNode). CONTENT preserved (not chrome): emote-wheel
+  presets, catalog/animal art (avatar wave's domain), card-face text
+  glyphs, prose arrows. Next-wave icon inventory handed to T4/T5
+  (admin/settings/game-chrome lists + store game.ts:506 toast seam).
+  LandingView committed here carrying T2's held color edits. Gates:
+  tsc clean · 63/63 · build 22 routes. emojiForSpec down to 2 consumers
+  (GameOverOverlay, ShotCinematic) — avatar wave's to replace.
 - **T2** ✅ noir re-theme: token VALUES remapped under their historical
   names (compile-compat alias map in globals.css) — black/white/gray
   surfaces (#0a0a0a–#1c1c1c, ivory/ink → #f5f5f5/#a3a3a3), brass* =
