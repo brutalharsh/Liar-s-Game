@@ -176,6 +176,35 @@ describe('payments provider validation', () => {
   });
 });
 
+describe('oauth provider parsing (optional — absent pair = not configured)', () => {
+  it('yields an empty group when none of the four keys are set', () => {
+    const config = loadConfig({ ...validEnv }, { loadEnvFile: false });
+    expect(config.oauth).toEqual({});
+  });
+
+  it('exposes a provider only when BOTH its keys are filled (trimmed)', () => {
+    const config = loadConfig(
+      {
+        ...validEnv,
+        DISCORD_CLIENT_ID: '  discord-id  ',
+        DISCORD_CLIENT_SECRET: 'discord-secret',
+        GOOGLE_CLIENT_ID: 'google-id',
+      },
+      { loadEnvFile: false },
+    );
+    expect(config.oauth.discord).toEqual({ clientId: 'discord-id', clientSecret: 'discord-secret' });
+    expect(config.oauth.google).toBeUndefined(); // secret missing → not configured
+  });
+
+  it('treats whitespace-only values as absent (503, never a crash)', () => {
+    const config = loadConfig(
+      { ...validEnv, DISCORD_CLIENT_ID: '   ', DISCORD_CLIENT_SECRET: 'discord-secret' },
+      { loadEnvFile: false },
+    );
+    expect(config.oauth).toEqual({});
+  });
+});
+
 describe('env-file selection (AGENTS.md rule 5)', () => {
   let tmp: string;
 

@@ -87,6 +87,7 @@ describe('loadConfig full shape', () => {
       key: 'img-key-value',
       projectId: 'prj-img',
     });
+    expect(config.oauth).toEqual({}); // optional keys absent in this env → login not configured
     expect(config.payments).toEqual({ provider: 'mock' });
   });
 

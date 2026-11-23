@@ -32,6 +32,21 @@ export interface ImageServerConfig {
   projectId: string;
 }
 
+export interface OAuthCredentials {
+  clientId: string;
+  clientSecret: string;
+}
+
+/**
+ * Login providers (STR/08 §13) — purely OPTIONAL: a provider appears only
+ * when BOTH its env keys are filled; an absent group simply means login is
+ * not configured and the auth routes answer 503 (S-A1 behavior).
+ */
+export interface OAuthConfig {
+  discord?: OAuthCredentials;
+  google?: OAuthCredentials;
+}
+
 export interface AppConfig {
   mongodbUri: string;
   mongodbDb: string;
@@ -42,6 +57,7 @@ export interface AppConfig {
   authSecret: string;
   adminUsername: string;
   adminPassword: string;
+  oauth: OAuthConfig;
   imageServer: ImageServerConfig;
   payments: PaymentsConfig;
 }
@@ -150,6 +166,22 @@ function assertHttpUrl(env: NodeJS.ProcessEnv, key: string): string {
 }
 
 /**
+ * Optional OAuth credentials — a provider is configured only when BOTH its
+ * keys are filled. Never throws: absent or partial pairs stay "not
+ * configured" (the auth routes answer 503 — S-A1 behavior).
+ */
+function optionalOAuthProvider(
+  env: NodeJS.ProcessEnv,
+  idKey: 'DISCORD_CLIENT_ID' | 'GOOGLE_CLIENT_ID',
+  secretKey: 'DISCORD_CLIENT_SECRET' | 'GOOGLE_CLIENT_SECRET',
+): OAuthCredentials | undefined {
+  const clientId = env[idKey]?.trim();
+  const clientSecret = env[secretKey]?.trim();
+  if (!isFilled(clientId) || !isFilled(clientSecret)) return undefined;
+  return { clientId, clientSecret };
+}
+
+/**
  * Loads + validates the game server config. Throws a single aggregated error
  * naming the missing keys (names only — never values).
  */
@@ -234,6 +266,10 @@ export function loadConfig(
     authSecret: requireFilled(env, 'AUTH_SECRET'),
     adminUsername: requireFilled(env, 'ADMIN_USERNAME'),
     adminPassword: requireFilled(env, 'ADMIN_PASSWORD'),
+    oauth: {
+      discord: optionalOAuthProvider(env, 'DISCORD_CLIENT_ID', 'DISCORD_CLIENT_SECRET'),
+      google: optionalOAuthProvider(env, 'GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET'),
+    },
     imageServer: {
       url: imageServerUrl,
       key: requireFilled(env, 'IMAGE_SERVER_KEY'),

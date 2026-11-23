@@ -29,6 +29,7 @@ import {
   request,
   json,
   tinyLimiter,
+  TEST_AUTH_SECRET,
   TEST_CONFIG,
   type Listening,
 } from './helpers/harness.js';
@@ -84,14 +85,24 @@ afterEach(() => {
   stagedQueue.length = 0;
 });
 
-beforeEach(() => {
-  vi.stubEnv('DISCORD_CLIENT_ID', 'discord-client-id');
-  vi.stubEnv('DISCORD_CLIENT_SECRET', 'discord-client-secret');
-  vi.stubEnv('GOOGLE_CLIENT_ID', 'google-client-id');
-  vi.stubEnv('GOOGLE_CLIENT_SECRET', 'google-client-secret');
-});
+/** The oauth getters run loadConfig (shared config) — all core keys must be present. */
+const TEST_ENV: Record<string, string> = {
+  APP_URL: 'http://localhost:3100',
+  AUTH_SECRET: TEST_AUTH_SECRET,
+  ADMIN_USERNAME: 'envadmin',
+  ADMIN_PASSWORD: 'correct-horse-battery',
+  MONGODB_URI: 'mongodb://localhost:27017/liars-game-test',
+  MONGODB_DB: 'liars-game-test',
+  PORT: '3001',
+  CLIENT_ORIGIN: 'http://localhost:3100',
+  IMAGE_SERVER_URL: 'http://images.test',
+  IMAGE_SERVER_KEY: 'img-key',
+  IMAGE_SERVER_PROJECT_ID: 'prj-img',
+  PAYMENTS_PROVIDER: 'mock',
+};
 
 beforeEach(() => {
+  for (const [key, value] of Object.entries(TEST_ENV)) vi.stubEnv(key, value);
   vi.stubEnv('DISCORD_CLIENT_ID', 'discord-client-id');
   vi.stubEnv('DISCORD_CLIENT_SECRET', 'discord-client-secret');
   vi.stubEnv('GOOGLE_CLIENT_ID', 'google-client-id');
@@ -306,8 +317,8 @@ describe('callbacks', () => {
   });
 });
 
-describe('env credential readers', () => {
-  it('reads provider creds from process.env (TODO-sync-with-shared seam)', () => {
+describe('credential source: shared config oauth group', () => {
+  it('reads provider creds via loadConfig; a partial pair reads as not configured', () => {
     expect(getDiscordOAuth()).toEqual({ clientId: 'discord-client-id', clientSecret: 'discord-client-secret' });
     expect(getGoogleOAuth()).toEqual({ clientId: 'google-client-id', clientSecret: 'google-client-secret' });
     vi.stubEnv('DISCORD_CLIENT_SECRET', '');

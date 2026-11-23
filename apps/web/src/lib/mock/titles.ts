@@ -1,5 +1,7 @@
 /**
  * Titles (STR/04 §6) — earned server-side at match end; equipped one at a time.
+ * Reconciled 1:1 with the server registry (apps/server/src/economy/titles.ts);
+ * "The House Always Wins" is deferred engine-side and deliberately absent.
  */
 
 export interface TitleMeta {
@@ -18,8 +20,7 @@ export const TITLES: readonly TitleMeta[] = [
   { id: "bar-legend", name: "Bar Legend", unlock: "10 wins" },
   { id: "regular", name: "Regular", unlock: "50 matches" },
   { id: "honest-fool", name: "Honest Fool", unlock: "10 matches, zero lies played" },
-  { id: "nine-lives", name: "Cat With Nine Lives", unlock: "9 trigger pulls survived" },
-  { id: "house-wins", name: "The House Always Wins", unlock: "execute the same player twice in one match" },
+  { id: "cat-with-nine-lives", name: "Cat With Nine Lives", unlock: "9 trigger pulls survived" },
   { id: "chicken-dinner", name: "Chicken Dinner?", unlock: "first false accusation" },
 ] as const;
 

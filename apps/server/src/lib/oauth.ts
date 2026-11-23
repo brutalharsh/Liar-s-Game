@@ -1,19 +1,19 @@
 /**
  * Discord + Google OAuth helpers (login REQUIRED to play — STR/08 §13).
  *
- * TODO-sync-with-shared: DISCORD_* and GOOGLE_* credentials are not in shared's
- * loadConfig yet; this module reads them from process.env directly (values
- * never logged). When shared grows an oauth config block, delete this note
- * and consume it there.
+ * Creds live in the shared config's `oauth` group (loadConfig). Boot
+ * (src/index.ts) owns the env-file load, so this re-reads the live
+ * process.env per call without touching the fs. Any config failure degrades
+ * to "not configured" — the auth routes answer 503 and missing creds never
+ * crash a request (S-A1 behavior; loadConfig errors name KEY NAMES only).
  */
 import { randomBytes } from 'node:crypto';
+import { loadConfig } from '@liars-game/shared/server';
+import type { OAuthConfig, OAuthCredentials } from '@liars-game/shared/server';
+
+export type { OAuthCredentials };
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>;
-
-export interface OAuthCredentials {
-  clientId: string;
-  clientSecret: string;
-}
 
 export interface OAuthProfile {
   provider: 'discord' | 'google';
@@ -30,18 +30,25 @@ export class OAuthExchangeError extends Error {
   }
 }
 
+/** Read the shared config's optional `oauth` group; devolves to empty (503) on any config failure. */
+function readOAuthGroup(): OAuthConfig {
+  try {
+    return loadConfig(process.env, { loadEnvFile: false }).oauth;
+  } catch (err) {
+    console.error(
+      '[oauth] config unavailable — treating login as not configured:',
+      err instanceof Error ? err.message : err,
+    );
+    return {};
+  }
+}
+
 export function getDiscordOAuth(): OAuthCredentials | null {
-  const clientId = process.env['DISCORD_CLIENT_ID']?.trim();
-  const clientSecret = process.env['DISCORD_CLIENT_SECRET']?.trim();
-  if (!clientId || !clientSecret) return null;
-  return { clientId, clientSecret };
+  return readOAuthGroup().discord ?? null;
 }
 
 export function getGoogleOAuth(): OAuthCredentials | null {
-  const clientId = process.env['GOOGLE_CLIENT_ID']?.trim();
-  const clientSecret = process.env['GOOGLE_CLIENT_SECRET']?.trim();
-  if (!clientId || !clientSecret) return null;
-  return { clientId, clientSecret };
+  return readOAuthGroup().google ?? null;
 }
 
 /** One-time CSRF state (never Math.random — auth path). */
