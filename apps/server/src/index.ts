@@ -8,6 +8,8 @@ import { loadConfig, resolveEnvFile } from '@liars-game/shared/server';
 import { connectDB, disconnectDB, syncIndexesBestEffort } from './db.js';
 import { startServer } from './app.js';
 import { printRoutes } from './lib/printRoutes.js';
+import { createAuthMiddleware } from './middleware/auth.js';
+import { registerGame } from './game/index.js';
 
 async function main(): Promise<void> {  const config = loadConfig();
   const envFile = resolveEnvFile();
@@ -24,6 +26,14 @@ async function main(): Promise<void> {  const config = loadConfig();
   console.log(`[boot] payments provider: ${config.payments.provider}`);
   console.log('[boot] socket.io mounted on the same HTTP server (game handlers land in S1)');
   printRoutes(routes);
+
+  // S1 registration: authoritative game rooms (RoomManager + event router).
+  registerGame(io, {
+    authenticateSocket: createAuthMiddleware(config.authSecret).authenticateSocket,
+    // TODO-E1: onMatchEnd (MatchEndPayload → E1's grantMatchRewards) is wired
+    // at the integration pass; until then the seam is also observable via
+    // RoomManager.addMatchEndListener for ops/tests.
+  });
 
   // Unique indexes are the idempotency backbone — sync without blocking boot.
   void syncIndexesBestEffort();

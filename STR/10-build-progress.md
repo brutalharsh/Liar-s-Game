@@ -51,6 +51,7 @@
 | S1 | Game rooms: RoomManager + STR/07 event router on the rules engine + timer wheel + reconnect + bots | `apps/server/src/game` + one index.ts block | 🏃 running |
 | E1 | Economy services: grantMatchRewards seam, levels 1–100, titles, anti-farm caps, leaderboard + profile REST | `apps/server/src/economy` + routes/economy + mounts line | ✅ done — 187/187 green; 10-lakh curve verified; PII projection tested |
 | W3 | Leaderboard + profile pages wired to E1's real endpoints (typed 1:1, curve-matched fixtures) | `apps/web` leaderboard/profile/api/fixtures | ✅ done — tsc, build, 23/23, scans clean; 4-metric board + full profile against the real contract |
+| S1 | Game rooms: RoomManager, 15-event router on the rules engine, timer wheel, reconnect/grace, bots, per-seat snapshots | `apps/server/src/game` + index.ts block | ✅ done — 238/238 green; every payload strides shared schemas; (seed,log) bit-exact replay asserted |
 
 ## Next up (queue — dispatch as prerequisites land)
 
@@ -162,3 +163,26 @@
   Deviations accepted: legacy {type} ClientAction adapter (TODO-sync-with-shared
   at integration), mock room code DUMMY (charset fix), two disclosed copy
   strings in create/JoinView, components/table/** claimed
+- E1 — ✅ completed 2026-11-23 night; orchestrator re-verified: 187/187 green,
+  tsc clean with S1's in-flight layer present, fences held (app.ts = 3 lines,
+  wallet union = 1 reason), PII projection + idempotence + cap tests green.
+  Curve K=733·1.0721^(L-1) → 10,000,496 XP to L100 ≈ the 10-lakh grind.
+  Deviations accepted: match_replay_seeds economy-owned; pre-summed coin rows
+  (reason match_reward); "House Always Wins" title deferred (MatchRecord lacks
+  executor→victim — R1 follow-up); rules-engine type-only imports (dep added
+  later by S1)
+- S1 — ✅ completed 2026-11-23 late night; orchestrator re-verified: 238/238
+  green (51 new game tests: lifecycle audits at 2/4/6+bot/7 players, cross-hand
+  privacy scans, bulletPos deep-key scan, exactly-once timers, reconnect/
+  abandon, abort win-by-default, bit-exact replay), tsc clean, index.ts
+  registration = 2 imports + 1 call, rules-engine workspace dep, scans clean.
+  Shared-schema gaps flagged for orchestrator patch (isBot on seat views,
+  game:over winnerSeat:nullable, summary rounds min 0) — F1 package is
+  orchestrator territory; done at integration. Big-Table entitlement pinned
+  `capacity:big-table`; lock/kick/bot programmatic (no wire events by design);
+  room code = seat authority (no reconnectToken, STR/07 §5)
+
+## Wave 1 COMPLETE — all 10 agent waves landed, verified, committed, pushed.
+
+Integration pass begins (orchestrator-owned): hook wiring, shared schema
+patch, rooms REST mount, web live wiring (W4), socket smoke.
