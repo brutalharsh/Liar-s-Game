@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Panel, SectionTitle } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
 import { CoinBadge, PriceChip } from "@/components/ui/CoinBadge";
@@ -10,6 +10,7 @@ import { Tabs } from "@/components/ui/Tabs";
 import { useEconomyStore } from "@/store/economy";
 import { useIdentityStore } from "@/store/identity";
 import { useToasts } from "@/store/ui";
+import { useMockQuery } from "@/hooks/useMockQuery";
 import {
   SHOP_CATEGORIES,
   SHOP_ITEMS,
@@ -18,7 +19,7 @@ import {
   type ShopCategory,
   type ShopItem,
 } from "@/lib/mock/catalog";
-import { createCoinPackOrder } from "@/lib/payments";
+import { checkoutPack, getCatalogPage, type CatalogPage, type CoinPackRecord } from "@/lib/api";
 import { formatInr, formatCoins } from "@/lib/format";
 
 function TryOnSheet({ item, open, onClose }: { item: ShopItem | null; open: boolean; onClose: () => void }) {
@@ -97,13 +98,50 @@ export function ShopView() {
   const equipped = useEconomyStore((s) => s.equipped);
   const coins = useEconomyStore((s) => s.coins);
 
-  const items = SHOP_ITEMS.filter((item) => item.category === category);
+  // Server-side pricing (STR/04 §3: server-validated prices): items + packs
+  // now come from GET /api/catalog via the api client; on empty/error the
+  // shop falls back to W1's fixture catalog so browsing never dies.
+  const catalogQuery = useMockQuery<CatalogPage>(() => getCatalogPage(), []);
+  const priceMap = useMemo(
+    () => new Map((catalogQuery.data?.items ?? []).map((item) => [item._id, item])),
+    [catalogQuery.data],
+  );
+  const packs = useMemo<CoinPackRecord[]>(() => {
+    const fromApi = catalogQuery.data?.packs ?? [];
+    if (fromApi.length > 0) return fromApi;
+    return COIN_PACKS.map((p, i) => ({
+      _id: p.id.replace(/^pack-/, ""),
+      name: p.name,
+      priceMajor: p.priceInr,
+      coins: p.coins,
+      bonus: p.bonus,
+      active: true,
+      sortOrder: i,
+    }));
+  }, [catalogQuery.data]);
+
+  const items = SHOP_ITEMS.filter((item) => {
+    if (item.category !== category) return false;
+    const serverItem = priceMap.get(item.id);
+    return !serverItem || serverItem.active !== false;
+  });
 
   const buyPack = async (packId: string) => {
     setPayPack(packId);
-    const outcome = await createCoinPackOrder({ packId });
-    setPayPack(null);
-    setPayResult(outcome.detail);
+    try {
+      const outcome = await checkoutPack(packId); // POST /api/billing/checkout {packId}
+      setPayPack(null);
+      if (outcome.checkoutUrl) {
+        window.location.assign(outcome.checkoutUrl); // same-tab → hosted pay page
+        return;
+      }
+      setPayResult(
+        "Payments aren't live yet — the checkout provider hasn't been activated. Nothing was charged.",
+      );
+    } catch {
+      setPayPack(null);
+      setPayResult("The checkout desk hit a snag — nothing was charged. Try again shortly.");
+    }
   };
 
   return (
@@ -158,23 +196,26 @@ export function ShopView() {
         className="justify-center"
       />
 
-      {/* item grid */}
+      {/* item grid — prices + names from GET /api/catalog (fallback: W1 fixtures) */}
       <section>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
           {items.map((item) => {
             const isOwned = owned.includes(item.id);
             const isEquipped = equipped[item.category] === item.id;
             const lockedByLevel = !!item.levelReq && !isOwned;
+            const serverItem = priceMap.get(item.id);
+            const price = serverItem?.price ?? item.price;
+            const name = serverItem?.name ?? item.name;
             return (
               <Panel key={item.id} className={`flex flex-col gap-2 p-3 ${isEquipped ? "border-brass" : ""}`}>
                 <div className="flex h-20 items-center justify-center rounded-btn bg-wood-deep text-4xl" aria-hidden>
                   {item.overlay}
                 </div>
-                <p className="truncate font-display text-base text-ivory" title={item.name}>
-                  {item.name}
+                <p className="truncate font-display text-base text-ivory" title={name}>
+                  {name}
                 </p>
                 <div className="flex items-center justify-between gap-1">
-                  <PriceChip price={lockedByLevel ? 0 : item.price} />
+                  <PriceChip price={lockedByLevel ? 0 : price} />
                   {isEquipped && <span className="font-body text-[10px] text-brass">ON YOU</span>}
                 </div>
                 <Button
@@ -183,7 +224,7 @@ export function ShopView() {
                   onClick={() => setTryOn(item)}
                   className="text-xs"
                 >
-                  {lockedByLevel ? "LEVEL LOCK" : isOwned ? "STYLED" : item.price === 0 ? "FREE" : "TRY ON"}
+                  {lockedByLevel ? "LEVEL LOCK" : isOwned ? "STYLED" : price === 0 ? "FREE" : "TRY ON"}
                 </Button>
               </Panel>
             );
@@ -191,33 +232,36 @@ export function ShopView() {
         </div>
       </section>
 
-      {/* coin packs */}
+      {/* coin packs — prices from the server-side coin_packs table (via GET /api/catalog) */}
       <section>
         <SectionTitle kicker="top up">Coin packs</SectionTitle>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {COIN_PACKS.map((pack) => (
-            <Panel key={pack.id} className="relative flex flex-col items-center gap-1 p-4 text-center">
-              {pack.badge && (
-                <span className="absolute -top-3 rounded-full border-2 border-brass-deep bg-brass px-2 py-0.5 font-body text-[9px] tracking-widest text-wood-deep">
-                  {pack.badge}
-                </span>
-              )}
-              <p className="font-display text-2xl text-brass">{formatCoins(pack.coins + pack.bonus)}</p>
-              <p className="font-display text-lg text-ivory">{formatInr(pack.priceInr)}</p>
-              {pack.bonus > 0 && (
-                <p className="font-body text-[10px] text-verdict">+{formatCoins(pack.bonus)} bonus coins</p>
-              )}
-              <Button
-                variant="brass"
-                size="sm"
-                className="mt-2 w-full"
-                disabled={payPack !== null}
-                onClick={() => void buyPack(pack.id)}
-              >
-                {payPack === pack.id ? "CHECKING…" : "BUY"}
-              </Button>
-            </Panel>
-          ))}
+          {packs.map((pack) => {
+            const badge = pack._id === "popular" ? "MOST POPULAR" : pack._id === "whale" ? "BEST VALUE" : undefined;
+            return (
+              <Panel key={pack._id} className="relative flex flex-col items-center gap-1 p-4 text-center">
+                {badge && (
+                  <span className="absolute -top-3 rounded-full border-2 border-brass-deep bg-brass px-2 py-0.5 font-body text-[9px] tracking-widest text-wood-deep">
+                    {badge}
+                  </span>
+                )}
+                <p className="font-display text-2xl text-brass">{formatCoins(pack.coins + pack.bonus)}</p>
+                <p className="font-display text-lg text-ivory">{formatInr(pack.priceMajor)}</p>
+                {pack.bonus > 0 && (
+                  <p className="font-body text-[10px] text-verdict">+{formatCoins(pack.bonus)} bonus coins</p>
+                )}
+                <Button
+                  variant="brass"
+                  size="sm"
+                  className="mt-2 w-full"
+                  disabled={payPack !== null}
+                  onClick={() => void buyPack(pack._id)}
+                >
+                  {payPack === pack._id ? "CHECKING…" : "BUY"}
+                </Button>
+              </Panel>
+            );
+          })}
         </div>
         <Sheet open={payResult !== null} onClose={() => setPayResult(null)} title="Payment gateway coming soon">
           <div className="flex flex-col items-center gap-3 text-center">
@@ -226,9 +270,10 @@ export function ShopView() {
             </span>
             <p className="font-body text-sm text-ivory">{payResult}</p>
             <p className="font-body text-[11px] text-ink-dim">
-              The buy button already calls <code className="text-brass">POST /api/payments/create-order</code>{" "}
-              with <code className="text-brass">{`{packId}`}</code> — the moment the provider
-              registers, packs go live with zero screen changes.
+              The buy button already calls <code className="text-brass">POST /api/billing/checkout</code>{" "}
+              with <code className="text-brass">{`{packId}`}</code> — the moment the checkout provider is
+              activated, you'll hop to the hosted pay page and back to{" "}
+              <code className="text-brass">/billing/return</code> with zero screen changes.
             </p>
             <Button variant="brass" onClick={() => setPayResult(null)}>
               UNDERSTOOD
