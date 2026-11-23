@@ -5,7 +5,11 @@ import { usePathname } from "next/navigation";
 import { CoinBadge } from "@/components/ui/CoinBadge";
 import { useEconomyStore } from "@/store/economy";
 import { useIdentityStore } from "@/store/identity";
+import { useAuthStore } from "@/store/auth-store";
+import { useToasts } from "@/store/ui";
 import { Avatar } from "@/components/ui/Avatar";
+import { toDisplaySpec } from "@/components/auth/viewer";
+import { useEffect } from "react";
 
 const NAV = [
   { href: "/rooms", label: "ROOMS" },
@@ -18,7 +22,24 @@ const NAV = [
 export function SiteHeader() {
   const pathname = usePathname();
   const coins = useEconomyStore((s) => s.coins);
-  const avatar = useIdentityStore((s) => s.avatar);
+  const guestAvatar = useIdentityStore((s) => s.avatar);
+  const user = useAuthStore((s) => s.user);
+  const status = useAuthStore((s) => s.status);
+  const fetchMe = useAuthStore((s) => s.fetchMe);
+  const logout = useAuthStore((s) => s.logout);
+  const push = useToasts();
+
+  useEffect(() => {
+    void fetchMe();
+  }, [fetchMe]);
+
+  const loginHref = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
+  const signedOut = status === "guest" || (status === "unknown" && !user);
+
+  const handleSignOut = async () => {
+    await logout();
+    push({ title: "Signed out", sub: "The bar remembers your tab.", tone: "info" });
+  };
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-wood-mid/60 bg-wood-deep/90 backdrop-blur pt-safe">
@@ -51,9 +72,40 @@ export function SiteHeader() {
           >
             ⚙️
           </Link>
-          <Link href="/profile" aria-label="Profile" className="p-1">
-            <Avatar spec={avatar} size="md" />
-          </Link>
+          {signedOut ? (
+            <Link
+              href={loginHref}
+              aria-label="Sign in"
+              className="flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs tracking-wider text-ink-dim hover:border-brass hover:text-brass md:text-sm"
+            >
+              SIGN IN
+            </Link>
+          ) : status === "authed" && user ? (
+            <>
+              <Link
+                href="/profile"
+                aria-label={`Profile — ${user.nickname}`}
+                className="flex min-h-12 items-center gap-2 rounded-full border-2 border-transparent px-1 hover:border-wood-mid"
+              >
+                <Avatar spec={toDisplaySpec(user.avatarSpec)} size="md" />
+                <span className="hidden max-w-24 truncate font-display text-sm text-ivory md:block">
+                  {user.nickname}
+                </span>
+              </Link>
+              <button
+                type="button"
+                onClick={() => void handleSignOut()}
+                aria-label="Sign out"
+                className="flex h-12 w-12 items-center justify-center rounded-full text-xl text-ink-dim hover:bg-wood hover:text-blood-bright"
+              >
+                🚪
+              </button>
+            </>
+          ) : (
+            <Link href="/profile" aria-label="Profile" className="p-1 opacity-60">
+              <Avatar spec={guestAvatar} size="md" />
+            </Link>
+          )}
         </div>
       </div>
     </header>

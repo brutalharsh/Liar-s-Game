@@ -280,6 +280,12 @@ export const mockAdmin = {
     recordAudit("admin.login", "session", "admin", "dashboard session opened (mock)");
   },
 
+  async logout(): Promise<void> {
+    adminSession = false;
+    recordAudit("admin.logout", "session", "admin", "dashboard session closed");
+    await mockFetch(null);
+  },
+
   async listUsers(search: string, page: number, pageSize: number): Promise<AdminUsersPage> {
     if (!adminSession) throw new Error("AUTH_REQUIRED");
     const q = search.trim().toLowerCase();

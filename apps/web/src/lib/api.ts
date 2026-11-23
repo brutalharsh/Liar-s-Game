@@ -359,7 +359,7 @@ export async function probeAuthProvider(): Promise<{ available: boolean; reason:
     if (res.type === "opaqueredirect" || res.status === 302 || res.status === 307) {
       return { available: true, reason: "ready" };
     }
-    if (res.status > 0) return { available: true, reason: "ready" };
+    // Anything else (404/500 from a missing or dead backend) → clearly "down".
     return { available: false, reason: "offline" };
   } catch {
     return { available: false, reason: "offline" };
@@ -381,6 +381,15 @@ export async function adminLogin(username: string, password: string): Promise<vo
 export async function adminListAudit(page = 1, pageSize = 20): Promise<{ entries: AdminAuditEntry[]; page: number; pageSize: number; total: number }> {
   if (getApiMode() === "mock") return mockAdmin.listAudit(page, pageSize);
   return apiFetch(`/api/admin/audit${qs({ page, pageSize })}`);
+}
+
+/** POST /api/admin/logout — best-effort exit; the 8h cookie drops server-side. */
+export async function adminLogout(): Promise<void> {
+  if (getApiMode() === "mock") {
+    await mockAdmin.logout();
+    return;
+  }
+  await apiFetch<void>("/api/admin/logout", { method: "POST" }).catch(() => undefined);
 }
 
 /** GET /api/admin/users?search=&page=&pageSize= */
