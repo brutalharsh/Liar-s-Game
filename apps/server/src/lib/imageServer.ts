@@ -96,12 +96,15 @@ export interface ImageClient {
 export function validateFolder(
   folder: string,
 ): { ok: true; value: string } | { ok: false; error: string } {
-  const segments = folder.split('/').filter((segment) => segment.length > 0);
-  if (segments.length === 0) return { ok: false, error: 'folder must not be empty' };
+  if (folder.length === 0) return { ok: false, error: 'folder must not be empty' };
+  const segments = folder.split('/');
   if (segments.length > 3) return { ok: false, error: 'folder must be 1–3 segments' };
   for (const segment of segments) {
-    if (segment.length > 60 || !/^[a-z0-9-]+$/.test(segment)) {
-      return { ok: false, error: `invalid folder segment "${segment}" (a-z, 0-9, dashes; 1–60 chars)` };
+    if (segment.length === 0 || segment.length > 60 || !/^[a-z0-9-]+$/.test(segment)) {
+      return {
+        ok: false,
+        error: `invalid folder segment "${segment}" (a-z, 0-9, dashes; 1–60 chars)`,
+      };
     }
   }
   return { ok: true, value: segments.join('/') };
@@ -121,10 +124,10 @@ export function slugifyFileName(name: string): string {
 
 export function createImageServerClient(
   config: ImageServerConfig,
-  deps: { fetch?: FetchLike } = {},
+  deps: { fetchImpl?: FetchLike } = {},
 ): ImageClient {
   const base = config.url.replace(/\/+$/, '');
-  const doFetch = deps.fetch ?? globalThis.fetch;
+  const doFetch = deps.fetchImpl ?? globalThis.fetch;
   let cachedProjectId: string | null = config.projectId;
 
   async function api<T extends Record<string, unknown>>(
@@ -233,6 +236,16 @@ export function createImageServerClient(
       opts: UploadOptions = {},
     ): Promise<UploadedImage> {
       const { projectId, upload } = await presign(buffer, filename, contentType, opts.folder);
+      // Same id, NEW bytes → PUT direct to storage first (docs §6 lifecycle),
+      // then register the replacement (idempotent per key).
+      const put = await doFetch(upload.uploadUrl, {
+        method: 'PUT',
+        headers: upload.headers,
+        body: buffer,
+      });
+      if (!put.ok) {
+        throw new ImageServerError(`direct upload failed (${put.status})`, put.status);
+      }
       const replaced = await api<{ file?: FileDto }>(
         `/api/files/${encodeURIComponent(id)}/replace`,
         'POST',

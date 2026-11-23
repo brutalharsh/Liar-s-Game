@@ -18,6 +18,7 @@ import type { AppConfig } from '@liars-game/shared/server';
 import type { RateLimitRequestHandler } from 'express-rate-limit';
 import { appendLedger } from '../lib/wallet.js';
 import { jsonError, parseBody } from '../lib/api.js';
+import type { FetchLike } from '../lib/oauth.js';
 import { createAuthMiddleware, type AuthMiddleware } from '../middleware/auth.js';
 import { CoinPack } from '../models/coin-pack.js';
 import { Checkout } from '../models/checkout.js';
@@ -30,6 +31,8 @@ import {
 export interface BillingRouterDeps {
   billingLimiter?: RateLimitRequestHandler;
   payments?: PaymentsClient;
+  /** Injected fetch for tests — defaults to global fetch. */
+  fetchImpl?: FetchLike;
 }
 
 const CheckoutBody = z.strictObject({ packId: z.string().min(1).max(40) });
@@ -38,7 +41,8 @@ const VerifyBody = z.strictObject({ token: z.string().min(1).max(128) });
 export function createBillingRouter(config: AppConfig, deps: BillingRouterDeps = {}): Router {
   const router = Router();
   const auth: AuthMiddleware = createAuthMiddleware(config.authSecret);
-  const payments = deps.payments ?? createPaymentsClient(config.payments);
+  const payments =
+    deps.payments ?? createPaymentsClient(config.payments, deps.fetchImpl ? { fetch: deps.fetchImpl } : {});
   const limiter = deps.billingLimiter ? [deps.billingLimiter] : [];
 
   router.post('/checkout', ...limiter, auth.requireAuth, async (req: Request, res: Response): Promise<void> => {

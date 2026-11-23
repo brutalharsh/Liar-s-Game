@@ -70,7 +70,9 @@ function errorHandler(
 
 export function createApp(config: AppConfig, deps: AppDeps = {}): Express {
   const limiters = { ...createDefaultLimiters(), ...deps.limiters };
-  const payments = deps.payments ?? createPaymentsClient(config.payments);
+  const payments =
+    deps.payments ??
+    createPaymentsClient(config.payments, deps.fetchImpl ? { fetch: deps.fetchImpl } : {});
   const images = deps.images ?? createImageServerClient(config.imageServer);
 
   const app = express();
@@ -102,6 +104,7 @@ export function createApp(config: AppConfig, deps: AppDeps = {}): Express {
   const billingRouter = createBillingRouter(config, {
     billingLimiter: limiters.billing,
     payments,
+    fetchImpl: deps.fetchImpl,
   });
   const shopRouter = createShopRouter(config);
 

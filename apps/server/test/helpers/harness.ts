@@ -5,6 +5,7 @@
 import http from 'node:http';
 import type { Express, Request, Response, NextFunction, RequestHandler } from 'express';
 import type { AppConfig, PaymentsConfig } from '@liars-game/shared/server';
+import type { RateLimitRequestHandler } from 'express-rate-limit';
 import { vi } from 'vitest';
 
 export const TEST_AUTH_SECRET = 'test-secret-0123456789abcdef';
@@ -68,7 +69,11 @@ export async function request(
   init: RequestInit & { raw?: string } = {},
 ): Promise<TestResponse> {
   const { raw, ...rest } = init;
-  const res = await fetch(url, { redirect: 'manual', ...rest, body: raw ?? rest.body });
+  const headers = new Headers(rest.headers ?? {});
+  if (typeof (rest.body ?? raw) === 'string' && !headers.has('content-type')) {
+    headers.set('content-type', 'application/json');
+  }
+  const res = await fetch(url, { redirect: 'manual', ...rest, headers, body: raw ?? rest.body });
   const text = await res.text();
   let body: unknown = null;
   if (text.length > 0) {
@@ -86,9 +91,9 @@ export function json(rec: Record<string, unknown>): string {
 }
 
 /** Serializable fake rate limiter with an injectable window/limit. */
-export function tinyLimiter(limit: number, windowMs = 60_000): RequestHandler {
+export function tinyLimiter(limit: number, windowMs = 60_000): RateLimitRequestHandler {
   const hits = new Map<string, number[]>();
-  return (req: Request, res: Response, next: NextFunction): void => {
+  const handler: RequestHandler = (req: Request, res: Response, next: NextFunction): void => {
     const key = req.ip ?? 'test';
     const now = Date.now();
     const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
@@ -100,11 +105,16 @@ export function tinyLimiter(limit: number, windowMs = 60_000): RequestHandler {
     }
     next();
   };
+  return handler as unknown as RateLimitRequestHandler;
 }
 
-/** Chainable mongoose query stub: .find/.select/.sort/.skip/.limit/.lean().exec(). */
-export function makeQuery(rows: unknown[]): Record<string, unknown> {
-  const promise = Promise.resolve(rows);
+/**
+ * Chainable mongoose query stub: .find/.select/.sort/.skip/.limit/.lean().exec().
+ * mode 'findOne' resolves rows[0] ?? null (findById/findOne callers); 'find'
+ * resolves the array.
+ */
+export function makeQuery(rows: unknown[], mode: 'find' | 'findOne' = 'find'): Record<string, unknown> {
+  const promise = Promise.resolve(mode === 'findOne' ? rows[0] ?? null : rows);
   const chain: Record<string, unknown> = {};
   const method = (): Record<string, unknown> => chain;
   for (const name of ['select', 'sort', 'skip', 'limit', 'lean', 'populate']) {
@@ -122,4 +132,9 @@ export function makeRaw(buffer: Buffer, contentType: string): RequestInit {
     headers: { 'content-type': contentType },
     body: new Uint8Array(buffer),
   };
+}
+
+/** countDocuments(...) stub — the route chains .exec() on it. */
+export function makeCount(value: number): { exec: () => Promise<number> } {
+  return { exec: () => Promise.resolve(value) };
 }

@@ -43,22 +43,30 @@
 | Agent | Mission | Territory | Status |
 |---|---|---|---|
 | F1 | Foundations: root toolchain + `packages/shared` | root configs, `packages/shared` | ✅ done — 51/51 green; env-trio config follow-up in flight |
-| S-A1 | Server foundation: Express + Mongo models + **auth (Discord/Google JWT)** + **admin REST** + **hosted-payments integration** + **image-server module** + Socket.IO mount | `apps/server` | 🏃 running |
+| S-A1 | Server foundation: Express + Mongo models + **auth (Discord/Google JWT)** + **admin REST** + **hosted-payments integration** + **image-server module** + Socket.IO mount | `apps/server` | ✅ done — 123/123 green, boot-smoked vs live Atlas; billing grant path line-audited by orchestrator |
+| W-AUTH | Login gate (Discord/Google), `/admindashboard` UI, billing return + shop wiring | `apps/web` auth/admin/shop/api | ✅ done — tsc-clean in territory (residual app errors are W2's in-flight files); routes 200 in mock mode |
 | R1 | Rules engine: complete pure-TS Liar's Deck per STR/01 + 30+ vitest cases | `packages/rules-engine` | ✅ done — 132/132 green (vitest ^5.1.1), tsc clean, replay + leak tripwires verified by orchestrator |
 | W1 | Web shell: 15 routes mock-first + two-mode GameTableShell | `apps/web` | ✅ done — build green; orchestrator re-verified (build + privacy scan) |
 | W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | 🏃 running |
-| W-AUTH | Login gate (Discord/Google), `/admindashboard` UI, billing return + shop wiring | `apps/web` auth/admin/shop/api | 🏃 running |
 
 ## Next up (queue — dispatch as prerequisites land)
 
-1. **S1 — Game rooms wave** (`apps/server`): RoomManager + event router wired to
-   `packages/rules-engine` + timers + reconnection — needs R1 (running) + S-A1's
-   io mount (running)
-2. **E1 — Economy services** (after S-A1): XP awarding, titles computation,
-   match-record ingestion at game end (STR/04/09)
-3. **W3 — Shop/profile/leaderboard wiring** to real APIs (after S-A1)
-4. **Integration pass**: web ↔ server smoke over real sockets (after S1), fixing
-   drift between W2/W-AUTH mock-first clients and the live APIs
+1. **S1 — Game rooms wave** (`apps/server/src/game`): RoomManager + event router
+   wired to `packages/rules-engine` + timer wheel + reconnection — 🏃 dispatched
+   2026-11-23 night (gates R1 ✓ and S-A1's io mount ✓; registers via index.ts)
+2. **E1 — Economy services** (`apps/server/src/economy`): grantMatchRewards
+   (XP/coins/titles from the MatchRecord), levels 1–100, anti-farm caps,
+   leaderboard + profile endpoints, match_records persistence — 🏃 dispatched
+   (registers via app.ts mounts)
+3. **W3 — Shop/profile/leaderboard wiring** to real APIs — after E1 lands (its
+   endpoint report becomes W3's contract)
+4. **Integration pass**: web ↔ server smoke over real sockets (after S1 + W2);
+   pin catalog item id format (`category:slug` per STR/09 — S-A1 + W-AUTH
+   aligned; W1-era dash-format fixtures to reconcile); reconcile the auth
+   callback default target (`/` — no code-less lobby route exists); fold
+   lib/oauth.ts's 4 process.env reads into the shared config; wire S1's
+   onMatchEnd hook to E1's grantMatchRewards. App-wide web build goes green at
+   W2's landing (all current errors are W2's in-flight seq migration)
 5. *(M1 motion pass absorbed into W2's mission)*
 
 ## Open items (owner, no rush)
@@ -116,3 +124,17 @@
   fixed), bulletPos leak tripwires + dead-middle-seat regression present,
   Math.random nowhere in game paths, privacy scan clean, S1 call surface
   confirmed in src/index.ts
+- S-A1 — ✅ completed 2026-11-23 night; orchestrator re-verified: 123/123 green,
+  tsc clean, boot smoke vs live Atlas (graceful SIGTERM), privacy + secrets +
+  zero-Math.random scans clean, billing grant path line-audited (price-from-DB
+  only, amountMinor checked at creation AND verify, idempotent per token, mock
+  never credits, ownership-checked). Deviations: admin audit/packs/logout routes
+  beyond STR/07 §0; OAuth callbacks redirect to `/auth/callback?status=…`
+  (W-AUTH built the page); lib/oauth.ts keeps 4 OAuth creds via process.env
+  (TODO-sync-with-shared → integration pass)
+- W-AUTH — ✅ completed 2026-11-23 night incl. the `/auth/callback` supplement;
+  orchestrator re-verified: all 91 residual tsc errors attribute to W2's
+  in-flight seq-migration files (zero in W-AUTH territory), privacy + secrets
+  + cookie-only session scans clean, routes 200 in mock mode, no new deps.
+  Catalog id format `category:slug` aligned with S-A1 + STR/09 (pin at
+  integration pass)
