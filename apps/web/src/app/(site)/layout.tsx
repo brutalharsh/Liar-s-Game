@@ -8,7 +8,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
   return (
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-safe">
+      <main className="mx-auto w-full max-w-6xl flex-1 px-safe pb-16 lg:pb-0">
         <SiteRouteGate>{children}</SiteRouteGate>
       </main>
       <SiteFooter />
