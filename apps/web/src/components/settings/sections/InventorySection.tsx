@@ -180,7 +180,7 @@ export function InventorySection() {
                 key={title.key}
                 className={`inline-flex min-h-12 items-center gap-2 rounded-btn border-2 px-3 font-display text-sm ${
                   activeTitle === title.key
-                    ? "border-brass bg-brass/10 text-brass"
+                    ? "border-brass bg-brass/10 text-red-text"
                     : "border-wood-mid/70 bg-wood-deep/60 text-ink-dim"
                 }`}
                 aria-label={`${title.name}${activeTitle === title.key ? " — equipped" : " — owned"}`}
@@ -197,7 +197,7 @@ export function InventorySection() {
             {data.ownedTitles().length === 0
               ? "No titles yet — win tables, catch liars, survive pulls. "
               : "Equipped titles ride the wire in a later wave. "}
-            <Link href="/leaderboard" className="text-brass underline hover:text-lamp">
+            <Link href="/leaderboard" className="text-red-text underline hover:text-lamp">
               see who holds what
             </Link>
           </p>

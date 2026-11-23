@@ -94,10 +94,10 @@ export function AccountSection() {
                 {profile?.user.lastSeenAt ? formatAgo(profile.user.lastSeenAt) : "—"}
               </p>
               <div className="mt-2 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass">
+                <span className="rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-red-text">
                   LVL {profile?.level ?? 1}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass">
+                <span className="inline-flex items-center gap-1 rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-red-text">
                   <span aria-hidden className="text-lamp">
                     <MedalIcon size={14} />
                   </span>
@@ -168,8 +168,9 @@ export function AccountSection() {
               </Button>
             </div>
             <p className="mt-2 font-body text-[10px] text-ink-dim">
-              One save per minute keeps the ledger honest. Trims spaces, drops invisible
-              characters, folds lookalike letters — the server has the final word.
+              Save freely — the house rate-limits writes (30 a minute) to keep the ledger honest.
+              Trims spaces, drops invisible characters, folds lookalike letters — the server has the
+              final word.
             </p>
           </div>
         </section>

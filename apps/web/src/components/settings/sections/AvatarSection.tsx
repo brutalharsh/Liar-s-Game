@@ -86,12 +86,13 @@ export function AvatarSection() {
   }, [shakeKey, failure, reduced]);
 
   const dataSpec = data.displaySpec;
-  const shownSpec: AvatarSpec | null =
-    preview?.kind === "base"
-      ? { ...(dataSpec ?? { base: "human-male-thin" }), base: preview.base }
-      : dataSpec;
-  const shownPreviewPatch: Partial<AvatarSpec> | undefined =
-    preview?.kind === "wear" ? wearPatch(preview) : undefined;
+  // base try-on rides the `preview` prop — mergePreviewSpec lets preview.base
+  // override spec.base, so the doll swaps bodies without a local spec swap.
+  const shownPreviewPatch: Partial<AvatarSpec> | undefined = preview
+    ? preview.kind === "base"
+      ? { base: preview.base }
+      : wearPatch(preview)
+    : undefined;
 
   const startPreview = (next: Preview) => {
     setFailure(null);
@@ -143,7 +144,7 @@ export function AvatarSection() {
         {/* live preview */}
         <Panel tone="deep" className="flex flex-col items-center gap-4 p-5 lg:sticky lg:top-24">
           <div className="relative flex h-52 w-52 items-center justify-center overflow-hidden rounded-card border-2 border-brass-deep bg-felt-deep">
-            <Avatar spec={shownSpec} size={200} preview={shownPreviewPatch} />
+            <Avatar spec={dataSpec} size={200} preview={shownPreviewPatch} />
             {preview?.kind === "base" && (
               <span className="absolute bottom-1 left-2 right-2 truncate rounded-btn bg-wood-deep/85 px-2 py-0.5 text-center font-body text-[10px] tracking-wide text-lamp">
                 body try-on — {preview.name}
@@ -185,7 +186,7 @@ export function AvatarSection() {
                     <p className="font-body text-xs text-ink-dim">{failure.message}</p>
                     <button
                       type="button"
-                      className="font-body text-xs text-brass underline hover:text-lamp"
+                      className="font-body text-xs text-red-text underline hover:text-lamp"
                       onClick={() => void data.retry()}
                     >
                       try the rack again
@@ -263,7 +264,7 @@ export function AvatarSection() {
                         type="button"
                         onClick={() => void unequip(slot, label)}
                         disabled={!equippedId || data.busy}
-                        className="flex min-h-12 w-full items-center justify-center rounded-btn border-2 border-ink-dim/50 px-1 font-body text-[10px] tracking-wide text-ink-dim hover:border-brass hover:text-brass disabled:pointer-events-none disabled:opacity-40"
+                        className="flex min-h-12 w-full items-center justify-center rounded-btn border-2 border-ink-dim/50 px-1 font-body text-[10px] tracking-wide text-ink-dim hover:border-brass hover:text-red-text disabled:pointer-events-none disabled:opacity-40"
                       >
                         REMOVE
                       </button>
@@ -296,7 +297,7 @@ export function AvatarSection() {
                       </span>
                       <Link
                         href="/shop"
-                        className="flex min-h-12 items-center font-body text-[10px] leading-tight text-brass underline hover:text-lamp"
+                        className="flex min-h-12 items-center font-body text-[10px] leading-tight text-red-text underline hover:text-lamp"
                       >
                         more in the shop
                       </Link>

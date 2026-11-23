@@ -117,7 +117,7 @@ export function LoginView() {
       {status === "authed" && user && (
         <Panel tone="felt" className="p-4">
           <p className="text-center font-body text-sm text-ivory">
-            You're already at the table as <span className="text-brass">{user.nickname}</span>.
+            You're already at the table as <span className="text-red-text">{user.nickname}</span>.
           </p>
           <div className="mt-3 flex justify-center gap-2">
             <Button variant="brass" onClick={() => router.push(next)}>

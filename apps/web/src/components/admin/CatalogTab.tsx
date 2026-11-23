@@ -205,7 +205,7 @@ export function CatalogTab() {
             type="button"
             onClick={() => setCategory(cat.id)}
             className={`min-h-12 rounded-btn border-2 px-3 font-display text-sm tracking-wide ${
-              category === cat.id ? "border-brass bg-brass/15 text-brass" : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
+              category === cat.id ? "border-brass bg-brass/15 text-red-text" : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
             }`}
           >
             {cat.label} <span className="text-[10px] text-ink-dim">({cat.count})</span>
@@ -330,7 +330,7 @@ export function CatalogTab() {
                             )}
                             <label
                               htmlFor={`art-d-${item._id}`}
-                              className="inline-flex min-h-12 cursor-pointer items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-brass"
+                              className="inline-flex min-h-12 cursor-pointer items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-red-text"
                             >
                               ART
                               <input
@@ -424,7 +424,7 @@ export function CatalogTab() {
                       )}
                       <label
                         htmlFor={`art-m-${item._id}`}
-                        className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-brass"
+                        className="inline-flex min-h-12 flex-1 cursor-pointer items-center justify-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-red-text"
                       >
                         ART
                         <input

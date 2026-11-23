@@ -35,7 +35,7 @@ export function MobileTabBar() {
             key={tab.href}
             href={tab.href}
             className={`flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 pt-1 ${
-              active ? "text-brass" : "text-ink-dim"
+              active ? "text-red-text" : "text-ink-dim"
             }`}
           >
             <span aria-hidden className="leading-none">

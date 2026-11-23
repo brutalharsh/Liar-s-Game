@@ -58,13 +58,13 @@ function LoopDiagram() {
                   </span>
                 </motion.span>
                 <div className="xl:text-center">
-                  <p className={`font-display text-sm tracking-wide ${lit ? "text-brass" : "text-ivory"}`}>
+                  <p className={`font-display text-sm tracking-wide ${lit ? "text-red-text" : "text-ivory"}`}>
                     {i + 1}. {step.label}
                   </p>
                   <p className="font-body text-[11px] leading-tight text-ink-dim">{step.detail}</p>
                 </div>
               </div>
-              <span aria-hidden className="hidden text-brass xl:ml-auto xl:mt-2 xl:block">
+              <span aria-hidden className="hidden text-red-text xl:ml-auto xl:mt-2 xl:block">
                 {i === LOOP.length - 1 ? "↺" : "→"}
               </span>
             </li>
@@ -136,7 +136,7 @@ export function HowToPlayView() {
             <tbody>
               {DECK_TABLE.map((row) => (
                 <tr key={row.players} className="border-t border-wood-mid/40 text-ink-dim">
-                  <td className="py-2 pr-4 font-display text-brass">{row.players}</td>
+                  <td className="py-2 pr-4 font-display text-red-text">{row.players}</td>
                   <td className="py-2 pr-4">{row.deck}</td>
                   <td className="py-2 text-xs">{row.note}</td>
                 </tr>
@@ -151,7 +151,7 @@ export function HowToPlayView() {
         <div className="mt-4 flex justify-center gap-3">
           <Link
             href="/create"
-            className="inline-flex min-h-16 touch-manipulation items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-8 font-display text-lg tracking-wide text-wood-deep hover:brightness-110 active:brightness-95"
+            className="inline-flex min-h-16 touch-manipulation items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft px-8 font-display text-lg tracking-wide text-wood-deep hover:brightness-110 active:brightness-95"
           >
             CREATE A TABLE
           </Link>

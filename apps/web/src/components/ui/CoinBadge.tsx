@@ -19,7 +19,7 @@ export function CoinBadge({
   const iconSizes = { sm: 12, md: 14, lg: 18 } as const;
   return (
     <span
-      className={`inline-flex items-center justify-center gap-1 rounded-full border-2 border-brass-deep bg-wood-deep px-2 font-display text-brass ${sizes[size]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1 rounded-full border-2 border-brass-deep bg-wood-deep px-2 font-display text-red-text ${sizes[size]} ${className}`}
       aria-label={`${amount} coins`}
     >
       <CoinIcon size={iconSizes[size]} /> {formatCoins(amount)}
@@ -36,7 +36,7 @@ export function PriceChip({ price, className = "" }: { price: number; className?
     );
   }
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full bg-wood-deep px-2 py-0.5 font-body text-xs text-brass ${className}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full bg-wood-deep px-2 py-0.5 font-body text-xs text-red-text ${className}`}>
       <CoinIcon size={12} /> <strong className="font-display">{price}</strong>
     </span>
   );

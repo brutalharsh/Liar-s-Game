@@ -33,7 +33,7 @@ export function Badge({
     good: "border-verdict text-verdict",
     bad: "border-blood-bright text-blood-bright",
     warn: "border-lamp text-lamp",
-    brass: "border-brass text-brass",
+    brass: "border-brass text-red-text",
   } as const;
   return (
     <span className={`inline-block rounded-full border px-2 py-0.5 font-body text-[10px] tracking-wider ${tones[tone]} ${className}`}>

@@ -87,7 +87,7 @@ export function MobileTableLayout({
           {variant === "table" && heroSeatNo !== null && starterSeat === heroSeatNo && (
             <span
               aria-hidden="true"
-              className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-1.5 font-body text-[10px] uppercase tracking-widest text-brass shadow-panel"
+              className="absolute -top-3 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-1.5 font-body text-[10px] uppercase tracking-widest text-red-text shadow-panel"
             >
               ★ you throw first
             </span>

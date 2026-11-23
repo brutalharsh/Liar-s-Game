@@ -122,13 +122,13 @@ export function CreateView() {
                     const next = ANIMALS[Math.floor(Math.random() * ANIMALS.length)]?.id;
                     if (next) setAvatar({ ...avatar, base: next });
                   }}
-                  className="inline-flex min-h-12 items-center font-body text-xs text-brass underline"
+                  className="inline-flex min-h-12 items-center font-body text-xs text-red-text underline"
                 >
                   shuffle starter animal
                 </button>
                 <span className="font-body text-[10px] text-ink-dim">
                   more hair, hats & frames in the{" "}
-                  <a href="/shop" className="underline text-brass">
+                  <a href="/shop" className="underline text-red-text">
                     shop
                   </a>
                 </span>
@@ -196,7 +196,7 @@ export function CreateView() {
                   tabIndex={capacity === cap ? 0 : -1}
                   onClick={() => setCapacity(cap)}
                   className={`flex h-14 w-14 items-center justify-center rounded-btn border-2 font-display text-lg ${
-                    capacity === cap ? "border-brass bg-brass/15 text-brass" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
+                    capacity === cap ? "border-brass bg-brass/15 text-red-text" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
                   }`}
                 >
                   {cap}
@@ -229,7 +229,7 @@ export function CreateView() {
                     }}
                     className={`relative flex h-14 w-14 items-center justify-center rounded-btn border-2 font-display text-lg ${
                       selected
-                        ? "border-brass bg-brass/15 text-brass"
+                        ? "border-brass bg-brass/15 text-red-text"
                         : unlocked
                           ? "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
                           : "cursor-not-allowed border-wood-mid/50 bg-wood-deep/60 text-ink-dim/70"
@@ -247,7 +247,7 @@ export function CreateView() {
             </div>
             <p className="mt-2 font-body text-[11px] text-ink-dim">
               Free tables seat 2–7. Big Table 8–10 needs the big-table host pass —{" "}
-              <a href="/shop" className="underline text-brass">
+              <a href="/shop" className="underline text-red-text">
                 shop
               </a>{" "}
               when it's stocked.
@@ -322,7 +322,7 @@ export function CreateView() {
                   tabIndex={visibility === v ? 0 : -1}
                   onClick={() => setVisibility(v)}
                   className={`flex min-h-12 items-center gap-2 rounded-btn border-2 px-4 font-display text-sm ${
-                    visibility === v ? "border-brass bg-brass/15 text-brass" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
+                    visibility === v ? "border-brass bg-brass/15 text-red-text" : "border-wood-mid bg-wood-deep text-ink-dim hover:border-brass"
                   }`}
                 >
                   {v === "private" ? "🔒 PRIVATE — invite only" : "🌎 PUBLIC — listed in the room browser"}

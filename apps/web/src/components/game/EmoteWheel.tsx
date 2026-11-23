@@ -22,7 +22,7 @@ function CooldownPill({ seconds }: { seconds: number }) {
   return (
     <span
       aria-live="polite"
-      className="pointer-events-none absolute -top-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-3 py-1 font-body text-xs text-brass"
+      className="pointer-events-none absolute -top-4 left-1/2 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-brass-deep bg-wood-deep px-3 py-1 font-body text-xs text-red-text"
     >
       emote cooldown {seconds}s
     </span>
@@ -123,7 +123,7 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
           <button
             onClick={onClose}
             aria-label="Close emotes"
-            className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-brass-deep bg-wood font-display text-brass"
+            className="absolute left-1/2 top-1/2 flex h-12 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-brass-deep bg-wood font-display text-red-text"
           >
             ×
           </button>

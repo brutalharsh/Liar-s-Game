@@ -72,7 +72,7 @@ export function CallGuardSheet({
         </motion.p>
       )}
       <p className="mb-2 font-body text-base text-ivory">
-        {name} claims <strong className="text-brass">{claim}</strong>.
+        {name} claims <strong className="text-red-text">{claim}</strong>.
         {secondsLeft > 0 && window_ && (
           <em className="ml-1 not-italic font-body text-xs text-ink-dim">window closes in {Math.ceil(secondsLeft)}s</em>
         )}

@@ -66,7 +66,7 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
     <div className="relative flex flex-col items-center gap-1">
       {selected.length > 0 && (
         <div className="flex items-center gap-3" aria-live="polite">
-          <span className="rounded-full border border-brass bg-wood-deep px-3 py-1 font-body text-xs text-brass">
+          <span className="rounded-full border border-brass bg-wood-deep px-3 py-1 font-body text-xs text-red-text">
             {selected.length === 3 ? "3/3 selected — throw them" : `${selected.length} selected`}
           </span>
           <button

@@ -56,7 +56,7 @@ export function SiteHeader() {
                 key={item.href}
                 href={item.href}
                 className={`flex min-h-12 items-center px-3 font-display text-sm tracking-wide ${
-                  active ? "text-brass" : "text-ink-dim hover:text-ivory"
+                  active ? "text-red-text" : "text-ink-dim hover:text-ivory"
                 }`}
               >
                 {item.label}
@@ -80,7 +80,7 @@ export function SiteHeader() {
             <Link
               href={loginHref}
               aria-label="Sign in"
-              className="flex min-h-12 shrink-0 items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs tracking-wider text-ink-dim hover:border-brass hover:text-brass md:text-sm"
+              className="flex min-h-12 shrink-0 items-center rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs tracking-wider text-ink-dim hover:border-brass hover:text-red-text md:text-sm"
             >
               SIGN IN
             </Link>

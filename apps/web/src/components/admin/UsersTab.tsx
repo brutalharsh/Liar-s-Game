@@ -95,7 +95,7 @@ export function UsersTab() {
                         <button
                           type="button"
                           onClick={() => setSelectedId(user._id)}
-                          className="flex min-h-12 items-center gap-3 rounded-btn text-left hover:text-brass"
+                          className="flex min-h-12 items-center gap-3 rounded-btn text-left hover:text-red-text"
                         >
                           <Avatar spec={toDisplaySpec(user.avatarSpec)} size="sm" />
                           <span>

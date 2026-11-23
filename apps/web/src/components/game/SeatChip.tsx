@@ -140,7 +140,7 @@ export function SeatChip({
           </span>
           {/* round starter marker — the felt's first blood */}
           {isStarter && !empty && (
-            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-brass-deep bg-wood-deep px-1.5 font-body text-[8px] uppercase tracking-widest text-brass">
+            <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full border border-brass-deep bg-wood-deep px-1.5 font-body text-[8px] uppercase tracking-widest text-red-text">
               ★ first throw
             </span>
           )}

@@ -61,7 +61,7 @@ export function PlayedPile() {
                   {/* count chip — the ONLY data a played stack exposes */}
                   <span
                     className={`absolute -bottom-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full px-1.5 font-display text-[10px] ${
-                      isLast ? "border border-brass bg-wood-deep text-brass" : "bg-wood-deep/80 text-ink-dim"
+                      isLast ? "border border-brass bg-wood-deep text-red-text" : "bg-wood-deep/80 text-ink-dim"
                     }`}
                   >
                     ×{stack.count}
@@ -69,7 +69,7 @@ export function PlayedPile() {
                   {/* owner nameplate */}
                   <span
                     className={`mt-2.5 max-w-[76px] truncate font-body text-[10px] ${
-                      isLast ? "text-brass" : "text-ink-dim"
+                      isLast ? "text-red-text" : "text-ink-dim"
                     }`}
                   >
                     {name}

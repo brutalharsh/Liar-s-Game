@@ -93,7 +93,7 @@ export function PaymentsTab() {
                   </Cell>
                   <Cell label="Pack">{c.productName}</Cell>
                   <Cell label="Amount">
-                    <span className="text-brass">{formatMinor(c.amountMinor)}</span>
+                    <span className="text-red-text">{formatMinor(c.amountMinor)}</span>
                   </Cell>
                   <Cell label="Payment id">{c.providerPaymentId ?? "—"}</Cell>
                   <Cell label="Paid (UTC)">{c.paidAt ? formatStamp(c.paidAt) : "—"}</Cell>
@@ -114,7 +114,7 @@ function CheckoutRowDesktop({ checkout }: { checkout: CheckoutRecord }) {
     <tr className="border-b border-wood-mid/40">
       <td className="px-2 py-2 font-body text-sm text-ivory">{checkout.userNickname ?? checkout.userId}</td>
       <td className="px-2 py-2 font-body text-xs text-lamp">{checkout.productName}</td>
-      <td className="px-2 py-2 text-right font-display text-sm text-brass">
+      <td className="px-2 py-2 text-right font-display text-sm text-red-text">
         {formatMinor(checkout.amountMinor)}
       </td>
       <td className="px-2 py-2">

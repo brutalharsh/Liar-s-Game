@@ -122,7 +122,7 @@ export function RoomsView() {
             onClick={() => setThemeFilter("all")}
             aria-pressed={themeFilter === "all"}
             className={`min-h-12 rounded-full border-2 px-3 font-body text-xs ${
-              themeFilter === "all" ? "border-brass text-brass" : "border-wood-mid text-ink-dim"
+              themeFilter === "all" ? "border-brass text-red-text" : "border-wood-mid text-ink-dim"
             }`}
           >
             ALL THEMES
@@ -133,7 +133,7 @@ export function RoomsView() {
               onClick={() => setThemeFilter(t.id)}
               aria-pressed={themeFilter === t.id}
               className={`min-h-12 rounded-full border-2 px-3 font-body text-xs ${
-                themeFilter === t.id ? "border-brass text-brass" : "border-wood-mid text-ink-dim"
+                themeFilter === t.id ? "border-brass text-red-text" : "border-wood-mid text-ink-dim"
               }`}
             >
               {t.name}
@@ -212,7 +212,7 @@ export function RoomsView() {
                     <span className="rounded-full bg-felt-deep px-2 py-0.5 font-body text-[11px] text-lamp">
                       🎪 {themeMeta(themeIdFromSlug(room.theme)).name}
                     </span>
-                    <span className="font-display text-brass" aria-label={`${room.seatsTaken} of ${room.capacity} seats taken`}>
+                    <span className="font-display text-red-text" aria-label={`${room.seatsTaken} of ${room.capacity} seats taken`}>
                       {room.seatsTaken}/{room.capacity}
                     </span>
                   </div>

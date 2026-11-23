@@ -11,9 +11,9 @@ import {
   CatalogIcon,
   CheckIcon,
   LogoutIcon,
+  MenuIcon,
   PacksIcon,
   PaymentsIcon,
-  SettingsIcon,
   UsersIcon,
   type IconComponent,
 } from "@/components/ui/icons";
@@ -146,7 +146,7 @@ export function AdminDashboard() {
                   aria-current={tab === id ? "page" : undefined}
                   className={`flex min-h-12 w-full items-center gap-3 border-l-4 px-4 text-left font-display text-sm tracking-wide ${
                     tab === id
-                      ? "border-brass bg-brass/10 text-brass"
+                      ? "border-brass bg-brass/10 text-red-text"
                       : "border-transparent text-ink-dim hover:bg-wood-mid/40 hover:text-ivory"
                   }`}
                 >
@@ -177,15 +177,15 @@ export function AdminDashboard() {
             <p className="flex min-h-12 items-center gap-2 truncate font-display text-base text-ivory">
               <AdminIcon size={18} className="shrink-0 text-brass" />
               <span className="truncate">
-                Liar's Game <span className="text-brass">— Admin</span>
+                Liar's Game <span className="text-red-text">— Admin</span>
               </span>
             </p>
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="inline-flex min-h-12 items-center gap-1.5 rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-brass"
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-btn border-2 border-ink-dim/70 px-3 font-display text-xs text-ink-dim hover:border-brass hover:text-red-text"
             >
-              <SettingsIcon size={16} />
+              <MenuIcon size={16} />
               MENU
             </button>
           </div>
@@ -253,7 +253,7 @@ export function AdminDashboard() {
                 aria-current={tab === id ? "page" : undefined}
                 className={`flex min-h-12 w-full items-center gap-3 rounded-btn border-2 px-3 text-left font-display text-sm ${
                   tab === id
-                    ? "border-brass bg-brass/10 text-brass"
+                    ? "border-brass bg-brass/10 text-red-text"
                     : "border-transparent text-ivory hover:bg-wood-mid/40"
                 }`}
               >

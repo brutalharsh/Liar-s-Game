@@ -4,6 +4,10 @@ import type { ThemeId } from "@/lib/wire";
  * Theme registry (STR/04 §4). CSS variable overrides live in globals.css
  * under `[data-theme="…"]` — this file carries only display metadata + the
  * swatch tokens used by previews (theme packs swap CSS vars, STR/05 §2).
+ * Swatches mirror the CURRENT noir pack blocks in globals.css:
+ *   felt/wood = the pack's surface tones, accent = the pack's PRIMARY
+ *   accent (the brass family per pack — the canonical noir red #d92d20
+ *   where the pack doesn't override it).
  */
 
 export interface ThemeMeta {
@@ -23,7 +27,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: true,
     price: 0,
     desc: "Whiskey-amber felt, piano-rag in the back. The house classic.",
-    swatch: { felt: "#1d3a2a", accent: "#e8a54b", wood: "#2a1a12" },
+    swatch: { felt: "#161412", accent: "#d92d20", wood: "#131110" },
     particle: "dust",
   },
   {
@@ -32,7 +36,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: true,
     price: 0,
     desc: "Living-room felt under a shaded lamp. Familiar and dangerous.",
-    swatch: { felt: "#2c4a33", accent: "#d9b36a", wood: "#3b2a1a" },
+    swatch: { felt: "#151515", accent: "#d92d20", wood: "#121212" },
     particle: "dust",
   },
   {
@@ -41,7 +45,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 500,
     desc: "Cyberpunk felt, magenta neon, synthwave hum.",
-    swatch: { felt: "#191b33", accent: "#4fd8e8", wood: "#120f26" },
+    swatch: { felt: "#11121c", accent: "#ff4fd8", wood: "#101019" },
     particle: "neon",
   },
   {
@@ -50,7 +54,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 700,
     desc: "Deep casino green and gilt trim. Fancy ways to lose.",
-    swatch: { felt: "#0f3325", accent: "#ffd700", wood: "#1a1214" },
+    swatch: { felt: "#1a0d12", accent: "#c12233", wood: "#12090b" },
     particle: "dust",
   },
   {
@@ -59,7 +63,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 600,
     desc: "Sepia smoke, saxophone, one dim bulb.",
-    swatch: { felt: "#2b2118", accent: "#c9a15f", wood: "#1c1410" },
+    swatch: { felt: "#171411", accent: "#d92d20", wood: "#131110" },
     particle: "embers",
   },
   {
@@ -68,7 +72,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 450,
     desc: "The candles watch you back.",
-    swatch: { felt: "#1a2420", accent: "#7fd18a", wood: "#141014" },
+    swatch: { felt: "#121815", accent: "#9fb8a6", wood: "#0e1210" },
     particle: "embers",
   },
   {
@@ -77,7 +81,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 800,
     desc: "Bluffing at zero gravity. Mind the airlock.",
-    swatch: { felt: "#101c2c", accent: "#6ee7ff", wood: "#0c1018" },
+    swatch: { felt: "#0e1219", accent: "#6ee7ff", wood: "#0b0e14" },
     particle: "neon",
   },
   {
@@ -86,7 +90,7 @@ export const THEMES: readonly ThemeMeta[] = [
     free: false,
     price: 650,
     desc: "Lanterns, drums and face paint.",
-    swatch: { felt: "#33141c", accent: "#ff6b81", wood: "#1c1014" },
+    swatch: { felt: "#1b0e11", accent: "#df3c1f", wood: "#13090b" },
     particle: "embers",
   },
 ] as const;

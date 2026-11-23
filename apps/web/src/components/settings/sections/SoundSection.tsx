@@ -107,7 +107,7 @@ export function SoundSection() {
           <span aria-hidden className="text-ink-dim">
             <SoundIcon size={18} />
           </span>
-          <span className="w-10 text-right font-display text-lg text-brass">{settings.sfxVolume}</span>
+          <span className="w-10 text-right font-display text-lg text-red-text">{settings.sfxVolume}</span>
         </div>
         <p className="mt-1 font-body text-[10px] text-ink-dim">
           Card flicks, cylinder clicks, the bang, the eerie silence after a blank — full SFX arrive

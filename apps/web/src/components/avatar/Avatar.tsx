@@ -53,6 +53,19 @@ interface BodyPlan {
   coat?: SpeciesCoat;
 }
 
+/**
+ * Try-on merge (unit-tested): `preview` slots — including `base` — override
+ * the spec (an explicit `undefined` clears a wearable slot); a missing base
+ * anywhere falls back to the canonical default body. Both absent → null.
+ */
+export function mergePreviewSpec(
+  spec: AvatarSpec | null,
+  preview?: Partial<AvatarSpec>,
+): AvatarSpec | null {
+  if (!spec && !preview) return null;
+  return { ...spec, ...preview, base: preview?.base ?? spec?.base ?? DEFAULT_AVATAR_BASE };
+}
+
 /** base slug → a drawable body plan; null = unknown (silhouette). */
 export function resolveBodyPlan(base: string | undefined): BodyPlan | null {
   if (base && (AVATAR_BASE_IDS as readonly string[]).includes(base)) {
@@ -104,12 +117,9 @@ export function Avatar({
   /** Live try-on: merged OVER spec (explicit `undefined` clears a slot). */
   preview?: Partial<AvatarSpec>;
 }): JSX.Element {
-  // try-on merge: preview slots override spec (an explicit `undefined` clears
-  // a slot); a missing base falls back to the canonical default body.
-  const merged: AvatarSpec | null =
-    spec || preview
-      ? { ...spec, ...preview, base: spec?.base ?? preview?.base ?? DEFAULT_AVATAR_BASE }
-      : null;
+  // try-on merge: preview slots (base included) override spec — a missing
+  // base falls back to the canonical default body.
+  const merged = mergePreviewSpec(spec, preview);
   const plan = resolveBodyPlan(merged?.base);
 
   if (!merged || !plan) {

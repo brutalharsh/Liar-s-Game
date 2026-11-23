@@ -36,7 +36,7 @@ export function Tabs<T extends string>({
             onClick={() => onChange(tab.id)}
             className={`min-h-12 rounded-btn border-2 px-4 font-display text-sm tracking-wide ${
               selected
-                ? "border-brass bg-brass/15 text-brass"
+                ? "border-brass bg-brass/15 text-red-text"
                 : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
             }`}
           >

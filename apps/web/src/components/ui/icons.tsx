@@ -29,6 +29,7 @@ import {
   LogOut,
   Medal,
   Megaphone,
+  Menu,
   MessageCircle,
   Package,
   Palette,
@@ -126,6 +127,7 @@ export const ShopIcon = makeIcon(Store, 18);
 export const TrophyIcon = makeIcon(Trophy, 18);
 export const UserIcon = makeIcon(User, 18);
 export const SettingsIcon = makeIcon(Settings, 18);
+export const MenuIcon = makeIcon(Menu, 18); // drawer triggers (hamburger)
 export const LogoutIcon = makeIcon(LogOut, 18);
 export const SoundIcon = makeIcon(Volume2, 18);
 export const MuteIcon = makeIcon(VolumeX, 18);

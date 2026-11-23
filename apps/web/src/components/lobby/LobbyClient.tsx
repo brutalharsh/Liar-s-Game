@@ -85,7 +85,7 @@ export function LobbyClient({ code }: { code: string }) {
         <div className="text-center">
           <ErrorState title="That room code doesn't look right" sub={`“${code}” isn't a valid 5-character code.`} />
           <div className="mt-4">
-            <Link href="/join" className="font-body text-sm text-brass underline">
+            <Link href="/join" className="font-body text-sm text-red-text underline">
               Try another code
             </Link>
           </div>
@@ -144,7 +144,7 @@ export function LobbyClient({ code }: { code: string }) {
               ←
             </button>
             <h1 className="truncate font-display text-sm tracking-wider text-ivory">{lobby.name}</h1>
-            <span className="ml-auto rounded-full border border-brass-deep bg-wood-deep px-2 py-0.5 font-body text-[10px] uppercase text-brass">
+            <span className="ml-auto rounded-full border border-brass-deep bg-wood-deep px-2 py-0.5 font-body text-[10px] uppercase text-red-text">
               {lobby.visibility}
             </span>
             {spectator && (
@@ -185,7 +185,7 @@ export function LobbyClient({ code }: { code: string }) {
           </Panel>
         }
         banner={
-          <span className="font-display text-sm tracking-widest text-brass">
+          <span className="font-display text-sm tracking-widest text-red-text">
             {spectator
               ? "SPECTATING — SEATS OPEN UP AS PLAYERS LEAVE"
               : "WAITING FOR PLAYERS — FIRST THROW LANDS SOON"}
@@ -202,7 +202,7 @@ export function LobbyClient({ code }: { code: string }) {
             <Panel tone="wood" className="p-3">
               <div className="mb-2 flex items-center justify-between">
                 <p className="font-body text-xs uppercase tracking-widest text-lamp">Players</p>
-                <span className="font-display text-sm text-brass">
+                <span className="font-display text-sm text-red-text">
                   {seated.length}/{lobby.capacity}
                 </span>
               </div>
@@ -212,7 +212,7 @@ export function LobbyClient({ code }: { code: string }) {
                     <Avatar spec={seat.avatar} size="sm" />
                     <span className="font-display text-base text-ivory">
                       {seat.nickname}
-                      {!spectator && seat.seat === heroSeat && <em className="ml-1 not-italic text-xs text-brass">(you)</em>}
+                      {!spectator && seat.seat === heroSeat && <em className="ml-1 not-italic text-xs text-red-text">(you)</em>}
                     </span>
                     {seat.isBot && (
                       <span aria-label="bot player" className="inline-flex items-center gap-1 font-body text-[10px] uppercase text-lamp">
@@ -362,12 +362,12 @@ export function LobbyClient({ code }: { code: string }) {
         <ul className="flex flex-col gap-2">
           {QUICK_RULES.map((rule, i) => (
             <li key={rule} className="flex items-start gap-2 font-body text-sm text-ivory">
-              <span className="font-display text-brass">{i + 1}.</span>
+              <span className="font-display text-red-text">{i + 1}.</span>
               {rule}
             </li>
           ))}
         </ul>
-        <Link href="/how-to-play" className="mt-4 block font-body text-sm text-brass underline">
+        <Link href="/how-to-play" className="mt-4 block font-body text-sm text-red-text underline">
           Full rules →
         </Link>
       </Sheet>

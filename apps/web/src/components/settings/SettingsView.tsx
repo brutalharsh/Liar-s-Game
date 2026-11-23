@@ -109,7 +109,7 @@ export function SettingsView() {
           <p className="mt-3">
             <Link
               href="/profile"
-              className="inline-flex min-h-12 items-center gap-2 rounded-btn border-2 border-ink-dim/70 px-4 font-body text-xs tracking-wide text-ink-dim hover:border-brass hover:text-brass"
+              className="inline-flex min-h-12 items-center gap-2 rounded-btn border-2 border-ink-dim/70 px-4 font-body text-xs tracking-wide text-ink-dim hover:border-brass hover:text-red-text"
             >
               ← BACK TO PROFILE
             </Link>
@@ -128,7 +128,7 @@ export function SettingsView() {
                     aria-current={selected ? "page" : undefined}
                     className={`flex min-h-12 items-center gap-2 rounded-btn border-2 px-3 font-display text-sm tracking-wide ${
                       selected
-                        ? "border-brass bg-brass/15 text-brass"
+                        ? "border-brass bg-brass/15 text-red-text"
                         : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
                     }`}
                   >
@@ -156,7 +156,7 @@ export function SettingsView() {
                       aria-current={selected ? "page" : undefined}
                       className={`flex min-h-12 items-center gap-3 rounded-btn border-2 px-3 font-display text-sm tracking-wide ${
                         selected
-                          ? "border-brass bg-brass/15 text-brass"
+                          ? "border-brass bg-brass/15 text-red-text"
                           : "border-transparent text-ink-dim hover:border-wood-mid hover:text-ivory"
                       }`}
                     >

@@ -33,9 +33,9 @@ export function TableAside({ code }: { code: string }) {
                 <span className={`flex items-center gap-1 ${s.alive ? "text-ivory" : "text-ink-dim line-through"}`}>
                   {s.isHost && <span aria-label="host">👑</span>}
                   {s.nickname}
-                  {s.seat === 0 && <em className="not-italic text-brass">(you)</em>}
+                  {s.seat === 0 && <em className="not-italic text-red-text">(you)</em>}
                 </span>
-                <span className={s.alive ? "text-brass" : "text-blood-bright"}>
+                <span className={s.alive ? "text-red-text" : "text-blood-bright"}>
                   {s.alive ? `${s.pulled}/6` : "out"}
                 </span>
               </li>

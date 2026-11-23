@@ -77,14 +77,14 @@ export function SignInWall({ next }: { next: string }) {
         <div className="mt-6 flex flex-col gap-2">
           <Link
             href={loginHref}
-            className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp font-display tracking-wide text-wood-deep hover:brightness-110"
+            className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft font-display tracking-wide text-wood-deep hover:brightness-110"
           >
             SIGN IN TO SIT DOWN
           </Link>
-          <Link href="/rooms" className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-ink-dim/70 font-display text-sm text-ink-dim hover:border-brass hover:text-brass">
+          <Link href="/rooms" className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-ink-dim/70 font-display text-sm text-ink-dim hover:border-brass hover:text-red-text">
             BROWSE PUBLIC ROOMS
           </Link>
-          <Link href="/how-to-play" className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-brass">
+          <Link href="/how-to-play" className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-red-text">
             or read how the game is played
           </Link>
         </div>

@@ -89,7 +89,7 @@ export function AppearanceSection() {
                     {!owned && (
                       <Link
                         href="/shop"
-                        className="mt-auto inline-flex min-h-8 items-center font-body text-[10px] text-brass underline hover:text-lamp"
+                        className="mt-auto inline-flex min-h-8 items-center font-body text-[10px] text-red-text underline hover:text-lamp"
                       >
                         claim it in the shop
                       </Link>

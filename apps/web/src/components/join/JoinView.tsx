@@ -177,7 +177,7 @@ export function JoinView() {
 
       <p className="font-body text-sm text-ink-dim">
         No code?{" "}
-        <a href="/rooms" className="text-brass underline">
+        <a href="/rooms" className="text-red-text underline">
           Browse public rooms
         </a>
       </p>

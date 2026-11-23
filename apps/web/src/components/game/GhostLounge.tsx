@@ -65,7 +65,7 @@ export function GhostLounge() {
                 <GhostIcon size={22} />
               </span>
               <div className="font-body text-xs text-ink-dim">
-                <p className="font-display text-sm tracking-wider text-brass">{title}</p>
+                <p className="font-display text-sm tracking-wider text-red-text">{title}</p>
                 <p className="mt-0.5">{sub}</p>
               </div>
               <button

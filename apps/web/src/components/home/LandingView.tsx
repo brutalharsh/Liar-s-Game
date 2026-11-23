@@ -42,7 +42,7 @@ function LiveRoomsStrip() {
               className="group rounded-card border-2 border-wood-mid/60 bg-wood/60 p-4 transition-colors hover:border-brass"
             >
               <div className="flex items-center justify-between">
-                <span className="font-display text-lg text-ivory group-hover:text-brass">{room.name}</span>
+                <span className="font-display text-lg text-ivory group-hover:text-red-text">{room.name}</span>
                 {room.locked && <LockIcon size={14} label="locked" className="text-ink-dim" />}
               </div>
               <div className="mt-1 font-body text-xs text-ink-dim">
@@ -110,7 +110,7 @@ export function LandingView() {
         <motion.div {...rise(0.45)} className="mt-8 flex flex-wrap items-center justify-center gap-4">
           <Link
             href="/create"
-            className="inline-flex min-h-16 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-6 font-display text-xl tracking-wide text-wood-deep hover:brightness-110 active:brightness-95"
+            className="inline-flex min-h-16 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft px-6 font-display text-xl tracking-wide text-wood-deep hover:brightness-110 active:brightness-95"
           >
             CREATE A TABLE
           </Link>
@@ -147,7 +147,7 @@ export function LandingView() {
               <motion.div key={step.step} {...rise(0.2 + i * 0.15)} className="h-full">
                 <Panel className="h-full p-5">
                   <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brass-deep bg-wood-deep font-display text-lg text-brass">
+                    <span className="flex h-10 w-10 items-center justify-center rounded-full border-2 border-brass-deep bg-wood-deep font-display text-lg text-red-text">
                       {step.step}
                     </span>
                     <span className="text-lamp" aria-hidden>

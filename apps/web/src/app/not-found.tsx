@@ -17,7 +17,7 @@ export default function NotFound() {
         </Link>
         <Link
           href="/join"
-          className="flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-5 font-display text-ivory hover:border-brass hover:text-brass"
+          className="flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-5 font-display text-ivory hover:border-brass hover:text-red-text"
         >
           JOIN WITH CODE
         </Link>

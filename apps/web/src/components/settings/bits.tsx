@@ -86,7 +86,7 @@ export function BannedNotice({ onSignOut }: { onSignOut: () => void }): ReactNod
 /** Equipped badge ("on you"). */
 export function OnYouBadge(): ReactNode {
   return (
-    <span className="rounded-full border-2 border-brass-deep bg-brass/15 px-1.5 py-0.5 font-body text-[9px] uppercase tracking-widest text-brass">
+    <span className="rounded-full border-2 border-brass-deep bg-brass/15 px-1.5 py-0.5 font-body text-[9px] uppercase tracking-widest text-red-text">
       On you
     </span>
   );
@@ -118,7 +118,7 @@ export function ShopCta({ label }: { label?: string }): ReactNode {
   return (
     <Link
       href="/shop"
-      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-btn border-2 border-dashed border-brass-deep/60 bg-brass/5 px-4 font-display text-xs tracking-wide text-brass hover:border-brass hover:bg-brass/10"
+      className="inline-flex min-h-12 items-center justify-center gap-2 rounded-btn border-2 border-dashed border-brass-deep/60 bg-brass/5 px-4 font-display text-xs tracking-wide text-red-text hover:border-brass hover:bg-brass/10"
     >
       {label ?? "CLAIM IT IN THE SHOP"}
     </Link>

@@ -54,7 +54,7 @@ export function TableClient({ code }: { code: string }) {
         <div className="text-center">
           <ErrorState title="That room code doesn't look right" sub={`“${code}” isn't a 5-character table code.`} />
           <div className="mt-4">
-            <Link href="/join" className="underline font-body text-brass">
+            <Link href="/join" className="underline font-body text-red-text">
               Try another code
             </Link>
           </div>

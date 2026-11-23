@@ -37,7 +37,7 @@ export function AboutSection() {
               </div>
               <Link
                 href="/how-to-play"
-                className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-btn border-2 border-ink-dim/70 px-4 font-display text-xs tracking-wide text-ivory hover:border-brass hover:text-brass"
+                className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-btn border-2 border-ink-dim/70 px-4 font-display text-xs tracking-wide text-ivory hover:border-brass hover:text-red-text"
               >
                 <RulesIcon size={16} /> RULES
               </Link>

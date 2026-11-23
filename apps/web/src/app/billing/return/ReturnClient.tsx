@@ -159,7 +159,7 @@ export function ReturnClient() {
           <div className="mt-5 flex flex-col gap-2">
             <Link
               href="/shop"
-              className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp font-display tracking-wide text-wood-deep hover:brightness-110"
+              className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft font-display tracking-wide text-wood-deep hover:brightness-110"
             >
               BACK TO THE SHOP
             </Link>
@@ -236,7 +236,7 @@ function GrantedCard({ coinsGranted, coinBalance, packName }: { coinsGranted: nu
 function Balance({ amount }: { amount: number }) {
   return (
     <p className="font-body text-sm text-ink-dim">
-      Wallet balance: <span className="text-brass">🪙 {formatCoins(amount)}</span>
+      Wallet balance: <span className="text-red-text">🪙 {formatCoins(amount)}</span>
     </p>
   );
 }
@@ -245,7 +245,7 @@ function BackToShop() {
   return (
     <Link
       href="/shop"
-      className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-ink-dim/70 px-4 font-display text-sm text-ink-dim hover:border-brass hover:text-brass"
+      className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-ink-dim/70 px-4 font-display text-sm text-ink-dim hover:border-brass hover:text-red-text"
     >
       BACK TO THE SHOP
     </Link>

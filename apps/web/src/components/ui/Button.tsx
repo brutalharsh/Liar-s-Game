@@ -14,10 +14,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 const variants: Record<Variant, string> = {
   primary:
     "bg-brass text-wood-deep border-brass-deep hover:brightness-110 active:brightness-95 shadow-[0_4px_0_0_var(--color-brass-deep)] active:translate-y-[2px] active:shadow-[0_2px_0_0_var(--color-brass-deep)]",
-  brass: "bg-gradient-to-b from-brass to-lamp text-wood-deep border-brass-deep hover:brightness-110",
+  brass: "bg-gradient-to-b from-brass to-brass-soft text-wood-deep border-brass-deep hover:brightness-110",
   danger:
     "bg-blood text-ivory border-blood-bright hover:brightness-110 active:brightness-95 shadow-[0_4px_0_0_var(--color-blood-deep)] active:translate-y-[2px]",
-  outline: "bg-transparent text-ivory border-ink-dim/70 hover:border-brass hover:text-brass",
+  outline: "bg-transparent text-ivory border-ink-dim/70 hover:border-brass hover:text-red-text",
   ghost: "bg-transparent text-ink-dim border-transparent hover:text-ivory",
 };
 

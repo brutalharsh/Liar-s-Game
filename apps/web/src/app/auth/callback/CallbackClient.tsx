@@ -162,13 +162,13 @@ export function CallbackClient() {
             {phase.reason && (
               <p className="mt-1 font-body text-xs text-ink-dim">
                 quote this if you ask for help:{" "}
-                <span className="font-mono text-brass">{phase.reason}</span>
+                <span className="font-mono text-red-text">{phase.reason}</span>
               </p>
             )}
             <div className="mt-5 flex flex-col gap-2">
               <Link
                 href={backToLogin}
-                className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp font-display text-sm tracking-wide text-wood-deep hover:brightness-110"
+                className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft font-display text-sm tracking-wide text-wood-deep hover:brightness-110"
               >
                 BACK TO THE SIGN-IN DOOR
               </Link>
@@ -179,7 +179,7 @@ export function CallbackClient() {
               )}
               <Link
                 href="/"
-                className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-brass"
+                className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-red-text"
               >
                 back to the saloon
               </Link>

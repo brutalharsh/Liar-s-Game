@@ -18,7 +18,7 @@ export function ChamberPips({ pulled, showLabel = true }: { pulled: number; show
       {showLabel && (
         <span
           className={`font-display text-lg ${
-            pulled >= 5 ? "text-blood-bright" : pulled >= 3 ? "text-lamp" : "text-brass"
+            pulled >= 5 ? "text-blood-bright" : pulled >= 3 ? "text-lamp" : "text-red-text"
           }`}
         >
           {pulled}/6

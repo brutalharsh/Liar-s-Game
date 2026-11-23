@@ -230,7 +230,7 @@ export function ShopView() {
                 </p>
                 <div className="flex items-center justify-between gap-1">
                   <PriceChip price={lockedByLevel ? 0 : price} />
-                  {isEquipped && <span className="font-body text-[10px] text-brass">ON YOU</span>}
+                  {isEquipped && <span className="font-body text-[10px] text-red-text">ON YOU</span>}
                 </div>
                 <Button
                   variant={isOwned ? "outline" : "brass"}
@@ -299,10 +299,10 @@ export function ShopView() {
               <p className="font-body text-sm text-ivory">{payResult.body}</p>
               {payResult.note && (
                 <p className="font-body text-[11px] text-ink-dim">
-                  The buy button already calls <code className="text-brass">POST /api/billing/checkout</code>{" "}
-                  with <code className="text-brass">{`{packId}`}</code> — the moment the checkout provider
+                  The buy button already calls <code className="text-red-text">POST /api/billing/checkout</code>{" "}
+                  with <code className="text-red-text">{`{packId}`}</code> — the moment the checkout provider
                   is activated, you'll hop to the hosted pay page and back to{" "}
-                  <code className="text-brass">/billing/return</code> with zero screen changes.
+                  <code className="text-red-text">/billing/return</code> with zero screen changes.
                 </p>
               )}
               <Button variant="brass" onClick={() => setPayResult(null)}>
@@ -325,7 +325,7 @@ export function ShopView() {
       <p className="text-center">
         <a
           href="/profile"
-          className="inline-flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-4 font-body text-[11px] tracking-wide text-brass hover:border-brass hover:brightness-110"
+          className="inline-flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-4 font-body text-[11px] tracking-wide text-red-text hover:border-brass hover:brightness-110"
         >
           CHECK YOUR PROFILE RACK
         </a>

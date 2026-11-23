@@ -153,7 +153,7 @@ export function MotionLab() {
         initial={{ y: -8, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
       >
-        <span className="mr-2 font-display text-xs tracking-widest text-brass">MOTION LAB</span>
+        <span className="mr-2 font-display text-xs tracking-widest text-red-text">MOTION LAB</span>
 
         <button type="button" onClick={() => { clearPendingResult(); reset(); seqRef.current = 0; apply(labLobby()); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           1 · base table
@@ -206,7 +206,7 @@ export function MotionLab() {
         <button type="button" onClick={() => apply(labEvent("round:end", bump(), { reason: "survived", survivorCoins: 1, xpEarned: [{ seat: 0, xp: 1 }] }))} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ivory hover:border-brass">
           10 · round end
         </button>
-        <button type="button" onClick={() => apply(labEvent("game:over", bump(), { winnerSeat: 0, matchRecord: labMatchRecord("lab-match"), rewards: [{ seat: 0, coins: 11, xp: 12, unlockedTitles: ["Last One Standing"] }, { seat: 1, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 2, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 3, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 4, coins: 0, xp: 4, unlockedTitles: [] }] }))} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-brass hover:bg-brass/30">
+        <button type="button" onClick={() => apply(labEvent("game:over", bump(), { winnerSeat: 0, matchRecord: labMatchRecord("lab-match"), rewards: [{ seat: 0, coins: 11, xp: 12, unlockedTitles: ["Last One Standing"] }, { seat: 1, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 2, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 3, coins: 0, xp: 4, unlockedTitles: [] }, { seat: 4, coins: 0, xp: 4, unlockedTitles: [] }] }))} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-red-text hover:bg-brass/30">
           11 · game over (you win)
         </button>
         <button
@@ -228,7 +228,7 @@ export function MotionLab() {
         <button type="button" onClick={() => { clearPendingResult(); reset(); seqRef.current = 0; apply(labLobby({ heroAlive: false })); }} className="rounded-btn border border-wood-mid bg-wood px-2 py-1 font-body text-[10px] text-ink-dim hover:border-brass">
           12 · ghost lounge
         </button>
-        <button type="button" onClick={() => void runFullMockRound()} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-brass hover:bg-brass/30">
+        <button type="button" onClick={() => void runFullMockRound()} className="rounded-btn border border-brass bg-brass/15 px-2 py-1 font-body text-[10px] text-red-text hover:bg-brass/30">
           <span className="inline-flex items-center gap-1">
             <PlayIcon size={12} /> FULL MOCK ROUND (adapter)
           </span>

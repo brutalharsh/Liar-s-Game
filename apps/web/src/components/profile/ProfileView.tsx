@@ -155,7 +155,7 @@ export function ProfileView() {
                     <div className="mt-3 flex flex-wrap items-center gap-2">
                       <LevelBadge level={profile.level} />
                       <span
-                        className="inline-flex items-center gap-1 rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-brass"
+                        className="inline-flex items-center gap-1 rounded-full border-2 border-brass-deep px-2 py-0.5 font-display text-sm text-red-text"
                         title="titles unlocked server-side"
                       >
                         <MedalIcon size={14} /> {profile.unlockedTitleCount} titles
@@ -168,7 +168,7 @@ export function ProfileView() {
                   {progress.atMax ? (
                     <>
                       <ProgressBar value={1} max={1} label="MAX LEVEL" />
-                      <p className="mt-2 font-body text-[11px] text-brass">
+                      <p className="mt-2 font-body text-[11px] text-red-text">
                         The ceiling. {formatCoins(progress.xp)} XP banked — there is no level 101.
                       </p>
                     </>
@@ -208,19 +208,19 @@ export function ProfileView() {
               <div className="flex flex-wrap justify-center gap-3">
                 <Link
                   href="/shop"
-                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-lamp px-5 font-display text-base tracking-wide text-wood-deep hover:brightness-110"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-brass-deep bg-gradient-to-b from-brass to-brass-soft px-5 font-display text-base tracking-wide text-wood-deep hover:brightness-110"
                 >
                   <ShopIcon size={18} /> VISIT THE SHOP
                 </Link>
                 <Link
                   href="/leaderboard"
-                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-red-text"
                 >
                   <TrophyIcon size={18} /> SEE THE RANKS
                 </Link>
                 <Link
                   href="/settings"
-                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-brass"
+                  className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ivory hover:border-brass hover:text-red-text"
                 >
                   <SettingsIcon size={18} /> SETTINGS
                 </Link>
@@ -239,7 +239,7 @@ function LevelBadge({ level }: { level: number }) {
   return (
     <span
       className={`rounded-full border-2 px-2 py-0.5 font-display text-sm ${
-        prestige ? "border-brass bg-brass/15 text-brass" : "border-brass-deep text-brass"
+        prestige ? "border-brass bg-brass/15 text-red-text" : "border-brass-deep text-red-text"
       }`}
     >
       LVL {level}
@@ -254,7 +254,7 @@ function MatchRow({ rec, index }: { rec: ProfileMatchRecord; index: number }) {
   const themeName =
     THEMES.find((t) => t.id === rec.theme)?.name ?? titleCase(rec.theme || "saloon");
   const outcome = stats.won
-    ? { icon: <TrophyIcon size={12} />, label: "WON", cls: "border-brass text-brass" }
+    ? { icon: <TrophyIcon size={12} />, label: "WON", cls: "border-brass text-red-text" }
     : stats.deaths > 0
       ? { icon: <CloseIcon size={12} />, label: "DIED", cls: "border-blood-bright text-blood-bright" }
       : { icon: <CheckIcon size={12} />, label: "SURVIVED", cls: "border-verdict text-verdict" };
@@ -361,7 +361,7 @@ function BannedState({ onSignOut }: { onSignOut: () => void }) {
           <Button variant="outline" onClick={onSignOut}>
             SIGN OUT
           </Button>
-          <Link href="/how-to-play" className="font-body text-xs text-ink-dim underline hover:text-brass">
+          <Link href="/how-to-play" className="font-body text-xs text-ink-dim underline hover:text-red-text">
             or re-read the house rules
           </Link>
         </div>

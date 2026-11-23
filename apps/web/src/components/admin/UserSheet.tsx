@@ -284,7 +284,7 @@ export function UserSheet({
                     {detail.payments.map((checkout) => (
                       <li key={checkout._id} className="flex items-center gap-2 px-3 py-2">
                         <span className="font-body text-sm text-ivory">{checkout.productName}</span>
-                        <span className="font-display text-sm text-brass">{formatMinor(checkout.amountMinor)}</span>
+                        <span className="font-display text-sm text-red-text">{formatMinor(checkout.amountMinor)}</span>
                         <Badge tone={statusTone(checkout.status)}>{checkout.status}</Badge>
                         <span className="ml-auto font-body text-[10px] text-ink-dim">
                           {checkout.paidAt ? formatStamp(checkout.paidAt) : formatStamp(checkout.createdAt)}

@@ -20,7 +20,7 @@ export function TableBanner() {
       <motion.span
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        className="inline-flex items-center gap-2 font-display text-sm tracking-widest text-brass"
+        className="inline-flex items-center gap-2 font-display text-sm tracking-widest text-red-text"
       >
         <HourglassIcon size={16} /> {roundEnd.reason.toUpperCase()}
       </motion.span>

@@ -180,7 +180,7 @@ function LeaderboardRow({
       >
         <span
           className={`flex w-10 shrink-0 flex-col items-center justify-center rounded-btn border-2 py-1 ${
-            medalTint ? "border-brass bg-brass/10 text-brass" : "border-wood-mid text-ink-dim"
+            medalTint ? "border-brass bg-brass/10 text-red-text" : "border-wood-mid text-ink-dim"
           }`}
           aria-label={`rank ${row.rank}`}
         >
@@ -216,7 +216,7 @@ function LeaderboardRow({
         </span>
 
         <span className="ml-auto flex shrink-0 flex-col items-end">
-          <span className="font-display text-lg text-brass">{formatCoins(row.value)}</span>
+          <span className="font-display text-lg text-red-text">{formatCoins(row.value)}</span>
           <span className="font-body text-[9px] uppercase tracking-widest text-ink-dim">
             {metric}
           </span>

@@ -118,7 +118,7 @@ export function GameOverOverlay() {
               {nobodySurvived ? "NOBODY SURVIVED" : iWon ? "YOU WIN" : `${winnerName} WINS`}
             </h2>
             {iWon && (
-              <p className="flex items-center justify-center gap-1 font-display text-sm text-brass">
+              <p className="flex items-center justify-center gap-1 font-display text-sm text-red-text">
                 the table is yours — <CoinIcon size={16} /> {coinsShown} in your pocket
               </p>
             )}
@@ -198,7 +198,7 @@ export function GameOverOverlay() {
                   void socket.emit({ type: "room:leave" });
                   useGameStore.getState().reset();
                 }}
-                className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ink-dim hover:border-brass hover:text-brass"
+                className="inline-flex min-h-12 touch-manipulation items-center justify-center gap-2 rounded-btn border-2 border-ink-dim/70 bg-transparent px-5 font-display text-base tracking-wide text-ink-dim hover:border-brass hover:text-red-text"
               >
                 LEAVE THE TABLE
               </Link>

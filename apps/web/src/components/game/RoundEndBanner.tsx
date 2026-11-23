@@ -42,7 +42,7 @@ export function RoundEndBanner() {
           }`}
           aria-live="assertive"
         >
-          <span className={`font-display text-lg tracking-widest ${died ? "text-blood-bright" : "text-brass"}`}>
+          <span className={`font-display text-lg tracking-widest ${died ? "text-blood-bright" : "text-red-text"}`}>
             {died ? `☠ ${loserName} met the live round` : `✓ ${loserName} survives the click`}
           </span>
           <span className="font-body text-xs text-ink-dim">
@@ -50,7 +50,7 @@ export function RoundEndBanner() {
           </span>
           <span className="flex flex-wrap items-center justify-center gap-2 font-body text-[11px]">
             {roundEnd.survivorCoins > 0 && (
-              <span className="rounded-full border border-brass/60 px-2 py-0.5 text-brass">
+              <span className="rounded-full border border-brass/60 px-2 py-0.5 text-red-text">
                 +{roundEnd.survivorCoins} 🪙 survivors
               </span>
             )}
