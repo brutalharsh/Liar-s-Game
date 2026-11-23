@@ -1,32 +1,45 @@
 "use client";
 
 import { create } from "zustand";
-import type {
-  CardRank,
-  GamePhase,
-  LobbySnapshot,
-  PlayedStack,
-  RevealState,
-  RoomState,
-  RoundEndState,
-  SeatView,
-  ServerEvent,
-  ShotState,
-  ThemeId,
+import {
+  type ClientAction,
+  type EmitResult,
+  type GameOverState,
+  type LobbySnapshot,
+  type PlayedStack,
+  type RevealState,
+  type RoomState,
+  type RoundEndState,
+  type SeatView,
+  type ServerEvent,
+  type ShotState,
+  avatarSpecFromWire,
+  type GamePhase,
 } from "@/lib/wire";
+import { socket } from "@/lib/socket";
+import { playSfx } from "@/lib/sfx";
+import { vibrate } from "@/lib/haptics";
 import { estimateMatchMinutes } from "@/lib/mock/rooms";
 
 /**
- * THE client state (STR/06 §3): a zustand store mirroring the last known
- * server view of the room. The mock adapter fills it today; the real
- * socket drops in tomorrow with ZERO screen changes. Optimistic UI is
- * limited to safe things (card selection, emotes) — everything else
- * arrives as events.
+ * ============================================================================
+ * THE GAME STORE — mirror of the server's last known view (STR/06 §3)
+ * ============================================================================
+ * Consumes EVERY STR/07 §2 server event (via the shared zod contract) and
+ * folds each payload into the app-side view-models screens read. Optimistic
+ * UI is limited to safe things (card selection, emote cooldown, guard sheet);
+ * everything else arrives as events. Timers derive from deadlineTs — the
+ * client renders countdowns from its own clock, the server is the only one
+ * that acts (STR/07 §4).
+ *
+ * `createGameStore(emitter)` powers the hermetic vitest suite;
+ * `useGameStore` is the singleton the screens read.
+ * ============================================================================
  */
 
 export interface HandCard {
   id: string;
-  rank: CardRank;
+  rank: "K" | "Q" | "A" | "J";
 }
 
 export interface FeedEntry {
@@ -35,54 +48,102 @@ export interface FeedEntry {
   at: number;
 }
 
-interface GameStore extends RoomState {
+interface GameStoreState {
   connected: boolean;
+  /** A skipped seq means lost events — the bridge re-joins for a snapshot. */
+  needsSnapshot: boolean;
+  lastSeq: number;
   lobby: LobbySnapshot | null;
+  heroSeat: number;
+  spectator: boolean;
+
+  phase: GamePhase;
+  roundNo: number;
+  tableCard: "K" | "Q" | "A" | null;
+  turnSeat: number | null;
+  deadlineTs: number | null;
+  starterSeat: number | null;
+  window: { playSeat: number; closesAtTs: number; openedAt: number } | null;
+  lastPlay: { seat: number; count: number } | null;
+  pile: PlayedStack[];
+  reveal: RevealState | null;
+  shot: ShotState | null;
+  roundEnd: RoundEndState | null;
+  gameOver: GameOverState | null;
+  forcedCall: boolean;
+
   hand: HandCard[];
   selectedCardIds: string[];
+  pendingThrowIds: string[] | null;
   pendingThrow: boolean;
   lastEmoteSentAt: number;
   emotes: Record<number, { emoteId: string; at: number } | undefined>;
   feed: FeedEntry[];
+}
 
+export interface GameStore extends GameStoreState {
   setConnected: (b: boolean) => void;
-  applyLobby: (lobby: LobbySnapshot) => void;
   applyEvent: (ev: ServerEvent) => void;
-  toggleCardSelection: (id: string) => boolean; // false = rejected (4th card)
+  toggleCardSelection: (id: string) => boolean; // false = 4th-card hard reject
   clearSelection: () => void;
-  setPendingThrow: (b: boolean) => void;
+  sendThrow: () => Promise<EmitResult>;
+  sendCheck: (accusedSeat: number) => Promise<EmitResult>;
+  sendEmote: (emoteId: string) => Promise<EmitResult>;
+  startGame: () => Promise<EmitResult>;
+  rematch: () => Promise<EmitResult>;
   noteEmoteSent: () => void;
-  seatByNumber: (n: number) => SeatView | undefined;
-  nicknameOf: (n: number) => string;
 
-  // lobby-local host actions (mock; real kick/lock event names TBD by S1)
+  // lobby-local host controls (DEV mock seams; S1 defines the real events)
   kickSeat: (seatNo: number) => void;
   toggleSeatLock: (seatNo: number) => void;
   fillSeatWithBot: () => void;
   toggleRoomLock: () => void;
-  setTheme: (theme: ThemeId) => void;
+  setTheme: (theme: LobbySnapshot["theme"]) => void;
 
+  seatByNumber: (n: number) => SeatView | undefined;
+  nicknameOf: (n: number) => string;
   reset: () => void;
 }
 
-const MAX_FEED = 12;
+const MAX_FEED = 14;
+let feedCounter = 0;
 
 function pushFeed(feed: FeedEntry[], text: string): FeedEntry[] {
-  const entry: FeedEntry = { id: `f-${Date.now()}-${Math.floor(Math.random() * 1e6)}`, text, at: Date.now() };
+  feedCounter += 1;
+  const entry: FeedEntry = { id: `f-${feedCounter}`, text, at: Date.now() };
   return [...feed, entry].slice(-MAX_FEED);
 }
 
-const initialGame: RoomState = {
-  phase: "idle" as GamePhase,
+const initialState: GameStoreState = {
+  connected: false,
+  needsSnapshot: false,
+  lastSeq: -1,
+  lobby: null,
+  heroSeat: 0,
+  spectator: false,
+
+  phase: "idle",
   roundNo: 0,
   tableCard: null,
   turnSeat: null,
   deadlineTs: null,
+  starterSeat: null,
   window: null,
-  pile: [] as PlayedStack[],
-  reveal: null as RevealState | null,
-  shot: null as ShotState | null,
-  roundEnd: null as RoundEndState | null,
+  lastPlay: null,
+  pile: [],
+  reveal: null,
+  shot: null,
+  roundEnd: null,
+  gameOver: null,
+  forcedCall: false,
+
+  hand: [],
+  selectedCardIds: [],
+  pendingThrowIds: null,
+  pendingThrow: false,
+  lastEmoteSentAt: 0,
+  emotes: {},
+  feed: [],
 };
 
 function mixPile(pile: PlayedStack[], seat: number, count: number): PlayedStack[] {
@@ -90,268 +151,488 @@ function mixPile(pile: PlayedStack[], seat: number, count: number): PlayedStack[
   return [...others, { seat, count }];
 }
 
-export const useGameStore = create<GameStore>()((set, get) => ({
-  ...initialGame,
-  connected: false,
-  lobby: null,
-  hand: [],
-  selectedCardIds: [],
-  pendingThrow: false,
-  lastEmoteSentAt: 0,
-  emotes: {},
-  feed: [],
+/** App GamePhase ← shared RoomPhase (catch-up snapshot mapping). */
+export function phaseFromRoomPhase(p: RoomState["phase"]): GamePhase {
+  switch (p) {
+    case "lobby":
+      return "lobby";
+    case "dealing":
+      return "round-new";
+    case "playing":
+      return "turn";
+    case "reveal":
+      return "reveal";
+    case "roulette":
+      return "shot";
+    case "roundEnd":
+      return "round-end";
+    case "gameOver":
+      return "game-over";
+  }
+}
 
-  setConnected: (b) => set({ connected: b }),
+/** Lobby view-model from a shared RoomState snapshot. */
+function lobbyFromRoomState(room: RoomState): LobbySnapshot {
+  return {
+    code: room.roomCode,
+    name: room.name,
+    theme: room.theme as LobbySnapshot["theme"],
+    capacity: room.capacity,
+    visibility: room.visibility,
+    hostSeat: room.hostSeat,
+    roomLocked: false,
+    estMatchMinutes: room.estMatchMinutes ?? estimateMatchMinutes(Math.max(2, room.seats.length)),
+    seats: room.seats.map(
+      (seat): SeatView => ({
+        seat: seat.seat,
+        nickname: seat.nickname,
+        avatar: avatarSpecFromWire(seat.avatarSpec),
+        isHost: seat.isHost,
+        connected: seat.connected,
+        alive: seat.alive,
+        pulled: seat.pulls,
+        cardCount: seat.handCount,
+        locked: false,
+        isBot: false,
+      }),
+    ),
+  };
+}
 
-  seatByNumber: (n) => get().lobby?.seats.find((s) => s.seat === n),
-  nicknameOf: (n) => get().lobby?.seats.find((s) => s.seat === n)?.nickname ?? "PLAYER",
+function mapSeats(lobby: LobbySnapshot | null, fn: (seat: SeatView) => SeatView): LobbySnapshot | null {
+  if (!lobby) return lobby;
+  return { ...lobby, seats: lobby.seats.map(fn) };
+}
 
-  applyLobby: (lobby) => {
-    const prev = get().lobby;
-    const phase: GamePhase = prev && get().phase !== "idle" && get().phase !== "lobby" ? get().phase : "lobby";
-    set({ lobby, phase });
-  },
+/** Exactly one player still holds cards + a play stands → auto-call is live. */
+export function computeForcedCall(seats: SeatView[], pile: PlayedStack[]): boolean {
+  if (pile.length === 0) return false;
+  const holders = seats.filter((s) => s.nickname !== null && s.alive && (s.cardCount ?? 0) > 0);
+  return holders.length === 1;
+}
 
-  applyEvent: (ev) => {
-    const s = get();
-    switch (ev.type) {
-      case "lobby:state": {
-        s.applyLobby(ev.lobby);
-        return;
+export function createGameStore(
+  emitter: (action: ClientAction) => Promise<EmitResult> = (action) => socket.emit(action),
+) {
+  return create<GameStore>()((set, get) => ({
+    ...initialState,
+
+    setConnected: (b) => set({ connected: b }),
+
+    seatByNumber: (n) => get().lobby?.seats.find((s) => s.seat === n),
+    nicknameOf: (n) => get().lobby?.seats.find((s) => s.seat === n)?.nickname ?? "PLAYER",
+
+    applyEvent: (ev) => {
+      const seq = (ev.payload as { seq: number }).seq;
+
+      // Monotonic seq guard (STR/07 §4): a skipped seq means lost events.
+      // S1 seam: the bridge re-emits `room:join` and the server answers with
+      // a fresh `lobby:state` snapshot (recovery is 1 event, not N replays).
+      const seqBefore = get().lastSeq;
+      if (seqBefore !== -1 && seq > seqBefore + 1) {
+        set({ needsSnapshot: true });
       }
-      case "round:new": {
+
+      if (ev.event === "lobby:state") {
+        const room = ev.payload;
+        const prev = get();
+        const lobby = lobbyFromRoomState(room);
         set({
-          phase: "round-new",
-          roundNo: ev.roundNo,
-          tableCard: ev.tableCard,
-          pile: [],
-          reveal: null,
-          shot: null,
-          roundEnd: null,
-          window: null,
-          turnSeat: null,
-          deadlineTs: null,
-          hand: [],
-          selectedCardIds: [],
-          feed: pushFeed(s.feed, `Round ${ev.roundNo} — table card ${ev.tableCard}`),
+          lobby,
+          lastSeq: room.seq, // the snapshot is authoritative — never "behind"
+          needsSnapshot: false,
+          heroSeat: room.you?.seat ?? room.hostSeat,
+          spectator: room.spectator,
+          phase: room.phase === "lobby" ? (prev.phase === "idle" ? "lobby" : prev.phase) : phaseFromRoomPhase(room.phase),
+          roundNo: room.roundNo ?? prev.roundNo,
+          tableCard: room.tableCard ?? prev.tableCard,
+          turnSeat: room.currentTurnSeat ?? prev.turnSeat,
+          deadlineTs: room.deadlineTs ?? null,
+          window: room.challengeWindow
+            ? { playSeat: room.challengeWindow.playSeat, closesAtTs: room.challengeWindow.closesAtTs, openedAt: Date.now() }
+            : null,
+          hand: room.you ? room.you.hand.map((c) => ({ id: c.id, rank: c.rank })) : prev.hand,
+          forcedCall: computeForcedCall(lobby.seats, prev.pile),
         });
         return;
       }
-      case "hand:deal": {
-        set({ hand: ev.cards.map((c) => ({ id: c.id, rank: c.rank })), selectedCardIds: [], pendingThrow: false });
-        return;
-      }
-      case "turn:begin": {
-        const seatName = s.nicknameOf(ev.seat);
-        set({
-          phase: ev.seat === 0 ? "turn" : s.phase === "window" ? "window" : "turn",
-          turnSeat: ev.seat,
-          deadlineTs: ev.deadlineTs,
-          selectedCardIds: ev.seat === 0 ? s.selectedCardIds : [],
-          feed: pushFeed(s.feed, ev.seat === 0 ? "YOUR turn" : `${seatName}'s turn`),
-        });
-        return;
-      }
-      case "play:accept": {
-        const isMine = ev.seat === 0;
-        set({
-          pile: mixPile(s.pile, ev.seat, ev.count),
-          hand: s.hand,
-          selectedCardIds: [],
-          pendingThrow: false,
-          turnSeat: null,
-          deadlineTs: null,
-          feed: pushFeed(
-            s.feed,
-            `${isMine ? "YOU" : s.nicknameOf(ev.seat)} threw ${ev.count} card${ev.count === 1 ? "" : "s"}`,
-          ),
-        });
-        return;
-      }
-      case "window:open": {
-        set({
-          phase: "window",
-          window: { playSeat: ev.playSeat, closesAtTs: ev.closesAtTs },
-          feed: pushFeed(s.feed, "CHECK window open — 10s"),
-        });
-        return;
-      }
-      case "window:close": {
-        set({ window: null, phase: get().turnSeat !== null ? "turn" : get().phase === "window" ? "turn" : get().phase });
-        return;
-      }
-      case "reveal:show": {
-        set({
-          phase: "reveal",
-          window: null,
-          reveal: { seat: ev.seat, cards: ev.cards, verdict: ev.verdict, loserSeat: ev.loserSeat },
-          feed: pushFeed(s.feed, `${s.nicknameOf(ev.seat)}'s play: ${ev.verdict}!`),
-        });
-        return;
-      }
-      case "shot:assign": {
-        set({
-          phase: "shot",
-          shot: { loserSeat: ev.loserSeat, kind: ev.kind, executorSeat: ev.executorSeat, outcome: null, pulls: 0 },
-          feed: pushFeed(
-            s.feed,
-            ev.kind === "EXECUTE"
-              ? `${s.nicknameOf(ev.executorSeat ?? 0)} executes ${s.nicknameOf(ev.loserSeat)}`
-              : `${s.nicknameOf(ev.loserSeat)} takes the revolver`,
-          ),
-        });
-        return;
-      }
-      case "shot:result": {
-        const lobby = s.lobby;
-        const seats = lobby
-          ? {
+
+      set({ lastSeq: seq });
+
+      switch (ev.event) {
+        // ── round lifecycle ──────────────────────────────────────────
+        case "round:new": {
+          const prev = get();
+          const lobby = mapSeats(prev.lobby, (seat) => ({
+            ...seat,
+            cardCount: ev.payload.dealtCounts.find((d) => d.seat === seat.seat)?.count ?? 0,
+          }));
+          set({
+            phase: "round-new",
+            roundNo: ev.payload.roundNo,
+            tableCard: ev.payload.tableCard,
+            pile: [],
+            reveal: null,
+            shot: null,
+            roundEnd: null,
+            gameOver: null,
+            window: null,
+            lastPlay: null,
+            turnSeat: null,
+            deadlineTs: null,
+            starterSeat: null,
+            forcedCall: false,
+            hand: [],
+            selectedCardIds: [],
+            pendingThrow: false,
+            pendingThrowIds: null,
+            lobby,
+            feed: pushFeed(prev.feed, `Round ${ev.payload.roundNo} — table card ${ev.payload.tableCard}`),
+          });
+          return;
+        }
+
+        case "hand:deal": {
+          const prev = get();
+          set({
+            hand: ev.payload.cards.map((c) => ({ id: c.id, rank: c.rank })),
+            selectedCardIds: [],
+            pendingThrow: false,
+            pendingThrowIds: null,
+            lobby: mapSeats(prev.lobby, (seat) =>
+              seat.seat === prev.heroSeat ? { ...seat, cardCount: ev.payload.cards.length } : seat,
+            ),
+          });
+          playSfx("deal");
+          return;
+        }
+
+        case "turn:begin": {
+          const prev = get();
+          set({
+            phase: "turn",
+            turnSeat: ev.payload.seat,
+            deadlineTs: ev.payload.deadlineTs,
+            starterSeat: prev.starterSeat ?? ev.payload.seat, // first turn of the round marks the starter
+            selectedCardIds: ev.payload.seat === prev.heroSeat ? prev.selectedCardIds : [],
+            pendingThrow: false,
+            pendingThrowIds: null,
+            feed: pushFeed(
+              prev.feed,
+              ev.payload.seat === prev.heroSeat ? "YOUR turn" : `${prev.nicknameOf(ev.payload.seat)}'s turn`,
+            ),
+          });
+          return;
+        }
+
+        // ── plays + challenge window ─────────────────────────────────
+        case "play:accept": {
+          const prev = get();
+          const isMine = ev.payload.seat === prev.heroSeat;
+          const staged = prev.pendingThrowIds;
+          // which of my cards left the hand: the staged selection, or (server
+          // auto-play on timeout) the first card — STR/01 §3's auto-play means
+          // the server plays 1; the snapshot event will correct any drift.
+          const removedIds = isMine ? (staged ?? [prev.hand[0]?.id ?? ""]) : [];
+          const hand = isMine ? prev.hand.filter((c) => !removedIds.includes(c.id)) : prev.hand;
+          const lobby = mapSeats(prev.lobby, (seat) =>
+            seat.seat === ev.payload.seat
+              ? {
+                  ...seat,
+                  cardCount: Math.max(0, (seat.cardCount ?? 0) - ev.payload.count),
+                  ...(isMine ? { cardCount: hand.length } : {}),
+                }
+              : seat,
+          );
+          const pile = mixPile(prev.pile, ev.payload.seat, ev.payload.count);
+          set({
+            pile,
+            lastPlay: { seat: ev.payload.seat, count: ev.payload.count },
+            turnSeat: null,
+            deadlineTs: null,
+            hand,
+            pendingThrow: false,
+            pendingThrowIds: null,
+            selectedCardIds: [],
+            lobby,
+            forcedCall: lobby ? computeForcedCall(lobby.seats, pile) : false,
+            feed: pushFeed(
+              prev.feed,
+              `${isMine ? "YOU" : prev.nicknameOf(ev.payload.seat)} threw ${ev.payload.count} card${ev.payload.count === 1 ? "" : "s"}`,
+            ),
+          });
+          playSfx("throw");
+          return;
+        }
+
+        case "window:open": {
+          const prev = get();
+          set({
+            phase: "window",
+            window: { playSeat: ev.payload.playSeat, closesAtTs: ev.payload.closesAtTs, openedAt: Date.now() },
+            feed: pushFeed(prev.feed, "CHECK window open — challenge the last throw"),
+          });
+          playSfx("window-arm");
+          vibrate("window-arm"); // haptics map: 20ms arm tap (feature-detected internally)
+          return;
+        }
+
+        case "window:close": {
+          const prev = get();
+          set({
+            window: null,
+            phase: prev.turnSeat !== null ? "turn" : prev.phase === "window" ? "turn" : prev.phase,
+          });
+          return;
+        }
+
+        // ── resolution ───────────────────────────────────────────────
+        case "reveal:show": {
+          const prev = get();
+          const accused = prev.window?.playSeat ?? prev.lastPlay?.seat ?? null;
+          set({
+            phase: "reveal",
+            window: null,
+            forcedCall: false,
+            reveal: {
+              seat: accused,
+              cards: ev.payload.cards.map((c) => ({ id: c.id, rank: c.rank })),
+              verdict: ev.payload.verdict,
+              loserSeat: ev.payload.loserSeat,
+            },
+            feed: pushFeed(
+              prev.feed,
+              `${accused !== null ? prev.nicknameOf(accused) : "The accused"}'s play: ${ev.payload.verdict}!`,
+            ),
+          });
+          playSfx("flip");
+          return;
+        }
+
+        case "shot:assign": {
+          const prev = get();
+          const pulls = prev.seatByNumber(ev.payload.loserSeat)?.pulled ?? 0;
+          set({
+            phase: "shot",
+            shot: {
+              loserSeat: ev.payload.loserSeat,
+              kind: ev.payload.kind,
+              executorSeat: ev.payload.kind === "EXECUTE" ? (ev.payload.executorSeat ?? null) : null,
+              outcome: null,
+              pulls,
+            },
+            feed: pushFeed(
+              prev.feed,
+              ev.payload.kind === "EXECUTE"
+                ? `${prev.nicknameOf(ev.payload.executorSeat ?? 0)} executes ${prev.nicknameOf(ev.payload.loserSeat)}`
+                : `${prev.nicknameOf(ev.payload.loserSeat)} takes the revolver`,
+            ),
+          });
+          playSfx("challenge-slam");
+          return;
+        }
+
+        case "shot:result": {
+          const prev = get();
+          set({
+            lobby: mapSeats(prev.lobby, (seat) =>
+              seat.seat === ev.payload.loserSeat
+                ? {
+                    ...seat,
+                    pulled: ev.payload.pulls,
+                    alive: ev.payload.outcome === "LIVE" ? false : seat.alive,
+                  }
+                : seat,
+            ),
+            shot: prev.shot ? { ...prev.shot, outcome: ev.payload.outcome, pulls: ev.payload.pulls } : null,
+            feed: pushFeed(
+              prev.feed,
+              ev.payload.outcome === "BLANK"
+                ? `${prev.nicknameOf(ev.payload.loserSeat)} survives (${ev.payload.pulls}/6)`
+                : `${prev.nicknameOf(ev.payload.loserSeat)} is out`,
+            ),
+          });
+          return;
+        }
+
+        case "round:end": {
+          const prev = get();
+          set({
+            phase: "round-end",
+            roundEnd: {
+              reason: ev.payload.reason,
+              survivorCoins: ev.payload.survivorCoins,
+              xpEarned: ev.payload.xpEarned.map((x) => ({ seat: x.seat, xp: x.xp })),
+            },
+            forcedCall: false,
+            feed: pushFeed(
+              prev.feed,
+              `${ev.payload.reason === "death" ? "A round ends in death" : "The round ends — shots survived"} · +${ev.payload.survivorCoins}🪙`,
+            ),
+          });
+          playSfx("round-end");
+          return;
+        }
+
+        case "game:over": {
+          const prev = get();
+          set({
+            phase: "game-over",
+            gameOver: {
+              winnerSeat: ev.payload.winnerSeat,
+              matchRecord: ev.payload.matchRecord,
+              rewards: ev.payload.rewards,
+            },
+            window: null,
+            forcedCall: false,
+            feed: pushFeed(prev.feed, `${prev.nicknameOf(ev.payload.winnerSeat)} wins the table`),
+          });
+          playSfx("win");
+          return;
+        }
+
+        // ── ambience ─────────────────────────────────────────────────
+        case "presence:update": {
+          const lobby = get().lobby;
+          if (!lobby) return;
+          const bySeat = new Map(ev.payload.seats.map((p) => [p.seat, p]));
+          set({
+            lobby: {
               ...lobby,
-              seats: lobby.seats.map((seat) =>
-                seat.seat === ev.loserSeat
-                  ? { ...seat, pulled: ev.pulls, alive: ev.outcome === "LIVE" ? false : seat.alive }
-                  : seat,
-              ),
-            }
-          : lobby;
-        const survived = ev.outcome === "BLANK";
-        set({
-          lobby: seats,
-          shot: s.shot ? { ...s.shot, outcome: ev.outcome, pulls: ev.pulls } : null,
-          feed: pushFeed(
-            s.feed,
-            survived
-              ? `${s.nicknameOf(ev.loserSeat)} survives (${ev.pulls}/6)`
-              : `${s.nicknameOf(ev.loserSeat)} is out`,
-          ),
-        });
-        return;
-      }
-      case "round:end": {
-        set({
-          phase: "round-end",
-          roundEnd: { reason: ev.reason, survivorCoins: ev.survivorCoins, xpEarned: ev.xpEarned },
-          feed: pushFeed(s.feed, `${ev.reason} · +${ev.survivorCoins}🪙 +${ev.xpEarned}XP`),
-        });
-        return;
-      }
-      case "game:over": {
-        set({ phase: "game-over", feed: pushFeed(s.feed, `${s.nicknameOf(ev.winnerSeat)} wins the table`) });
-        return;
-      }
-      case "presence:update": {
-        const lobby = s.lobby;
-        if (!lobby) return;
-        const bySeat = new Map(ev.seats.map((p) => [p.seat, p]));
-        set({
-          lobby: {
-            ...lobby,
-            seats: lobby.seats.map((seat) => ({ ...seat, connected: bySeat.get(seat.seat)?.connected ?? true })),
-          },
-        });
-        return;
-      }
-      case "emote:broadcast": {
-        set({
-          emotes: { ...s.emotes, [ev.seat]: { emoteId: ev.emoteId, at: Date.now() } },
-        });
-        return;
-      }
-      case "error": {
-        set({ feed: pushFeed(s.feed, ev.message) });
-        return;
-      }
-      default: {
-        const never: never = ev;
-        void never;
-      }
-    }
-  },
+              seats: lobby.seats.map((seat) => ({ ...seat, connected: bySeat.get(seat.seat)?.connected ?? true })),
+            },
+          });
+          return;
+        }
 
-  toggleCardSelection: (id) => {
-    const { selectedCardIds } = get();
-    if (selectedCardIds.includes(id)) {
-      set({ selectedCardIds: selectedCardIds.filter((c) => c !== id) });
+        case "emote:broadcast": {
+          set({
+            emotes: { ...get().emotes, [ev.payload.seat]: { emoteId: ev.payload.emoteId, at: Date.now() } },
+          });
+          playSfx("emote-bang"); // emote-fired table bang seam — sfx engine lands with C1
+          return;
+        }
+
+        case "error": {
+          set({ feed: pushFeed(get().feed, ev.payload.message) });
+          return;
+        }
+
+        default: {
+          const never: never = ev;
+          void never;
+        }
+      }
+    },
+
+    // ── optimistic-only helpers (safe local state) ────────────────────
+
+    toggleCardSelection: (id) => {
+      const { selectedCardIds } = get();
+      if (selectedCardIds.includes(id)) {
+        set({ selectedCardIds: selectedCardIds.filter((c) => c !== id) });
+        playSfx("card-select");
+        return true;
+      }
+      if (selectedCardIds.length >= 3) return false; // hard reject: shake + buzz (research/09 §3)
+      set({ selectedCardIds: [...selectedCardIds, id] });
+      playSfx("card-select");
       return true;
-    }
-    if (selectedCardIds.length >= 3) return false; // hard reject: shake + buzz (research/09 §3)
-    set({ selectedCardIds: [...selectedCardIds, id] });
-    return true;
-  },
+    },
 
-  clearSelection: () => set({ selectedCardIds: [] }),
-  setPendingThrow: (b) => set({ pendingThrow: b }),
-  noteEmoteSent: () => set({ lastEmoteSentAt: Date.now() }),
+    clearSelection: () => set({ selectedCardIds: [] }),
 
-  // ── lobby-local host actions (DEV mock seams; S1 defines the real events) ──
-  kickSeat: (seatNo) => {
-    const lobby = get().lobby;
-    if (!lobby) return;
-    set({
-      lobby: {
-        ...lobby,
-        seats: lobby.seats.map((s) => (s.seat === seatNo ? { ...s, nickname: null, avatar: null, isBot: false, connected: false } : s)),
-      },
-    });
-  },
+    sendThrow: async () => {
+      const { selectedCardIds, pendingThrow } = get();
+      if (pendingThrow || selectedCardIds.length === 0) return { ok: false, errorMessage: "Nothing selected." };
+      const cardIds = [...selectedCardIds];
+      set({ pendingThrow: true, pendingThrowIds: cardIds });
+      return emitter({ type: "play:cards", cardIds });
+    },
 
-  toggleSeatLock: (seatNo) => {
-    const lobby = get().lobby;
-    if (!lobby) return;
-    set({
-      lobby: {
-        ...lobby,
-        seats: lobby.seats.map((s) => (s.seat === seatNo ? { ...s, locked: !s.locked } : s)),
-      },
-    });
-  },
+    sendCheck: (accusedSeat) => emitter({ type: "liar:call", accusedSeat }),
 
-  fillSeatWithBot: () => {
-    const lobby = get().lobby;
-    if (!lobby) return;
-    const idx = lobby.seats.findIndex((s) => s.nickname === null && !s.locked);
-    if (idx === -1) {
-      set({ lobby: { ...lobby, roomLocked: !lobby.roomLocked } }); // full → toggle room lock instead
-      return;
-    }
-    const bots = ["SUE", "TOAR", "FOX", "BRIS", "MIGO", "REX"];
-    const existing = new Set(lobby.seats.map((s) => s.nickname));
-    const botName = bots.find((b) => !existing.has(b)) ?? `BOT-${Date.now() % 1000}`;
-    const animals = ["owl", "wolf", "fox", "bear", "deer", "boar"] as const;
-    set({
-      lobby: {
-        ...lobby,
-        seats: lobby.seats.map((s, i) =>
-          i === idx
-            ? { ...s, nickname: botName, avatar: { animal: animals[Math.floor(Math.random() * animals.length)] }, connected: true, isBot: true }
-            : s,
-        ),
-        estMatchMinutes: estimateMatchMinutes(lobby.seats.filter((s) => s.nickname).length + 1),
-      },
-    });
-  },
+    sendEmote: (emoteId) => {
+      set({ lastEmoteSentAt: Date.now() });
+      return emitter({ type: "emote:send", emoteId });
+    },
 
-  toggleRoomLock: () => {
-    const lobby = get().lobby;
-    if (!lobby) return;
-    set({ lobby: { ...lobby, roomLocked: !lobby.roomLocked } });
-  },
+    startGame: () => emitter({ type: "game:start" }),
 
-  setTheme: (theme) => {
-    const lobby = get().lobby;
-    if (!lobby) return;
-    set({ lobby: { ...lobby, theme } });
-  },
+    rematch: () => emitter({ type: "game:start" }),
 
-  reset: () =>
-    set({
-      ...initialGame,
-      connected: false,
-      lobby: null,
-      hand: [],
-      selectedCardIds: [],
-      pendingThrow: false,
-      emotes: {},
-      feed: [],
-    }),
-}));
+    noteEmoteSent: () => set({ lastEmoteSentAt: Date.now() }),
+
+    // ── lobby-local host controls (DEV mock seams; S1 defines the real events) ──
+
+    kickSeat: (seatNo) => {
+      const lobby = get().lobby;
+      if (!lobby) return;
+      set({
+        lobby: {
+          ...lobby,
+          seats: lobby.seats.map((s) =>
+            s.seat === seatNo ? { ...s, nickname: null, avatar: null, isBot: false, connected: false } : s,
+          ),
+        },
+      });
+    },
+
+    toggleSeatLock: (seatNo) => {
+      const lobby = get().lobby;
+      if (!lobby) return;
+      set({
+        lobby: { ...lobby, seats: lobby.seats.map((s) => (s.seat === seatNo ? { ...s, locked: !s.locked } : s)) },
+      });
+    },
+
+    fillSeatWithBot: () => {
+      const lobby = get().lobby;
+      if (!lobby) return;
+      const idx = lobby.seats.findIndex((s) => s.nickname === null && !s.locked);
+      if (idx === -1) {
+        set({ lobby: { ...lobby, roomLocked: !lobby.roomLocked } }); // full → toggle room lock instead
+        return;
+      }
+      const bots = ["SUE", "TOAR", "FOX", "BRIS", "MIGO", "REX"];
+      const animals = ["owl", "wolf", "fox", "bear", "deer", "boar"] as const;
+      const existing = new Set(lobby.seats.map((s) => s.nickname));
+      const botName = bots.find((b) => !existing.has(b)) ?? `BOT-${Date.now() % 1000}`;
+      const seat = lobby.seats[idx];
+      set({
+        lobby: {
+          ...lobby,
+          seats: lobby.seats.map((s, i) =>
+            i === idx
+              ? {
+                  ...s,
+                  nickname: botName,
+                  avatar: { animal: animals[Math.floor(s.seat % animals.length)] },
+                  connected: true,
+                  isBot: true,
+                }
+              : s,
+          ),
+          estMatchMinutes: estimateMatchMinutes(lobby.seats.filter((s) => s.nickname).length + 1),
+        },
+      });
+      void seat;
+    },
+
+    toggleRoomLock: () => {
+      const lobby = get().lobby;
+      if (!lobby) return;
+      set({ lobby: { ...lobby, roomLocked: !lobby.roomLocked } });
+    },
+
+    setTheme: (theme) => {
+      const lobby = get().lobby;
+      if (!lobby) return;
+      set({ lobby: { ...lobby, theme } });
+    },
+
+    reset: () => set({ ...initialState }),
+  }));
+}
+
+export const useGameStore = createGameStore();

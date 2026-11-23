@@ -82,8 +82,6 @@ export function TableClient({ code }: { code: string }) {
     <>
       <TableView
         code={code}
-        seats={lobby.seats}
-        heroSeat={0}
         onLeave={() => setLeaveOpen(true)}
         roomId={code}
       />

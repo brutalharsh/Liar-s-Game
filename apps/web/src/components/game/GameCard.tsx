@@ -6,7 +6,7 @@ const RANK_SUIT: Record<string, { glyph: string; color: string; word: string }> 
   K: { glyph: "♠", color: "text-wood-deep", word: "K" },
   Q: { glyph: "♥", color: "text-blood", word: "Q" },
   A: { glyph: "♦", color: "text-blood", word: "A" },
-  JOKER: { glyph: "★", color: "text-brass-deep", word: "★" },
+  J: { glyph: "★", color: "text-brass-deep", word: "J" },
 };
 
 /** A liar-deck card: face (rank known / reveal) or ornate back. */

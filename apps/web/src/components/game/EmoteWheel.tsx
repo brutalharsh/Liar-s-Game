@@ -3,26 +3,29 @@
 import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { EMOTE_PRESETS, EMOTE_COOLDOWN_MS } from "@/lib/mock/emotes";
-import { socket } from "@/lib/socket";
 import { useGameStore } from "@/store/game";
 import { useSettingsStore } from "@/store/settings";
 import { useToasts } from "@/store/ui";
 import { useGameTable } from "@/components/game/gameTableContext";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { playSfx } from "@/lib/sfx";
 
 /**
  * Emote wheel — grid on mobile, radial petals on desktop (research/09 §5).
- * 10 presets (STR/05 §6), 3s per-player cooldown. Mute-all honored.
- * This IS the table talk: no free text, ever.
+ * 10 presets (STR/05 §6), 3s per-player cooldown, wired through the store's
+ * sendEmote (adapter seam). Ghosts keep their own dimmed set — emotes are
+ * the ghost lounge's only table talk.
  */
 export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { mode } = useGameTable();
   const muted = useSettingsStore((s) => s.emoteMuted);
   const lastSentAt = useGameStore((s) => s.lastEmoteSentAt);
-  const noteSent = useGameStore((s) => s.noteEmoteSent);
+  const sendEmote = useGameStore((s) => s.sendEmote);
+  const hero = useGameStore((s) => s.seatByNumber(s.heroSeat));
   const push = useToasts();
   const reduced = usePrefersReducedMotion();
   const [now, setNow] = useState(Date.now());
+  const ghost = !(hero?.alive ?? true);
 
   useEffect(() => {
     if (!open) return;
@@ -42,12 +45,12 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
     }
     if (cooling) return; // no toast spam during cooldown
     const preset = EMOTE_PRESETS.find((p) => p.id === emoteId);
-    const res = await socket.emit({ type: "emote:send", emoteId });
+    playSfx("emote-bang");
+    const res = await sendEmote(emoteId);
     if (!res.ok) {
       push({ title: res.errorMessage ?? "Emote rejected", tone: "bad" });
       return;
     }
-    noteSent();
     push({ title: `${preset?.emoji ?? ""} ${preset?.label ?? "emote"}`, tone: "info" });
   };
 
@@ -70,11 +73,13 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
         </motion.div>
       ) : mode === "mobile" ? (
         <motion.nav
-          aria-label="Emotes"
+          aria-label={`Emotes${ghost ? " — ghost set" : ""}`}
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 360, damping: 34 }}
-          className="relative z-10 grid w-full grid-cols-5 gap-1 rounded-t-card border-t-2 border-brass-deep bg-wood-deep p-2 px-safe pb-safe"
+          className={`relative z-10 grid w-full grid-cols-5 gap-1 rounded-t-card border-t-2 border-brass-deep bg-wood-deep p-2 px-safe pb-safe ${
+            ghost ? "opacity-80" : ""
+          }`}
         >
           {EMOTE_PRESETS.map((preset) => (
             <button
@@ -93,11 +98,13 @@ export function EmoteWheel({ open, onClose }: { open: boolean; onClose: () => vo
         </motion.nav>
       ) : (
         <motion.nav
-          aria-label="Emotes"
+          aria-label={`Emotes${ghost ? " — ghost set" : ""}`}
           initial={{ scale: 0.6, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 26 }}
-          className="relative z-10 h-64 w-64 rounded-full border-2 border-wood-mid/50 bg-wood-deep"
+          className={`relative z-10 h-64 w-64 rounded-full border-2 border-wood-mid/50 bg-wood-deep ${
+            ghost ? "opacity-80" : ""
+          }`}
         >
           <button
             onClick={onClose}

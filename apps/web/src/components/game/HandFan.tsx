@@ -6,11 +6,14 @@ import { useGameTable } from "@/components/game/gameTableContext";
 import { useGameStore, type HandCard } from "@/store/game";
 import { GameCard } from "@/components/game/GameCard";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+import { dealStaggerMs, dealTransition, dealVariants } from "@/motion/table";
 
 /**
- * Fanned 5-card hand with tap-toggle multi-select ≤3 (research/09 §3):
- * selected cards lift +8px, gold ring + ✓ badge; a 4th tap is hard-rejected
- * with a shake (stays only when reduced-motion clears transitions).
+ * Fanned 5-card hand (research/09 §3): tap-toggle multi-select ≤3, selected
+ * cards lift +8px with a ✓ badge + live count; the 4th tap is hard-rejected
+ * with a shake (predictability over cleverness). Deals slide in from the shoe
+ * with a ~600ms stagger (STR/03 §5). Selection persists across turns
+ * (pre-staged selection — timeout auto-plays what you staged, STR/01 §3).
  */
 export function HandFan({ disabled = false }: { disabled?: boolean }) {
   const { mode } = useGameTable();
@@ -49,7 +52,12 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
           <span className="rounded-full border border-brass bg-wood-deep px-3 py-1 font-body text-xs text-brass">
             {selected.length === 3 ? "3/3 selected — throw them" : `${selected.length} selected`}
           </span>
-          <button onClick={clear} className="min-h-12 px-2 font-body text-xs text-ink-dim underline hover:text-ivory">
+          <button
+            type="button"
+            onClick={clear}
+            className="min-h-12 px-2 font-body text-xs text-ink-dim underline hover:text-ivory"
+            aria-label="Clear selection"
+          >
             CLEAR
           </button>
         </div>
@@ -71,17 +79,25 @@ export function HandFan({ disabled = false }: { disabled?: boolean }) {
               aria-pressed={isSelected}
               aria-label={`Card ${i + 1}${isSelected ? ", selected" : ""}`}
               onClick={() => onCardTap(card)}
-              animate={{ rotate: mid === 0 ? 0 : (offset * maxRotate) / mid, y: isSelected ? -8 : Math.abs(offset) * 4 }}
-              transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 24 }}
+              initial="shoe"
+              animate="hand"
+              variants={dealVariants}
+              transition={{ ...dealTransition, delay: reduced ? 0 : i * (dealStaggerMs / 1000) }}
               className={`relative ${i > 0 ? overlap : ""} touch-manipulation ${disabled ? "opacity-50" : ""}`}
             >
-              <GameCard
-                rank={card.rank}
-                faceUp
-                size={size}
-                selected={isSelected}
-                label={card.rank === "JOKER" ? "joker" : card.rank}
-              />
+              <motion.span
+                className="block"
+                animate={{ rotate: mid === 0 ? 0 : (offset * maxRotate) / mid, y: isSelected ? -8 : Math.abs(offset) * 4 }}
+                transition={reduced ? { duration: 0 } : { type: "spring", stiffness: 320, damping: 24 }}
+              >
+                <GameCard
+                  rank={card.rank}
+                  faceUp
+                  size={size}
+                  selected={isSelected}
+                  label={card.rank === "J" ? "joker" : card.rank}
+                />
+              </motion.span>
               {isSelected && (
                 <motion.span
                   initial={{ scale: 0 }}

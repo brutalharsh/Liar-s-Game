@@ -58,14 +58,14 @@ export function ContextRibbon() {
   const nicknameOf = useGameStore((s) => s.nicknameOf);
 
   if (phase === "reveal" && reveal) {
-    return <span>REVEALING {nicknameOf(reveal.seat)}'S LAST PLAY…</span>;
+    return <span>REVEALING {reveal.seat !== null ? nicknameOf(reveal.seat) : "THE ACCUSED"}'S LAST PLAY…</span>;
   }
 
-  if (window_ && phase === "window") {
+  if (window_ && (phase === "window" || phase === "turn")) {
     return (
       <span>
-        CHECK WINDOW OPEN — CHALLENGE {nicknameOf(window_.playSeat)}
-        {"'S"} CLAIM?
+        CHECK WINDOW — CHALLENGE {nicknameOf(window_.playSeat)}
+        {"'S"} CLAIM? (any living player)
       </span>
     );
   }

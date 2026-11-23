@@ -112,7 +112,7 @@ export function JoinView() {
             id="paste"
             value={pasted}
             onChange={(e) => setPasted(e.target.value)}
-            placeholder="https://liars.game/r/DEMO1"
+            placeholder="https://liars.game/r/DUMMY"
             className="min-h-12 flex-1 rounded-btn border-2 border-wood-mid bg-wood-deep px-3 font-body text-sm text-ivory placeholder:text-ink-dim/40 focus:border-brass"
           />
           <Button

@@ -8,40 +8,51 @@ import { TableBottomPanel } from "@/components/table/TableBottomPanel";
 import { TableAside } from "@/components/table/TableAside";
 import { TableTopStrip } from "@/components/table/TableTopStrip";
 import { CallGuardSheet } from "@/components/table/CallGuardSheet";
-import type { SeatView } from "@/lib/wire";
+import { RevealStage } from "@/components/game/reveal/RevealStage";
+import { ShotCinematic } from "@/components/game/shot/ShotCinematic";
+import { RoundEndBanner } from "@/components/game/RoundEndBanner";
+import { GameOverOverlay } from "@/components/game/GameOverOverlay";
+import { GhostLounge, useGhostMode } from "@/components/game/GhostLounge";
 import { useGameStore } from "@/store/game";
 
 /**
- * /table/[code] — the route stub W2 wires to real socket events.
- * Renders BOTH layout shells from the same store snapshot: mock adapter
- * drives the demo round loop today, real server tomorrow, zero UI changes.
+ * /table/[code] — the live board. The store is the single source; every
+ * layer below reads it via selectors (mock adapter today, S1 server
+ * tomorrow — zero UI changes). The cinematic layer (reveal, shot,
+ * round-end, game-over, ghost lounge) mounts alongside the shell.
  */
 export function TableView({
   code,
-  seats,
-  heroSeat,
   onLeave,
   roomId,
 }: {
   code: string;
-  seats: SeatView[];
-  heroSeat: number;
   onLeave: () => void;
   roomId: string;
 }) {
   const [guardOpen, setGuardOpen] = useState(false);
-  const pile = useGameStore((s) => s.pile);
+  const lobby = useGameStore((s) => s.lobby);
   const window_ = useGameStore((s) => s.window);
-  const tableCard = useGameStore((s) => s.tableCard);
-  const reveal = useGameStore((s) => s.reveal);
+  const lastPlay = useGameStore((s) => s.lastPlay);
+  const heroSeat = useGameStore((s) => s.heroSeat);
+  const forcedCall = useGameStore((s) => s.forcedCall);
+  const ghost = useGhostMode();
 
-  const accused = useMemo(() => {
-    const last = pile[pile.length - 1];
-    return last?.seat ?? null;
-  }, [pile]);
+  const seats = useMemo(() => lobby?.seats ?? [], [lobby]);
+
+  // who the guard names is whoever the CHECK could target right now
+  const accused = forcedCall
+    ? (lastPlay?.seat ?? null)
+    : window_ && window_.playSeat !== heroSeat
+      ? window_.playSeat
+      : (lastPlay?.seat ?? null);
 
   return (
-    <div className="h-[100dvh] w-full overflow-hidden" data-room={roomId}>
+    <div
+      className={`relative h-[100dvh] w-full overflow-hidden ${ghost ? "ghost-spectate" : ""}`}
+      data-room={roomId}
+      data-ghost={ghost ? "1" : undefined}
+    >
       <GameTableShell
         seats={seats}
         heroSeat={heroSeat}
@@ -50,22 +61,21 @@ export function TableView({
         contextRibbon={<ContextRibbon />}
         pile={<PlayedPile />}
         banner={<TableBanner />}
-        bottomBar={
-          <TableBottomPanel
-            canCheck={window_ !== null && accused !== null && accused !== heroSeat && reveal === null}
-            accusedSeat={accused}
-            tableCard={tableCard}
-            onCheck={() => setGuardOpen(true)}
-          />
-        }
+        bottomBar={<TableBottomPanel onCheck={() => setGuardOpen(true)} />}
         aside={<TableAside code={code} />}
       />
+
+      {/* cinematic layer — store-driven, self-animating */}
+      <RevealStage />
+      <ShotCinematic />
+      <RoundEndBanner />
+      <GameOverOverlay />
+      <GhostLounge />
+
       <CallGuardSheet
         open={guardOpen}
         onClose={() => setGuardOpen(false)}
         accusedSeat={accused}
-        tableCard={tableCard}
-        count={pile[pile.length - 1]?.count ?? 0}
       />
     </div>
   );

@@ -212,7 +212,7 @@ export function CreateView() {
             {pending ? "OPENING…" : "DEAL THE FIRST HAND"}
           </Button>
           <p className="text-center font-body text-[11px] text-ink-dim">
-            Opens lobby <strong className="text-brass">DEMO1</strong> in this build (mock server —
+            Opens lobby <strong className="text-brass">DUMMY</strong> in this build (mock server —
             the real room service lands with wave S1).
           </p>
         </Panel>

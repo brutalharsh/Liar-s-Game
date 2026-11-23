@@ -226,3 +226,14 @@ html[data-reduced-motion="on"] *::after {
   animation-iteration-count: 1 !important;
   transition-duration: 0.01ms !important;
 }
+
+/* ── ghost lounge / spectate tint (STR/03 §2 "DEAD" — W2) ─────────────────── */
+
+[data-ghost="1"] .stage-felt {
+  filter: sepia(0.32) saturate(0.72) brightness(0.92);
+  transition: filter 600ms ease-out;
+}
+
+[data-ghost="1"] .card-back {
+  filter: sepia(0.25) saturate(0.8);
+}

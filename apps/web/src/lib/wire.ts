@@ -18,6 +18,8 @@
 
 export * from "@liars-game/shared";
 
+export type { AvatarSpec as WireAvatarSpec } from "@liars-game/shared";
+
 import type {
   AckResult,
   AvatarSpec as WireAvatarSpec,

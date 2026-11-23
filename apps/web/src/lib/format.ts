@@ -27,7 +27,7 @@ export function titleCase(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
-/** Rank word for table cards: K → "KING", Q → "QUEEN", A → "ACE". */
+/** Rank word for table cards: K → "KING", Q → "QUEEN", A → "ACE", J → "JOKER". */
 export function rankWord(rank: string): string {
   switch (rank) {
     case "K":
@@ -36,7 +36,7 @@ export function rankWord(rank: string): string {
       return "QUEEN";
     case "A":
       return "ACE";
-    case "JOKER":
+    case "J":
       return "JOKER";
     default:
       return rank;
