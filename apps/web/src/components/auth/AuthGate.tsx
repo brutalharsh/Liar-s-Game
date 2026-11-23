@@ -64,7 +64,7 @@ export function SignInWall({ next }: { next: string }) {
         <span className="text-6xl" aria-hidden>
           🚪♠️
         </span>
-        <h2 className="mt-4 font-display text-3xl text-ivory">Members only beyond this door</h2>
+        <h1 className="mt-4 font-display text-3xl text-ivory">Members only beyond this door</h1>
         <p className="mt-2 font-body text-sm text-ink-dim">
           The house keeps a ledger — sign in with Discord or Google to create, join or play.
           Your coins, titles and XP travel with your account.
@@ -84,7 +84,7 @@ export function SignInWall({ next }: { next: string }) {
           <Link href="/rooms" className="inline-flex min-h-12 items-center justify-center rounded-btn border-2 border-ink-dim/70 font-display text-sm text-ink-dim hover:border-brass hover:text-brass">
             BROWSE PUBLIC ROOMS
           </Link>
-          <Link href="/how-to-play" className="font-body text-xs text-ink-dim underline hover:text-brass">
+          <Link href="/how-to-play" className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-brass">
             or read how the game is played
           </Link>
         </div>

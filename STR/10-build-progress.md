@@ -340,3 +340,35 @@ browsers continuously refresh real REST → a pre-grant cache entry can
 outlive the retry window. Chain itself verified green twice (A10 direct +
 orchestrator curl: fresh grants visible). Fix (retry ≥65s + distinct-name
 matching) lands with A3's live-smoke.mjs ownership once A3 reports.
+
+### Fleet B landings (browser-verified at 375/768/1024/1440)
+
+- **U4** ✅ lobby: Lighthouse a11y mobile 100/100, 0 console errors at all
+  widths incl. kick→start flip; 4 fixes (9:00 chip off-viewport at 1024,
+  h1 + main landmarks, aria labels on empty-seat taps). COMMIT HELD until
+  U5 lands (SeatChip/DesktopTableLayout are shared-territory edits).
+  Flags queued: demo-room isBot mock gap; Toaster tabIndex.
+- **U2** ✅ login + auth callback: Lighthouse a11y 100/100 m+d, 0 console
+  errors across 46 loads incl. 4 widths × all states; 8 fixes —
+  institutional OAuth buttons (official SVG marks, 56px), full server
+  reason-map (was dead code mapping 2 of 6 real ids), h1 landmarks, 48px
+  targets, shimmer skeletons, dev-speak → human copy; ?next sanitized,
+  keyboard-only journeys verified. Verdict: SHIP.
+
+### Owner questions from the UI fleet (taste calls — your pick)
+
+1. U2: allow official brand colors inside the 32px OAuth badge chips, or
+   keep monochrome tokens?
+2. U2: site-wide emoji art-direction vs U2's SVG provider marks — which
+   accent language wins?
+3. U2: banned/denied callback states hide the retry CTA (honest dead-end) —
+   keep?
+
+### POLICY SWITCH (owner, mid-fleet): no MCP / no Chrome — code-only
+
+The browser mandate for the UI fleet is REVOKED. All remaining UI agents
+finish as code-level audits (source review + geometry/a11y/target sizes
+from markup + tokens) with code gates only (tsc / tests / build). The
+orchestrator's verification from here is code-only too; live-smoke.mjs
+stays (pure Node REST/sockets, no browser). U2 + U4 had already completed
+with browser evidence before the switch — their findings stand.

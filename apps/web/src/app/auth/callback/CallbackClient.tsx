@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Panel } from "@/components/ui/Panel";
 import { Button } from "@/components/ui/Button";
+import { Skeleton } from "@/components/ui/AsyncSection";
 import { getApiMode } from "@/lib/api";
 import { signInDemoViewer } from "@/lib/mock/admin-fixtures";
 import { useAuthStore } from "@/store/auth-store";
@@ -22,10 +23,14 @@ type Phase =
   | { kind: "ok"; next: string }
   | { kind: "error"; title: string; detail: string; reason: string | null; next: string };
 
-/** reasons the server may send back (extensible; unknown ids get the generic state). */
+/**
+ * Reasons OUR backend actually sends (apps/server auth routes) — every one
+ * gets human words; aliases kept for the wire doc's older spellings.
+ */
 function mapErrorReason(reason: string | null): { title: string; detail: string } {
   switch (reason) {
     case "OAUTH_NOT_CONFIGURED":
+    case "not_configured":
       return {
         title: "Login isn't set up yet",
         detail: "The provider keys aren't configured on the server. The door opens the moment they are — nothing you did wrong.",
@@ -33,7 +38,24 @@ function mapErrorReason(reason: string | null): { title: string; detail: string 
     case "provider_error":
       return {
         title: "Couldn't sign you in",
-        detail: "The provider turned us away. Nothing was charged, no session was made — try again.",
+        detail: "The provider turned us away. Nothing was charged, no session was made — start fresh from the sign-in door.",
+      };
+    case "denied":
+      return {
+        title: "You turned back at the window",
+        detail: "The sign-in was cancelled before the handshake finished. Nothing was kept — come back whenever you're ready.",
+      };
+    case "state":
+    case "code":
+    case "exchange":
+      return {
+        title: "The handshake went stale",
+        detail: "The sign-in ticket expired on the counter. No session was made — a fresh start from the sign-in door usually fixes it.",
+      };
+    case "banned":
+      return {
+        title: "You're barred from this saloon",
+        detail: "The house has banned this account from the tables. If you believe that's a mistake, contact us and quote the reference below.",
       };
     default:
       return {
@@ -42,6 +64,10 @@ function mapErrorReason(reason: string | null): { title: string; detail: string 
       };
   }
 }
+
+/** Reasons where re-verifying the existing cookie can plausibly help; every
+ *  other failure needs a fresh handshake, so the door link is the only honest retry. */
+const RETRYABLE_REASONS: readonly string[] = ["session_missing", "verify_failed"];
 
 function safeNext(raw: string | null | undefined): string {
   if (raw && raw.startsWith("/") && !raw.startsWith("//")) return raw;
@@ -119,6 +145,10 @@ export function CallbackClient() {
             <p className="mt-2 font-body text-sm text-ink-dim">
               The provider let you in — the house is checking your seat now. One moment.
             </p>
+            <div className="mx-auto mt-5 flex max-w-56 flex-col items-center gap-2" aria-hidden>
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-2/3" />
+            </div>
           </Panel>
         </div>
       ) : (
@@ -130,7 +160,10 @@ export function CallbackClient() {
             <h1 className="mt-3 font-display text-3xl text-ivory">{phase.title}</h1>
             <p className="mt-2 font-body text-sm text-ink-dim">{phase.detail}</p>
             {phase.reason && (
-              <p className="mt-1 font-mono text-[10px] text-ink-dim">reason: {phase.reason}</p>
+              <p className="mt-1 font-body text-xs text-ink-dim">
+                quote this if you ask for help:{" "}
+                <span className="font-mono text-brass">{phase.reason}</span>
+              </p>
             )}
             <div className="mt-5 flex flex-col gap-2">
               <Link
@@ -139,14 +172,14 @@ export function CallbackClient() {
               >
                 BACK TO THE SIGN-IN DOOR
               </Link>
-              {phase.reason !== "OAUTH_NOT_CONFIGURED" && (
+              {phase.reason !== null && RETRYABLE_REASONS.includes(phase.reason) && (
                 <Button variant="outline" onClick={retry}>
                   TRY VERIFYING AGAIN
                 </Button>
               )}
               <Link
                 href="/"
-                className="font-body text-xs text-ink-dim underline hover:text-brass"
+                className="inline-flex min-h-12 items-center justify-center font-body text-xs text-ink-dim underline hover:text-brass"
               >
                 back to the saloon
               </Link>
