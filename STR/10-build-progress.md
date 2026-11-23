@@ -368,6 +368,18 @@ matching) lands with A3's live-smoke.mjs ownership once A3 reports.
   now carries all keys. P1s queued for the fix wave: Sheet focus trap +
   restore-on-close, reduced-motion spring, drag-to-dismiss affordance
   (or remove the grab-bar); favicon.ico 404 (icon.svg already exists).
+- **U9** ✅ shop + billing return: a11y 100 + BP 100 both modes
+  (pre-directive), all 7 billing outcomes honest + retry deep-links, ≥2
+  cards/row at 375, zero dark-pattern language. Fixes: useCountUp wired into
+  the granted card (was dead code — no count-up at all) with settled-figure
+  aria-label, modal split "payments aren't live" vs "checkout desk snag" +
+  null-crash guard, pack names + coins units on cards, 48px profile-rack
+  CTA (was 11px), sr-only h2 on the grid. Flags: Sheet focus trap P1
+  (matches U10), robots.txt, AuthGate skeleton CLS (re-measure on prod),
+  usePrefersReducedMotion first-frame false → system-wide one-frame "+0"
+  flash (needs useSyncExternalStore — fix wave). Incident: broad pkill hit
+  U8's running browser — U8 run integrity to re-check on its landing,
+  tightened to exact-PID kills after.
 - **U1** ✅ landing + how-to-play: prod-build Lighthouse mobile 89 / desktop
   98 (a11y 100 both; per the code-only policy this pre-directive measurement
   stands as the perf baseline). Fixes: hero CTA nested a/button killed →

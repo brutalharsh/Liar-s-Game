@@ -93,7 +93,7 @@ export function ShopView() {
   const [category, setCategory] = useState<ShopCategory>("hat");
   const [tryOn, setTryOn] = useState<ShopItem | null>(null);
   const [payPack, setPayPack] = useState<string | null>(null);
-  const [payResult, setPayResult] = useState<string | null>(null);
+  const [payResult, setPayResult] = useState<{ title: string; body: string; note: boolean } | null>(null);
   const owned = useEconomyStore((s) => s.owned);
   const equipped = useEconomyStore((s) => s.equipped);
   const coins = useEconomyStore((s) => s.coins);
@@ -135,12 +135,18 @@ export function ShopView() {
         window.location.assign(outcome.checkoutUrl); // same-tab → hosted pay page
         return;
       }
-      setPayResult(
-        "Payments aren't live yet — the checkout provider hasn't been activated. Nothing was charged.",
-      );
+      setPayResult({
+        title: "Payments aren't live yet",
+        body: "The checkout provider hasn't been switched on — nothing was charged, nothing is owed. The moment it's live, this same button hops you to the hosted pay page and back, with your coins landing on return.",
+        note: true,
+      });
     } catch {
       setPayPack(null);
-      setPayResult("The checkout desk hit a snag — nothing was charged. Try again shortly.");
+      setPayResult({
+        title: "The checkout desk hit a snag",
+        body: "Couldn't reach the till — nothing was charged. Give it a breath and try again; retries are always safe.",
+        note: false,
+      });
     }
   };
 
@@ -198,6 +204,9 @@ export function ShopView() {
 
       {/* item grid — prices + names from GET /api/catalog (fallback: W1 fixtures) */}
       <section>
+        <h2 className="sr-only">
+          {SHOP_CATEGORIES.find((c) => c.id === category)?.label ?? "Catalog"} rack
+        </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
           {items.map((item) => {
             const isOwned = owned.includes(item.id);
@@ -245,7 +254,15 @@ export function ShopView() {
                     {badge}
                   </span>
                 )}
-                <p className="font-display text-2xl text-brass">{formatCoins(pack.coins + pack.bonus)}</p>
+                <p className="font-body text-[11px] uppercase tracking-[0.25em] text-ink-dim">
+                  {pack.name}
+                </p>
+                <p className="font-display text-2xl text-brass">
+                  {formatCoins(pack.coins + pack.bonus)}
+                  <span className="ml-1 font-body text-[11px] uppercase tracking-widest text-ink-dim">
+                    coins
+                  </span>
+                </p>
                 <p className="font-display text-lg text-ivory">{formatInr(pack.priceMajor)}</p>
                 {pack.bonus > 0 && (
                   <p className="font-body text-[10px] text-verdict">+{formatCoins(pack.bonus)} bonus coins</p>
@@ -263,22 +280,30 @@ export function ShopView() {
             );
           })}
         </div>
-        <Sheet open={payResult !== null} onClose={() => setPayResult(null)} title="Payment gateway coming soon">
-          <div className="flex flex-col items-center gap-3 text-center">
-            <span className="text-5xl" aria-hidden>
-              🪙⏳
-            </span>
-            <p className="font-body text-sm text-ivory">{payResult}</p>
-            <p className="font-body text-[11px] text-ink-dim">
-              The buy button already calls <code className="text-brass">POST /api/billing/checkout</code>{" "}
-              with <code className="text-brass">{`{packId}`}</code> — the moment the checkout provider is
-              activated, you'll hop to the hosted pay page and back to{" "}
-              <code className="text-brass">/billing/return</code> with zero screen changes.
-            </p>
-            <Button variant="brass" onClick={() => setPayResult(null)}>
-              UNDERSTOOD
-            </Button>
-          </div>
+        <Sheet
+          open={payResult !== null}
+          onClose={() => setPayResult(null)}
+          title={payResult?.title ?? ""}
+        >
+          {payResult && (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <span className="text-5xl" aria-hidden>
+                {payResult.note ? "🪙⏳" : "🪙🛠️"}
+              </span>
+              <p className="font-body text-sm text-ivory">{payResult.body}</p>
+              {payResult.note && (
+                <p className="font-body text-[11px] text-ink-dim">
+                  The buy button already calls <code className="text-brass">POST /api/billing/checkout</code>{" "}
+                  with <code className="text-brass">{`{packId}`}</code> — the moment the checkout provider
+                  is activated, you'll hop to the hosted pay page and back to{" "}
+                  <code className="text-brass">/billing/return</code> with zero screen changes.
+                </p>
+              )}
+              <Button variant="brass" onClick={() => setPayResult(null)}>
+                UNDERSTOOD
+              </Button>
+            </div>
+          )}
         </Sheet>
         <p className="mt-3 text-center font-body text-[11px] text-ink-dim">
           Coins are cosmetic-only and non-redeemable. No loot boxes, no odds, no XP for money —
@@ -288,11 +313,16 @@ export function ShopView() {
 
       <TryOnSheet item={tryOn} open={tryOn !== null} onClose={() => setTryOn(null)} />
       <p className="text-center font-body text-[11px] text-ink-dim">
-        Curious what's equipped where? Check your{" "}
-        <a href="/profile" className="text-brass underline">
-          profile rack
+        Curious what's equipped where? Your profile rack keeps score. Purchases are final —
+        support can adjust the ledger if the house breaks something.
+      </p>
+      <p className="text-center">
+        <a
+          href="/profile"
+          className="inline-flex min-h-12 items-center rounded-btn border-2 border-ink-dim/70 px-4 font-body text-[11px] tracking-wide text-brass hover:border-brass hover:brightness-110"
+        >
+          CHECK YOUR PROFILE RACK
         </a>
-        . Purchases are final — support can adjust the ledger if the house breaks something.
       </p>
     </div>
   );

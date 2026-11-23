@@ -207,14 +207,20 @@ export function ReturnClient() {
 }
 
 function GrantedCard({ coinsGranted, coinBalance, packName }: { coinsGranted: number; coinBalance: number; packName: string | null }) {
+  // STR/05 §4 count-up — eased tick for the eye, aria-label holds the settled
+  // figure so assistive tech never has to read a moving number.
+  const shown = useCountUp(coinsGranted);
   return (
     <>
       <Panel className="w-full p-8 text-center" tone="wood">
         <span className="text-6xl" aria-hidden>
           🪙🎉
         </span>
-        <h1 className="mt-3 font-display text-4xl text-brass">
-          +{formatCoins(coinsGranted)} coins
+        <h1
+          className="mt-3 font-display text-4xl text-brass"
+          aria-label={`+${formatCoins(coinsGranted)} coins`}
+        >
+          +{formatCoins(shown)} coins
         </h1>
         <p className="mt-2 font-body text-sm text-ivory">
           {packName ? `The ${packName} hit your wallet` : "Your wallet just got heavier"} — the
