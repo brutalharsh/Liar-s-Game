@@ -6,10 +6,13 @@
 ## v1 — Core game (FREE)
 
 - **Liar's Deck** full rules per STR/01, 2–7 player rooms
-- Three table sizes implicitly: any count 2–7; "Big Table" 8–10 is premium (v1.x)
+- Three table sizes implicitly: any count 2–7; "Big Table" 8–10 is premium — the
+  capacity gate is BUILT (host must hold the `capacity:big-table` entitlement;
+  capacity >7 is rejected `ILLEGAL_MOVE` without it)
 - Private rooms: 5-char code, invite link `/r/XXXXX`, share button
-- **Public room browser**: open tables anyone can join (name, host avatar, theme,
-  seats x/7, lock badge); rooms auto-expire 10min idle
+- **Public room browser**: open tables anyone can join (code, name, host nickname,
+  theme, seats x/capacity, freshness); rooms auto-expire 10min idle (also enforced
+  by the 10-min TTL on the `public_rooms` mirror)
 - Lobby: seats fill, host controls (kick, lock, theme pick, start ≥2),
   est. match time chip, rules help drawer
 - Full round loop: deal → play → windows (STR/01 §4) → reveal → shot (§6) →
@@ -22,7 +25,9 @@
 - Profiles: **Discord/Google login identity** (login required to play), nickname + avatar — persistent in MongoDB
 - Stats: kills (headline), catches, wins, matches, deaths, pulls survived
 - **Titles** ("Best Liar" etc., full list STR/04 §6): earned server-side, 1 equipped
-- **Leaderboard**: global all-time, metrics wins | kills | XP | titles; top 100
+  (shipped registry = 11 title ids, STR/04 §6)
+- **Leaderboard**: global all-time, metrics wins | kills | XP | titles; paginated
+  (default 20/page, max 50), 60s server cache, banned accounts never shown
 - XP + levels 1–100 (brutal curve, STR/04 §5); prestige frame every 10 levels
 - Coins wallet + earn (STR/04 §2); SPEND on cosmetics
 - Avatar customization: starter set free; hair/beard/hat/shirt/glasses/frame items via coins
@@ -35,14 +40,25 @@
 ## v1 — Auth (login REQUIRED), Admin dashboard & Payments
 
 - **Login gate**: users sign in with **Discord or Google OAuth** before creating,
-  joining or playing. JWT httpOnly cookie sessions (7-day). No guest play.
+  joining or playing. JWT httpOnly cookie sessions (7-day, `lg_session`). No guest
+  play. Client-side gate covers `/create`, `/join`, `/shop`, `/profile`, `/settings`;
+  landing, `/rooms`, `/leaderboard`, `/how-to-play` stay public (browse-only when
+  signed out). Every Socket.IO play event (`room:create`, `room:join`, `game:start`,
+  `play:cards`, …) is server-gated regardless of page (`AUTH_REQUIRED`).
+- **OAuth flow**: `/login` buttons are plain anchors to `GET /api/auth/{discord,google}`
+  → provider → backend callback validates the one-time `lg_oauth_state` cookie,
+  upserts the user, sets the session, then 302-redirects to
+  `/auth/callback?status=ok|error&reason=denied|state|code|not_configured|banned|exchange`.
+  The `/auth/callback` page verifies the cookie via `GET /api/auth/me` and routes
+  onward (`?next=` honored only for same-origin paths).
 - **Admin dashboard `/admindashboard`** (env credentials `ADMIN_USERNAME` /
   `ADMIN_PASSWORD`, timing-safe compare): full user management — searchable user
   list (avatar, level, coins, titles), profile drill-down (character/avatar spec,
-  wallet ledger, payment history, match records), grant/adjust coins with reason,
-  ban/unban, **catalog editing — change item name & price, toggle active** —
-  coin-pack price editing, payment records browser, image uploads for catalog art
-  (to the hosted image server). Every admin mutation lands in `admin_audit`.
+  wallet ledger, payment history, match count), grant/adjust coins with reason,
+  ban/unban, **catalog editing — name & price, active toggle, plus tier / levelReq /
+  sort / art and full item CREATE** — coin-pack price editing, payment records
+  browser, audit-trail browser, catalog-image uploads + image browser (to the
+  hosted image server). Every admin mutation lands in `admin_audit`.
 - **Payments: hosted payment proxy** (Razorpay behind it — identity + full
   API live in the PRIVATE gitignored `docs/` folder):
   `POST /api/billing/checkout {packId}` → price read SERVER-SIDE from the

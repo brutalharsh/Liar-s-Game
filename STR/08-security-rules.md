@@ -12,16 +12,23 @@
 2. **One validating reducer.** Every client action → zod parse → server-side legality
    check (turn? owner? ≤3? window open? seat alive?) → `rules-engine.apply`. Rejected
    actions answer with `error`; they can never mutate state.
-3. **Server owns all RNG.** `crypto.randomInt` for shuffle, table card, `bulletPos`,
-   shot-assignment coin, win-coins. No `Math.random` anywhere in game paths.
-   `bulletPos` is fixed at match start, never re-rolled.
+3. **Server owns all RNG.** `node:crypto` mints a 48-bit match seed
+   (`randomInt(0, 2^48−2)` — crypto's hard cap) plus room codes/match ids and the
+   bot stream salt; a `SeededRng` derived from that seed (splitmix64 → xoshiro256**
+   with exact rejection sampling) drives every draw — shuffle, table card,
+   `bulletPos`, shot-assignment coin, win-coins — so `(seed, log)` replays
+   bit-exactly. No `Math.random` anywhere in game paths. `bulletPos` is fixed at
+   match start, never re-rolled. Bots use a separate `SeededRng(seed ^ salt)` so
+   bot decisions never advance the replayable stream.
 4. **Timers are server events.** Client clocks render; server deadlines decide.
    Timeout actions go through the same reducer as human actions.
-5. **Atomicity over races.** First-processed-wins; stale events rejected
-   (`EVENT_STALE`); forced-call has priority. The original game's "play + call in
-   the same instant" exploit is structurally impossible for us.
-6. **Room codes are secrets.** 25^5 entropy + join rate-limit (10/IP/10min) + room
-   capacity caps + empty-room GC (10 min idle).
+5. **Atomicity over races.** First-processed-wins; stale/late events rejected with
+   typed `ERR_*` codes (`EVENT_STALE` is the pinned vocabulary name, not currently
+   emitted by the engine); forced-call has priority. The original game's "play +
+   call in the same instant" exploit is structurally impossible for us.
+6. **Room codes are secrets.** 31^5 entropy + join rate-limit (10/IP/10min) + room
+   capacity caps + empty-room GC (10 min idle; a live match is never reaped mid-
+   flight).
 7. **Identity & sanity.** Nicknames/room names through the sanitizer (18 chars,
    strip control/confusables, blocklist) — nicknames render as TEXT ONLY, never HTML.
    Avatar specs are category-checked server-side (owned + valid slugs).
@@ -34,8 +41,11 @@
 10. **Secrets & supply chain.** `.env` only (gitignored — the Atlas password was
     chat-shared: ROTATE BEFORE LAUNCH, lock Atlas to VPS IP). No secrets in client
     bundles (never `NEXT_PUBLIC_` a secret). Pinned lockfile, `npm audit`, minimal deps.
-11. **Replayable justice.** Per-match append-only event log (hash-chained);
-    any disputed round reconstructs deterministically (seed + events in the log).
+11. **Replayable justice.** Per-match append-only event log persisted with the
+    seed in `match_replay_seeds` (`{matchId, roomCode, seed, winnerSeat,
+    aborted, log, endedAt}`); any disputed round reconstructs deterministically
+    (seed + events in the log). Hash-chaining the log entries is a planned
+    wave-2 hardening step.
 12. **Logs minimal PII.** Store IDs + counts — not IPs beyond ops needs; no voice/
     text content ever (none exists).
 13. **Auth.** OAuth `state` param checked on every callback (CSRF); JWT cookies

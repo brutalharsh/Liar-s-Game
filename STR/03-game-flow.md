@@ -5,13 +5,18 @@
 ## 1. Screen map
 
 ```
-Home ─┬─ Create ──► Lobby ──► [Countdown] ──► Table ──► Round* ──► Winner ──┬─ Lobby (rematch)
-     ├─ Join (code/link) ─► Lobby ────────────────────────────────────────────┘
-     ├─ Public rooms ──► Lobby (as guest)
-     ├─ How to play
-     ├─ Leaderboard ── Profile (tap row)
-     ├─ Shop
-     └─ Profile (stats, titles, wallet) ── Settings
+Home ─┬─ Login ──► [OAuth provider] ──► /auth/callback ──► back to Home/next
+      ├─ Create ──► Lobby ──► [Countdown] ──► Table ──► Round* ──► Winner ──┬─ Lobby (rematch)
+      ├─ Join (code/link /r/XXXXX) ─► Lobby ───────────────────────────────┤
+      ├─ Public rooms (/rooms) ──► Lobby (as guest of the room, or spectator if full)
+      ├─ How to play
+      ├─ Leaderboard ── Profile (own only via /profile)
+      ├─ Shop
+      ├─ Profile (stats, titles, wallet) ── Settings
+      └─ Admin dashboard (/admindashboard — env-credential login)
+
+Game lobby/table routes: /lobby/[code], /table/[code] · /billing/return (payment
+result page) · /motion-lab (internal animation preview)
 ```
 
 ## 2. Round state machine (what each player sees)
@@ -32,8 +37,13 @@ Home ─┬─ Create ──► Lobby ──► [Countdown] ──► Table ─�
 ## 3. Reconnect flow
 
 - Drop → toast "Waiting for Harsh…" 60s round-pause cap; auto-player covers turns.
-- Re-join via same link/device token → full state snapshot (STR/07) →
-  "Welcome back" banner. Mid-SHOT disconnect: resolve on server, show result on return.
+- Seats bind to USER IDs (not sockets): re-join via the room link/code with the same
+  session → `room:join` restores the seat + full catch-up snapshot (`seq` sync) →
+  "Welcome back" banner. No reconnect token exists — the room code IS the seat
+  authority (STR/07 §5). After the 60s grace expires the seat is ABANDONED
+  ("seat lost" — auto-play continues, not eliminated); re-joining still shows the
+  seat but the engine rejects further action input from it.
+- Mid-SHOT disconnect: resolve on server, show result on return.
 
 ## 4. Winner screen
 

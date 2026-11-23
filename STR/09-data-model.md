@@ -16,8 +16,11 @@
 
 ### wallet_ledger (append-only)
 ```ts
-{ _id, accountId, delta, reason: 'win'|'survived_round'|'purchase'|'spend'|'adjust',
-  refId, txId, at }  // txId unique — idempotency: `${reason}:${refId}`
+{ _id, accountId, delta, reason: 'match_reward'|'purchase'|'spend'|'adjust'
+            |('win'|'survived_round' legacy slots, unused by the grant path),
+  refId, txId, at }  // txId unique — idempotency: match grants match:<matchId>:<userId>,
+                     // purchases spend:<userId>:<itemId>, billing checkout:<token>,
+                     // admin adjust:<uuid>
 // balance derived: sum or cached on account with periodic verify
 ```
 
@@ -29,9 +32,11 @@
 
 ### catalog_items
 ```ts
-{ _id: 'hair:mohawk', category: 'hair', price: 120, tier: 'common',
-  free?: false, active: true, artSlug, sort }
-// themes same collection, kind 'theme' {bg, felt, cardBack, ambience}
+{ _id: 'hair:mohawk', category: 'hair', price: 120, tier: 'common'|'rare'|'epic',
+  free?: false, active: true, levelReq?,  // >0 = earned-only (never purchasable)
+  artSlug?, imageId?, imageUrl?, imageName?, sort }
+// themes same collection, category 'theme', subdoc theme {bg, felt, cardBack, ambience}
+// idx: (active, category, sort); id = composite `category:slug`
 ```
 
 ### coin_packs (pricing lives in DB → admin-editable; checkout ALWAYS prices from here)
@@ -67,12 +72,24 @@
 ### title_progress (cache from match_records)
 ```ts
 { _id, accountId, titleId, unlockedAt, progress }
-// recompute-on-read from match_records (cheap at v1 scale), cache for profile page
+// unique (accountId, titleId); truth = cumulative stats recomputed on every grant
+// (grant.ts); rows are the unlock ledger the profile page + `titles` metric read
 ```
 
-### xp_events (optional audit)
+### xp_events (REQUIRED — the grant idempotence anchor)
 ```ts
 { _id, accountId, matchId, xp, at }  // unique accountId+matchId
+// Written FIRST inside each per-player grant transaction: duplicate key there
+// means the player's grant already fully committed → a re-fired game:over no-ops
+// and a crash mid-grant retries clean.
+```
+
+### match_replay_seeds (deterministic-replay envelope — economy-owned)
+```ts
+{ _id, matchId (UNIQUE), roomCode, seed, winnerSeat, aborted,
+  log: LogEntry[] (rules-engine serialized event log), endedAt }
+// Written once per match beside match_records, keyed 1:1 by matchId; input for
+// the wave-2 hash chain. Duplicate = already persisted.
 ```
 
 ### public_rooms (registry mirror for the browser UI)
@@ -84,9 +101,20 @@
 
 ## Derived reads
 
-- **Leaderboard** `GET /api/leaderboard?metric=wins|kills|xp|titles`:
-  aggregation pipeline over `match_records` (sum per account), cached 60s.
-- **Profile** `GET /api/me`: account + balance + title_progress + last 5 match_records.
+- **Leaderboard** `GET /api/leaderboard?metric=wins|kills|xp|titles&page=&perPage=`:
+  wins + kills = aggregation over `match_records` (sum per account), xp = `users`
+  sorted by xp, titles = counted `title_progress` rows; in-process cache 60s,
+  envelope `{metric, page, perPage, total, leaderboard[{accountId, nickname,
+  avatarSpec?, activeTitle?, level?, rank, value}]}`; banned/deleted accounts
+  never shown; default 20/page, max 50.
+- **Profile** `GET /api/me` (identical twin at `/api/me/profile`): account +
+  derived coin balance + levelProgress (canonical level + percent) +
+  unlockedTitleCount + **last 10** match_records (own line only, explicit
+  no-PII projection — no email/provider identity).
+- **Room browser** `GET /api/rooms`: paginated read of the `public_rooms` mirror
+  (browser fields only — STR/08 §1).
+- **Entitlements** `GET /api/me/entitlements`: the account's owned rows
+  (kind: item|theme|title|capacity, key, source: purchase|free|level|…).
 - **No guest merge** — Discord/Google is the identity from the first login; all
   economy rows are keyed to the user from day one.
 

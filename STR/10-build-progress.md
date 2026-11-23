@@ -107,6 +107,28 @@
   user + Network Access locked to the VPS IP (notes inside both env files).
 - Trademark clearance for "Liar's Game" before public launch (alternates benched)
 - Owner's VPS details (provider, region, access) for the deploy wave
+- **Rotate the image server's ADMIN (master) key** — A6 audit 2026-11-23:
+  the service's master key equals a public string (the owner's GitHub handle,
+  visible in this repo) → the service incl. our art bucket is compromise-able
+  to anyone who connects the dots. Rotate at the service dashboard
+  (private docs/image-server.md §1) — our app only uses the PROJECT key, so
+  nothing breaks.
+- **Deploy-wave checklist (A6 audit)**: trust-proxy depth must match the real
+  hop count (Cloudflare→Caddy = 2; wrong depth collapses rate limits into one
+  sitewide bucket); consider a dedicated ADMIN_SECRET separate from
+  AUTH_SECRET; add a per-IP socket connection cap (STR/08 §8) or accept CDN
+  absorption; confirm CSP is enforced at the edge (Caddy).
+- **Post-fleet fix list (A6 + A1 audits)**: scrub the `td_setup_` key-prefix hint
+  from STR (A6); admin-query safeParse → VALIDATION not INTERNAL (A6);
+  **PRUNE the dead HandshakeSchema** from shared events.ts — A1 confirmed
+  server auth is cookie-only and STR/07 §0 now documents no-reconnectToken
+  (A1/A6 agree: prune, don't wire); **emote id mismatch** — web
+  lib/mock/emotes.ts ids ≠ server EMOTE_CATALOG (rooms.ts:62–73) → live
+  emotes VALIDATION-reject (A1 ③, real user-facing bug; coordinate EmoteWheel
+  which U6 audits); **catalog tier union mismatch** — web api.ts
+  `common|fine|rare|cursed` vs server `common|rare|epic` (A1 ④); theme
+  `house` vs `house-table` (A7 owns that normalize mid-flight). ① (undeclared
+  cors phantom-dep) fixed immediately.
 
 ## Agent dispatch log
 
@@ -185,6 +207,27 @@
   orchestrator territory; done at integration. Big-Table entitlement pinned
   `capacity:big-table`; lock/kick/bot programmatic (no wire events by design);
   room code = seat authority (no reconnectToken, STR/07 §5)
+- A1 — ✅ completed 2026-11-23 morning; STR conformance audit 00–09 vs shipped
+  code. Docs corrected where code is truth: STR/07 §0 full REST surface
+  (health/logout/packs/images/audit routes, /api/me/profile twin,
+  /api/shop/purchase, /api/me/entitlements; reconnect = room code + user-bound
+  seats, no reconnectToken), §1–2 acks + seq + reason enums + ERR_* codes,
+  §6 EVENT_STALE note; STR/09 match_replay_seeds + xp_events-as-anchor +
+  match_reward ledger enum + derived-read shapes; STR/06 shipped versions +
+  registerGame boot flow + dev proxy + CI reality; STR/04 K=733 curve,
+  match_reward pre-summed rows + 3/hour cap, 11-title registry (House Always
+  Wins deferred); STR/02 gate list + /auth/callback flow; STR/03 screen map +
+  reconnect; STR/08 seed/RNG mechanism + 31^5; STR/05 emote wire slugs.
+  Code-flags for owners (NOT doc fixes): cors undeclared in
+  apps/server/package.json (phantom via socket.io); shared HandshakeSchema
+  (guestToken required) unused by server — auth is cookie-only; web mock
+  emote ids (lib/mock/emotes.ts) ≠ server EMOTE_CATALOG (only `laugh`
+  overlaps → live emotes would VALIDATION-reject); web tier union
+  common|fine|rare|cursed (lib/api.ts) vs server common|rare|epic; web
+  ThemeId `house` vs server `house-table` (queued). Observed mid-audit: A5
+  concurrently reconciled titles mock 12→11 + deleted dead mock
+  leaderboard/profile (its own queue); STR/04/05 updated to match.
+  Markdown-only — no code files touched by A1.
 
 ## Wave 1 COMPLETE — all 11 agent waves landed, verified, committed, pushed.
 
@@ -216,3 +259,28 @@ game:over → grantMatchRewards → Mongo → leaderboard shows the XP.
   house-wins) vs E1's 11 (cat-with-nine-lives; House Always Wins deferred)
 - Catalog id pin: `category:slug` everywhere (W1-era dash-format fixtures)
 - Theme slug normalize at the store level (house vs house-table adapter seam)
+
+## Mega-wave 2 (2026-11-23 morning) — 22 agents dispatched on owner's order
+
+**Fleet A — engineering recheck (10)**: A1 STR-vs-code doc audit (owns STR
+edits) · A2 race conditions in src/game (rooms/timers/match/bots — router.ts
+excluded) · A3 flow tests + smoke scenarios (window/bots/abandon) · A4 router
+crash hardening (owns router.ts — the deliberate P0 follow-up) · A5 cleanups
+(oauth env fold, .env.example parity, dead mocks, titles reconcile, shop
+balance rewire, catalog id pin) · A6 security/privacy re-audit (read-only) ·
+A7 web store/flow audit + theme-slug normalize (owns store/socket/wire/
+GameBridge) · A8 economy edge audit · A9 rules conformance (test-only, engine
+frozen) · A10 repo hygiene (README/CONTRIBUTING/CI + command verification).
+
+**Fleet B — UI/UX (12, browser-verified at 375/768/1024/1440 per owner's
+explicit order)**: U1 landing/how-to-play · U2 login+auth · U3 rooms/create/join
+· U4 lobby · U5 table layout/seats/banner · U6 hand/CHECK/emotes/pile ·
+U7 cinematics+motion-lab (timing budgets verified in-browser) · U8 ghost/
+spectate · U9 shop+billing · U10 admindashboard (all 5 tabs) · U11 profile+
+leaderboard · U12 cross-cutting design-system/a11y/PWA token audit (owns only
+globals.css/tailwind token fixes; everything else = P0-P2 report table).
+
+Shared dev servers running: web :3000 (mock default), API :3001. Fleet B
+saves screenshots to /tmp/ui-audit/<U-id>/ for orchestrator vision review.
+File territories are strictly partitioned across all 22 agents; every agent
+has git-lockdown (orchestrator commits each verified landing).

@@ -28,10 +28,15 @@ never the redirect. BLOCKED only on project registration (owner: `td_setup_…`
 
 ## 2. Earning coins (no farming)
 
-- Match **win**: `randInt(2..7)` coins (server crypto RNG at match end)
-- Everyone: **+1 coin per round survived** (was alive when the round ended)
-- Cap: 3 earn-events/hour/user (login identity from the start — no guest accounts)
-- All grants idempotent (matchId + playerId unique index)
+- Match **win**: `randInt(2..7)` coins; **everyone** gets **+1 coin per round
+  survived**. The rules engine pre-sums both into each player's
+  `stats.coinsEarned` at `game:over`; the economy seam applies that number
+  verbatim as ONE **`match_reward`** ledger row (`txId = match:<matchId>:<userId>`)
+  — there are no separate win/survived_round rows.
+- Cap: **3 earn-events/hour/user** — enforced by counting that player's
+  `match_reward` rows in the trailing hour; XP is NOT capped. Grants idempotent:
+  the unique `xp_events (accountId, matchId)` anchor plus the unique ledger `txId`
+  make a re-fired `game:over` a no-op.
 
 ## 3. Spending — catalog (server-validated prices, tiers)
 
@@ -52,40 +57,51 @@ Rules: one equip per category; server rejects un-owned equips; purchases are fin
 
 ## 4. Themes
 
-**Free**: The Saloon (default bar table), House Table (living-room felt).
-**Premium (coins)**: Neon District (cyberpunk), Casino Royale, Jazz Speakeasy,
+**Free**: The Saloon (`saloon`, default bar table), House Table (`house-table`,
+living-room felt). **Premium (coins)**: Neon District, Casino Royale, Jazz Speakeasy,
 Haunted Inn, Orbital Cantina, Kabuki Alley. Each pack: background + felt + card back
 variant + ambience loop, ≤1MB, lazy-loaded. Theme is chosen by the **host** and renders
-for the whole room (live demo pressure to buy). ❌ No adult-content themes (rejected).
+for the whole room (live demo pressure to buy); on the server a theme is legal if
+`saloon`/`house-table` or the host holds the matching `theme` entitlement — web-side
+`house` alias normalization is a known store seam. ❌ No adult-content themes (rejected).
 
 ## 5. XP & levels (honest grind)
 
-- XP per completed match: **win 12 · survived-to-end 6 · died 4**
-- Levels 1–100. Threshold: `xpForLevel(L) = round(K · 1.0721^(L-1))` with `K` tuned so
-  **cumulative to level 100 ≈ 10,000,000 XP ≈ owner's 10 lakh (1M) matches** at ~10 XP avg.
-  (Exact K solved in code + test; recalibratable via one constant.)
+- XP per completed match: **win 12 · survived-to-end 6 · died 4** (0 if you left alive)
+- Levels 1–100. Step cost `xpForLevel(L) = round(K · 1.0721^(L-1))` with **K = 733**
+  (solved + locked in code): cumulative XP to reach level 100 =
+  **10,000,496** ≈ the 10,000,000 target ≈ owner's 10-lakh (1M) matches at ~10 XP
+  avg. (K is a single recalibration constant in `economy/levels.ts`.)
 - Every 10 levels: prestige **level frame** (earned-only, never purchasable).
 - No purchasable XP. No XP boosts. Ever.
 
 ## 6. Titles (equip 1, shown on profile/lobby/leaderboard)
 
-| Title | Unlock (cumulative stats) |
-|---|---|
-| Best Liar | 50 bluffSuccesses |
-| Smooth Talker | 100 bluffSuccesses |
-| Sharp Eye | 25 catches |
-| Lie Detector | 100 catches |
-| Dead Eye | 10 kills |
-| Grim Reaper | 25 kills |
-| Bar Legend | 10 wins |
-| Regular | 50 matches |
-| Honest Fool | 10 matches, 0 lies played |
-| Cat With Nine Lives | 9 pulls survived |
-| The House Always Wins | execute the same player twice in one match |
-| Chicken Dinner? | first false accusation (fun-negative) |
+Shipped server registry = **11 ids** (`economy/titles.ts`), threshold-based on
+cumulative match_records stats:
 
-Computed server-side at match end; unlock push + cockpit toast (never mid-round
-interruption — lobby/round-end only).
+| Title (id) | Unlock (cumulative stats) |
+|---|---|
+| Best Liar (`best-liar`) | 50 bluffSuccesses |
+| Smooth Talker (`smooth-talker`) | 100 bluffSuccesses |
+| Sharp Eye (`sharp-eye`) | 25 catches |
+| Lie Detector (`lie-detector`) | 100 catches |
+| Dead Eye (`dead-eye`) | 10 kills |
+| Grim Reaper (`grim-reaper`) | 25 kills |
+| Bar Legend (`bar-legend`) | 10 wins |
+| Regular (`regular`) | 50 matches |
+| Honest Fool (`honest-fool`) | 10 matches, 0 bluffSuccesses (the only "lies played" proxy the record carries) |
+| Cat With Nine Lives (`cat-with-nine-lives`) | 9 pulls survived |
+| Chicken Dinner? (`chicken-dinner`) | first false accusation (fun-negative) |
+
+⚠️ **"The House Always Wins" (execute the same player twice in one match) is
+DEFERRED**: MatchRecord stats don't record executor→victim identity, so it is not
+computable today — deliberately absent rather than approximated; needs a future
+engine stats field. (The web title mock is reconciled 1:1 with these 11.)
+
+Computed server-side at match end (recomputed from match_records on every grant);
+unlock push + cockpit toast (never mid-round interruption — lobby/round-end only).
+Title ids are stable wire strings (`best-liar` … `chicken-dinner`).
 
 ## 7. Ledger invariants
 

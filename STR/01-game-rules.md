@@ -26,7 +26,8 @@
 ## 3. A turn
 
 Living player with cards has **one choice + timer** (30s @2–3p, 20s @4–5p, 15s @6–10p,
-host "fast" toggle = 10s):
+host "fast" toggle = 10s). The timer ladder AND the challenge mode (§4) track the
+**current ALIVE count**, not lobby size — engine knobs allow overriding both:
 
 - **PLAY 1–3 cards face-down.** Playing = implicit claim: "all of these are the Table Card."
   Lying allowed. Jokers are wild (always count as Table Card ⇒ always "truth").
@@ -39,10 +40,11 @@ the table", not eliminated).
 ## 4. Challenge windows (AMENDMENT A2)
 
 - **2–4 players**: only the **next player** may call LIAR (authentic rule).
-- **5–10 players**: after a play lands there's an **open 10-second window** — ANY living
-  player except the accused may CHECK. Server: 2s arm-delay after the play, **first
-  event wins** (no race), window closes when the next player commits a play (belief)
-  or expires.
+- **5–10 living players**: after a play lands there's an **open 10-second window** — ANY living
+  player except the accused may CHECK (empty-handed players included). Server: 2s
+  arm-delay after the play, **first event wins** (no race; a LIAR at exactly
+  `armedAt`/`closesAt` is legal, late CHECKs are rejected), window closes when the
+  next player commits a play (belief) or expires.
 
 ## 5. Resolution
 

@@ -62,9 +62,12 @@ stylistic slump + fade only (PG-13).
 
 ## 6. Emotes (no voice chat — this IS table talk)
 
-10 presets (text+icon bubbles): "Call my bluff", "My condolences", "Shots on me",
-"Oops", "Trust me", "Snake", "Skull", "Laugh", "Clap", "Pray". 3s cooldown,
+10 presets (text+icon bubbles), 3s server-enforced cooldown (config knob),
 lobby+table only, ghosts get their own dimmed set, mute-all in settings.
+Server wire slugs (`EMOTE_CATALOG`): `tipping-hat, laugh, gasp, angry, sweat, cry,
+cheer, shush, thinking, wink` — the server rejects any other id (`VALIDATION`).
+⚠️ web mock + EmoteWheel still send the W-era name set ("Call my bluff"…, only
+`laugh` overlaps) — reconciliation pending on the web side.
 
 ## 7. Accessibility checklist
 
