@@ -9,7 +9,7 @@
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "icons": "node scripts/generate_icons.mjs"
+    "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
     "@liars-game/shared": "*",

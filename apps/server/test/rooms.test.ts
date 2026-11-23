@@ -84,6 +84,7 @@ describe('GET /api/rooms', () => {
     expect(body.perPage).toBe(20);
     expect(body.total).toBe(2);
     expect(body.rooms).toHaveLength(2);
+    const firstRow = ROWS[0] as (typeof ROWS)[number];
     expect(body.rooms[0]).toEqual({
       roomCode: 'K7QX2',
       name: 'High Noon Saloon',
@@ -91,10 +92,12 @@ describe('GET /api/rooms', () => {
       theme: 'saloon',
       capacity: 4,
       seatsTaken: 3,
-      updatedAt: ROWS[0].updatedAt.toISOString(),
+      updatedAt: firstRow.updatedAt.toISOString(),
     });
     // Only browser fields ever leave — no extra mirror columns sneak out.
-    expect(Object.keys(body.rooms[0] as object).sort()).toEqual(
+    const firstRoom = body.rooms[0] as Record<string, unknown> | undefined;
+    if (firstRoom === undefined) throw new Error('expected a room row in the page');
+    expect(Object.keys(firstRoom).sort()).toEqual(
       ['capacity', 'hostNickname', 'name', 'roomCode', 'seatsTaken', 'theme', 'updatedAt'].sort(),
     );
   });

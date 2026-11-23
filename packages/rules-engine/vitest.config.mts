@@ -4,7 +4,8 @@ export default defineConfig({
   test: {
     include: ['test/**/*.test.ts'],
     environment: 'node',
-    testTimeout: 60000,
-    hookTimeout: 60000,
+    // Soak runs ~56-59s under load vs the previous 60s cap — zero headroom.
+    testTimeout: 120000,
+    hookTimeout: 120000,
   },
 });
