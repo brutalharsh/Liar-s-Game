@@ -25,8 +25,10 @@ import {
   mockCatalog,
   mockUpload,
   validateUpload,
+  hasDemoViewer,
 } from "@/lib/mock/admin-fixtures";
 import { mockLeaderboard, mockProfile } from "@/lib/mock/profile-fixtures";
+import { mockPersona } from "@/lib/mock/persona";
 import { makePublicRooms } from "@/lib/mock/rooms";
 import { mockFetch } from "@/lib/mock/api";
 
@@ -759,7 +761,10 @@ export interface EntitlementsResponse {
  * the pass yet — the UI shows the locked tile + hint.
  */
 export async function getEntitlements(): Promise<EntitlementsResponse> {
-  if (getApiMode() === "mock") return { entitlements: [] }; // demo: only the free rails
+  if (getApiMode() === "mock") {
+    if (!hasDemoViewer()) return { entitlements: [] };
+    return mockPersona.entitlements();
+  }
   try {
     return await apiFetch<EntitlementsResponse>("/api/me/entitlements");
   } catch (err) {
@@ -773,4 +778,73 @@ export async function getEntitlements(): Promise<EntitlementsResponse> {
 /** Membership test against the entitlement list the server returned. */
 export function hasEntitlement(list: UserEntitlement[], kind: string, key: string): boolean {
   return list.some((e) => e.kind === kind && e.key === key);
+}
+
+// ════════════════════ self-service /api/me mutations (T3, frozen) ═════════════
+
+/**
+ * POST /api/me/equip slot union (frozen 2026-11-23): the five attachable
+ * slots plus 'base'. The frame/anim/voicePack slots are NOT equippable this
+ * wave — the server 400s them (BAD_REQUEST) until the contract grows.
+ */
+export type EquipSlot = "hair" | "beard" | "hat" | "shirt" | "glasses" | "base";
+
+/** 200 body of POST /api/me/equip — `{ ok: true, spec }`, spec authoritative. */
+export interface EquipAck {
+  spec: AdminAvatarSpec;
+}
+
+/** 200 body of PUT /api/me/profile — `{ ok: true, nickname }` (sanitized). */
+export interface ProfileAck {
+  nickname: string;
+}
+
+/**
+ * The entitlement key for a CATALOG id — the slug after the first ':' ('body:dog'
+ * → 'dog', 'hat:bowler' → 'bowler') or the whole id when there is no colon
+ * (the W1 hyphen catalog: 'hat-bowler'). Mirrors the server's ownership join
+ * for both catalog id generations.
+ */
+export function catalogItemKey(itemId: string): string {
+  const at = itemId.indexOf(":");
+  return at === -1 ? itemId : itemId.slice(at + 1);
+}
+
+/** Whether an owned-entitlement list covers a catalog item (either id shape). */
+export function ownsCatalogItem(list: UserEntitlement[], itemId: string): boolean {
+  return hasEntitlement(list, "item", catalogItemKey(itemId));
+}
+
+/**
+ * POST /api/me/equip { slot, itemId } — flat one-slot merge into
+ * user.avatarSpec; `itemId: null` unequips (base null is BASE_REQUIRED).
+ * Errors (ApiError): 400 BAD_REQUEST | INVALID_BASE | BASE_REQUIRED |
+ * ITEM_SLOT_MISMATCH · 401 AUTH_REQUIRED · 403 BANNED | EQUIPMENT_NOT_OWNED ·
+ * 404 USER_NOT_FOUND | ITEM_NOT_FOUND.
+ */
+export async function equipSlot(input: { slot: EquipSlot; itemId: string | null }): Promise<EquipAck> {
+  if (getApiMode() === "mock") {
+    if (!hasDemoViewer()) {
+      throw new ApiError("AUTH_REQUIRED", "(401) No session at this seat — sign in first.", 401);
+    }
+    return mockPersona.equip(input.slot, input.itemId);
+  }
+  const ack = await apiFetch<EquipAck>("/api/me/equip", { method: "POST", json: input });
+  return { spec: ack.spec };
+}
+
+/**
+ * PUT /api/me/profile { nickname } — 1..18 chars in, the shared sanitizer is
+ * the truth out. Errors (ApiError): 400 BAD_REQUEST · 401 AUTH_REQUIRED ·
+ * 403 BANNED · 404 USER_NOT_FOUND · 422 NICKNAME_REJECTED.
+ */
+export async function updateProfile(input: { nickname: string }): Promise<ProfileAck> {
+  if (getApiMode() === "mock") {
+    if (!hasDemoViewer()) {
+      throw new ApiError("AUTH_REQUIRED", "(401) No session at this seat — sign in first.", 401);
+    }
+    return mockPersona.updateProfile(input.nickname);
+  }
+  const ack = await apiFetch<ProfileAck>("/api/me/profile", { method: "PUT", json: input });
+  return { nickname: ack.nickname };
 }

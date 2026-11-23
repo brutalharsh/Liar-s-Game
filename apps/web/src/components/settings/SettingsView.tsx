@@ -1,173 +1,189 @@
 "use client";
 
-import { useState } from "react";
-import { Panel, SectionTitle } from "@/components/ui/Panel";
-import { Button } from "@/components/ui/Button";
-import { Switch } from "@/components/ui/Switch";
+import { useEffect, useRef } from "react";
+import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 import {
-  useSettingsStore,
-  VOICE_THEMES,
-  voicePreset,
-  type VoiceThemeId,
-} from "@/store/settings";
-import { useToasts } from "@/store/ui";
+  CatalogIcon,
+  InfoIcon,
+  JoinIcon,
+  SoundIcon,
+  ThemeIcon,
+  UserIcon,
+} from "@/components/ui/icons";
+import { SettingsDataProvider } from "./settings-data";
+import { AvatarSection } from "./sections/AvatarSection";
+import { InventorySection } from "./sections/InventorySection";
+import { AppearanceSection } from "./sections/AppearanceSection";
+import { SoundSection } from "./sections/SoundSection";
+import { AccountSection } from "./sections/AccountSection";
+import { AboutSection } from "./sections/AboutSection";
 
 /**
- * Settings (STR/02 v1): voice theme + TTS preview ("Two Aces. Trust me."),
- * sfx volume, captions, reduced motion, emote mute-all.
+ * ============================================================================
+ * SETTINGS DASHBOARD (T4) — sidebar shell + URL-synced sections
+ * ============================================================================
+ * Desktop: a sticky sidebar of sections beside a single content pane; mobile:
+ * the same nav as a horizontal segmented rail under the page header. The
+ * active section rides the URL (?section=inventory) so deep links and the
+ * back button work; section switches move focus to the pane (never on first
+ * mount). One h1 for the page, one h2 per section — the pane is a labelled
+ * landmark. Every functional control from the W1 settings page survives,
+ * reorganized into Avatar · Inventory · Appearance · Sound · Account · About.
+ * ============================================================================
  */
-export function SettingsView() {
-  const settings = useSettingsStore();
-  const push = useToasts();
-  const [speaking, setSpeaking] = useState(false);
 
-  const testVoice = () => {
-    if (typeof window === "undefined" || !window.speechSynthesis) {
-      push({ title: "Speech synthesis not available here", tone: "bad" });
-      return;
-    }
-    const preset = voicePreset(settings.voiceTheme);
-    const utter = new SpeechSynthesisUtterance("Two Aces. Trust me.");
-    utter.pitch = preset.pitch;
-    utter.rate = preset.rate;
-    utter.onend = () => setSpeaking(false);
-    window.speechSynthesis.cancel();
-    window.speechSynthesis.speak(utter);
-    setSpeaking(true);
-    push({ title: `Testing ${preset.label} voice`, tone: "info" });
+const SECTIONS = [
+  { id: "avatar", label: "Avatar", icon: UserIcon },
+  { id: "inventory", label: "Inventory", icon: CatalogIcon },
+  { id: "appearance", label: "Appearance", icon: ThemeIcon },
+  { id: "sound", label: "Sound", icon: SoundIcon },
+  { id: "account", label: "Account", icon: JoinIcon },
+  { id: "about", label: "About", icon: InfoIcon },
+] as const;
+
+export type SettingsSectionId = (typeof SECTIONS)[number]["id"];
+
+const SECTION_IDS: readonly string[] = SECTIONS.map((s) => s.id);
+const DEFAULT_SECTION: SettingsSectionId = "avatar";
+
+function parseSection(raw: string | null): SettingsSectionId {
+  return SECTION_IDS.includes(raw ?? "") ? (raw as SettingsSectionId) : DEFAULT_SECTION;
+}
+
+function renderSection(id: SettingsSectionId): ReactNode {
+  switch (id) {
+    case "avatar":
+      return <AvatarSection />;
+    case "inventory":
+      return <InventorySection />;
+    case "appearance":
+      return <AppearanceSection />;
+    case "sound":
+      return <SoundSection />;
+    case "account":
+      return <AccountSection />;
+    case "about":
+      return <AboutSection />;
+  }
+}
+
+export function SettingsView() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const active = parseSection(searchParams.get("section"));
+
+  /** Deep-link hrefs: existing params (?apimode=, ?mock=) ride along; the
+   *  default section stays out of the URL so /settings alone is canonical. */
+  const sectionHref = (id: SettingsSectionId): string => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (id === DEFAULT_SECTION) params.delete("section");
+    else params.set("section", id);
+    const query = params.toString();
+    return `${pathname}${query ? `?${query}` : ""}`;
   };
 
+  // Focus lands on the pane when the section CHANGES (never on first mount,
+  // never on a reload with a deep link) — keyboard users follow the switch.
+  const paneRef = useRef<HTMLElement | null>(null);
+  const mountedRef = useRef(false);
+  useEffect(() => {
+    if (!mountedRef.current) {
+      mountedRef.current = true;
+      return;
+    }
+    paneRef.current?.focus();
+  }, [active]);
+
+  const activeLabel = SECTIONS.find((s) => s.id === active)?.label ?? "Avatar";
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-8 py-8">
-      <section className="text-center">
-        <h1 className="font-display text-4xl text-ivory md:text-5xl">Settings</h1>
-        <p className="mt-2 font-body text-sm text-ink-dim">Tune the table to your taste.</p>
-      </section>
-
-      {/* voice theme */}
-      <Panel className="p-5">
-        <SectionTitle kicker="spoken lines">Voice theme</SectionTitle>
-        <div className="grid grid-cols-2 gap-2 md:grid-cols-4" role="radiogroup" aria-label="Voice theme">
-          {VOICE_THEMES.map((theme) => {
-            const active = settings.voiceTheme === theme.id;
-            return (
-              <button
-                key={theme.id}
-                role="radio"
-                aria-checked={active}
-                onClick={() => settings.setVoiceTheme(theme.id)}
-                className={`flex min-h-20 flex-col items-start gap-1 rounded-card border-2 p-3 text-left ${
-                  active ? "border-brass bg-brass/10" : "border-wood-mid bg-wood-deep/50 hover:border-brass"
-                }`}
-              >
-                <span className="font-display text-base text-ivory">{theme.label}</span>
-                <span className="font-body text-[10px] text-ink-dim">{theme.desc}</span>
-                <span className="font-body text-[9px] text-lamp">
-                  pitch {theme.pitch} · rate {theme.rate}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-4 flex items-center justify-between gap-3">
-          <p className="font-body text-xs text-ink-dim">
-            Preview: “Two Aces. Trust me.” — claims, LIAR calls and kill stings all use this voice.
+    <SettingsDataProvider>
+      <div className="flex flex-col gap-6 py-8">
+        <section className="text-center">
+          <h1 className="font-display text-4xl text-ivory md:text-5xl">Settings</h1>
+          <p className="mt-2 font-body text-sm text-ink-dim">
+            Your look, your racks, your noise floor — everything in one drawer.
           </p>
-          <Button variant="outline" onClick={testVoice}>
-            {speaking ? "▮▮ SPEAKING…" : "🔈 TEST VOICE"}
-          </Button>
-        </div>
-        {settings.captions && speaking && (
-          <p className="mt-2 rounded-btn border-l-4 border-lamp bg-lamp/10 px-3 py-1 font-body text-sm italic text-lamp">
-            “Two Aces. Trust me.”
+          <p className="mt-3">
+            <Link
+              href="/profile"
+              className="inline-flex min-h-12 items-center gap-2 rounded-btn border-2 border-ink-dim/70 px-4 font-body text-xs tracking-wide text-ink-dim hover:border-brass hover:text-brass"
+            >
+              ← BACK TO PROFILE
+            </Link>
           </p>
-        )}
-        <p className="mt-2 font-body text-[10px] text-ink-dim">
-          Browser SpeechSynthesis, tuned per theme. TTS is client-local; audio never crosses the
-          wire, captions always available.
-        </p>
-      </Panel>
+        </section>
 
-      {/* sfx volume */}
-      <Panel className="p-5">
-        <SectionTitle kicker="the juice">Sound effects volume</SectionTitle>
-        <div className="flex items-center gap-3">
-          <span aria-hidden>🔇</span>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={settings.sfxVolume}
-            onChange={(e) => settings.setSfxVolume(Number(e.target.value))}
-            aria-label="Sound effects volume"
-            className="h-12 w-full accent-brass"
-          />
-          <span aria-hidden>🔊</span>
-          <span className="w-10 text-right font-display text-lg text-brass">{settings.sfxVolume}</span>
-        </div>
-        <p className="mt-1 font-body text-[10px] text-ink-dim">
-          Card flicks, cylinder clicks, the bang, the eerie silence after a blank — full SFX
-          arrive with the motion pass; the volume you set now carries over.
-        </p>
-      </Panel>
+        {/* mobile: segmented rail under the header (48px targets, scroll-x) */}
+        <nav aria-label="Settings sections" className="lg:hidden">
+          <ul className="flex snap-x gap-2 overflow-x-auto pb-1">
+            {SECTIONS.map((s) => {
+              const selected = s.id === active;
+              return (
+                <li key={s.id} className="shrink-0 snap-start">
+                  <Link
+                    href={sectionHref(s.id)}
+                    aria-current={selected ? "page" : undefined}
+                    className={`flex min-h-12 items-center gap-2 rounded-btn border-2 px-3 font-display text-sm tracking-wide ${
+                      selected
+                        ? "border-brass bg-brass/15 text-brass"
+                        : "border-wood-mid/70 bg-wood/50 text-ink-dim hover:text-ivory"
+                    }`}
+                  >
+                    <span aria-hidden className="inline-flex items-center">
+                      <s.icon />
+                    </span>
+                    {s.label}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
 
-      {/* toggles */}
-      <Panel className="flex flex-col gap-4 p-5">
-        <SectionTitle kicker="comfort">Table talk & motion</SectionTitle>
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+          {/* desktop: sticky sidebar */}
+          <nav aria-label="Settings sections" className="hidden lg:block lg:w-56 lg:shrink-0">
+            <ul className="sticky top-24 flex flex-col gap-1">
+              {SECTIONS.map((s) => {
+                const selected = s.id === active;
+                return (
+                  <li key={s.id}>
+                    <Link
+                      href={sectionHref(s.id)}
+                      aria-current={selected ? "page" : undefined}
+                      className={`flex min-h-12 items-center gap-3 rounded-btn border-2 px-3 font-display text-sm tracking-wide ${
+                        selected
+                          ? "border-brass bg-brass/15 text-brass"
+                          : "border-transparent text-ink-dim hover:border-wood-mid hover:text-ivory"
+                      }`}
+                    >
+                      <span aria-hidden className="inline-flex items-center">
+                        <s.icon />
+                      </span>
+                      {s.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-display text-base text-ivory">Captions</p>
-            <p className="font-body text-xs text-ink-dim">Text of every spoken line, always available.</p>
+          {/* content pane — one labelled landmark per active section */}
+          <div
+            ref={paneRef as React.RefObject<HTMLDivElement>}
+            id="settings-pane"
+            tabIndex={-1}
+            role="region"
+            aria-label={`${activeLabel} settings`}
+            className="min-w-0 flex-1 outline-none"
+          >
+            {renderSection(active)}
           </div>
-          <Switch
-            id="captions"
-            checked={settings.captions}
-            onChange={settings.setCaptions}
-            label="Captions"
-          />
         </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-display text-base text-ivory">Reduced motion</p>
-            <p className="font-body text-xs text-ink-dim">
-              Screen shake becomes a vignette flash, cards crossfade, confetti becomes candlelight.
-              Overrides the system preference when on.
-            </p>
-          </div>
-          <Switch
-            id="reduced-motion"
-            checked={settings.reducedMotion}
-            onChange={settings.setReducedMotion}
-            label="Reduced motion"
-          />
-        </div>
-
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-display text-base text-ivory">Mute all emotes</p>
-            <p className="font-body text-xs text-ink-dim">
-              Silence every bubble, yours and theirs — it IS the table talk, so use sparingly.
-            </p>
-          </div>
-          <Switch
-            id="emote-mute"
-            checked={settings.emoteMuted}
-            onChange={settings.setEmoteMuted}
-            label="Mute all emotes"
-          />
-        </div>
-      </Panel>
-
-      <Panel tone="deep" className="p-5 text-center">
-        <p className="font-display text-lg text-ivory">Liar's Game</p>
-        <p className="mt-1 font-body text-xs text-ink-dim">
-          v0.1.0 — mock-first build. Installable PWA: use your browser's "Add to Home Screen".
-          Your guest identity, wallet and settings live in this browser's storage until accounts
-          arrive.
-        </p>
-      </Panel>
-    </div>
+      </div>
+    </SettingsDataProvider>
   );
 }

@@ -35,6 +35,7 @@ import {
 } from "@/lib/api";
 import { mockFetch } from "./api";
 import { hasDemoViewer } from "./admin-fixtures";
+import { viewerNicknameSnapshot, viewerSpecSnapshot } from "./persona";
 import { seededRng, randInt } from "./rng";
 import type { AvatarAnimal, ThemeId } from "@/lib/wire";
 
@@ -265,6 +266,10 @@ function viewerProfile(atMax: boolean): ProfileResponse {
   const progress = levelProgressFromXp(xp);
   const rng = seededRng("recent:u-me");
   const unlockedTitleCount = atMax ? 11 : 5;
+  // The viewer's identity is owned by the mock persona module (T4) — a
+  // rename or equip in settings shows up here on the next /api/me read.
+  const nickname = viewerNicknameSnapshot();
+  const avatarSpec: AdminAvatarSpec = { ...viewerSpecSnapshot() };
 
   // Last 10 completed matches, newest first — the first is a win so the demo
   // profile opens on a high note. Stats are one player's own line per record
@@ -293,7 +298,7 @@ function viewerProfile(atMax: boolean): ProfileResponse {
       },
       you: {
         seat: randInt(rng, 1, capacity),
-        nickname: "MAVERICK",
+        nickname,
         titleAtPlay: i < 4 ? "dead-eye" : "sharp-eye",
         stats: {
           kills,
@@ -315,10 +320,10 @@ function viewerProfile(atMax: boolean): ProfileResponse {
   return {
     user: {
       id: "u-me",
-      nickname: "MAVERICK",
+      nickname,
       name: "Maverick Doe",
       avatarUrl: null,
-      avatarSpec: { base: "fox", hat: "hat-stetson", shirt: "shirt-vest", frame: "frame-brass" },
+      avatarSpec,
       activeTitle: atMax ? "bar-legend" : "dead-eye",
       role: "user",
       xp,

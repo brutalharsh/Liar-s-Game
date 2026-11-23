@@ -29,6 +29,7 @@ import type {
   WalletLedgerEntry,
 } from "@/lib/api";
 import { SHOP_ITEMS, COIN_PACKS } from "./catalog";
+import { viewerNicknameSnapshot, viewerSpecSnapshot } from "./persona";
 import { mockFetch } from "./api";
 import { seededRng, randInt } from "./rng";
 import type { AvatarAnimal } from "@/lib/wire";
@@ -54,31 +55,33 @@ const CAST: readonly {
   id: string;
   nick: string;
   animal: AvatarAnimal;
+  /** Canonical base slug override; unset = the legacy animal rides as `base`. */
+  base?: string;
   provider: "discord" | "google";
   banned?: string;
   spec?: Partial<AdminUser["avatarSpec"]>;
 }[] = [
-  { id: "u-me", nick: "MAVERICK", animal: "fox", provider: "google", spec: { hat: "hat-stetson", shirt: "shirt-vest" } },
-  { id: "u-scubb", nick: "SCUBB", animal: "raccoon", provider: "discord", spec: { hat: "hat-bowler", glasses: "glasses-shades" } },
-  { id: "u-sue", nick: "SUE", animal: "owl", provider: "discord", spec: { glasses: "glasses-monocle", shirt: "shirt-stringtie" } },
-  { id: "u-toar", nick: "TOAR", animal: "wolf", provider: "google", spec: { beard: "beard-dock", shirt: "shirt-denim" } },
-  { id: "u-fox", nick: "FOX", animal: "fox", provider: "discord", spec: { hat: "hat-feather", hair: "hair-ginger" } },
-  { id: "u-bris", nick: "BRIS", animal: "bear", provider: "google", spec: { beard: "beard-longgrey", frame: "frame-brass" } },
-  { id: "u-migo", nick: "MIGO", animal: "deer", provider: "discord", spec: { hair: "hair-brunette", shirt: "shirt-cardsharp" } },
-  { id: "u-lblanc", nick: "LBLANC", animal: "gator", provider: "discord", spec: { hat: "hat-professor", glasses: "glasses-goggles" } },
-  { id: "u-rex", nick: "REX", animal: "boar", provider: "google", spec: { beard: "beard-stubble", hair: "hair-mullet" } },
-  { id: "u-mia", nick: "MIA", animal: "cat", provider: "google", spec: { glasses: "glasses-shades", hair: "hair-silver" } },
-  { id: "u-otto", nick: "OTTO", animal: "rabbit", provider: "discord", spec: { hat: "hat-newsboy" } },
-  { id: "u-viper", nick: "VIPER", animal: "snake", provider: "discord", spec: { frame: "frame-vortex", voicePack: "voice-whisper" } },
-  { id: "u-haley", nick: "HALEY", animal: "eagle", provider: "google", spec: { hair: "hair-bleach", anim: "anim-sway" } },
-  { id: "u-juno", nick: "JUNO", animal: "cat", provider: "discord", spec: { hat: "hat-feather", shirt: "shirt-rouge" } },
-  { id: "u-pierre", nick: "PIERRE", animal: "boar", provider: "google", spec: { beard: "beard-incognito" } },
-  { id: "u-ada", nick: "ADA", animal: "owl", provider: "discord", spec: { glasses: "glasses-monocle", frame: "frame-ivory" } },
-  { id: "u-boone", nick: "BOONE", animal: "bear", provider: "google" },
-  { id: "u-raz", nick: "RAZ", animal: "fox", provider: "discord", spec: { hair: "hair-pompadour", voicePack: "voice-bard" } },
-  { id: "u-nia", nick: "NIA", animal: "deer", provider: "google", spec: { shirt: "shirt-hi-vis" } },
-  { id: "u-gus", nick: "GUS", animal: "wolf", provider: "discord", spec: { hat: "hat-stetson", beard: "beard-dock" } },
-  { id: "u-koi", nick: "KOI", animal: "gator", provider: "discord", banned: "Repeat table-tampering — caught reading the shoe.", spec: { frame: "frame-mahogany", anim: "anim-draw" } },
+  { id: "u-me", nick: "MAVERICK", animal: "fox", base: "human-male-thin", provider: "google", spec: { hat: "hat:cowboy", shirt: "shirt:vest" } },
+  { id: "u-scubb", nick: "SCUBB", animal: "raccoon", provider: "discord", spec: { hat: "hat:bowler", glasses: "glasses:round" } },
+  { id: "u-sue", nick: "SUE", animal: "owl", provider: "discord", spec: { glasses: "glasses:monocle", shirt: "shirt:white" } },
+  { id: "u-toar", nick: "TOAR", animal: "wolf", provider: "google", spec: { beard: "beard:full-beard", shirt: "shirt:waistcoat" } },
+  { id: "u-fox", nick: "FOX", animal: "fox", provider: "discord", spec: { hat: "hat:fedora", hair: "hair:mohawk" } },
+  { id: "u-bris", nick: "BRIS", animal: "bear", provider: "google", spec: { beard: "beard:moustache", frame: "frame:brass" } },
+  { id: "u-migo", nick: "MIGO", animal: "deer", provider: "discord", spec: { hair: "hair:braids", shirt: "shirt:pinstripe" } },
+  { id: "u-lblanc", nick: "LBLANC", animal: "gator", provider: "discord", spec: { hat: "hat:sombrero", glasses: "glasses:aviators" } },
+  { id: "u-rex", nick: "REX", animal: "boar", provider: "google", spec: { beard: "beard:goatee", hair: "hair:man-bun" } },
+  { id: "u-mia", nick: "MIA", animal: "cat", base: "cat", provider: "google", spec: { glasses: "glasses:round", hair: "hair:afro" } },
+  { id: "u-otto", nick: "OTTO", animal: "rabbit", provider: "discord", spec: { hat: "hat:cap" } },
+  { id: "u-viper", nick: "VIPER", animal: "snake", provider: "discord", spec: { frame: "frame:neon", voicePack: "voicePack:villain" } },
+  { id: "u-haley", nick: "HALEY", animal: "eagle", provider: "google", spec: { hair: "hair:short", anim: "anim:idle-drunk" } },
+  { id: "u-juno", nick: "JUNO", animal: "cat", provider: "discord", spec: { hat: "hat:fedora", shirt: "shirt:red" } },
+  { id: "u-pierre", nick: "PIERRE", animal: "boar", provider: "google", spec: { beard: "beard:full-beard" } },
+  { id: "u-ada", nick: "ADA", animal: "owl", provider: "discord", spec: { glasses: "glasses:monocle", frame: "frame:prestige-gold" } },
+  { id: "u-boone", nick: "BOONE", animal: "bear", base: "human-female-gym", provider: "google", spec: { hat: "hat:sombrero" } },
+  { id: "u-raz", nick: "RAZ", animal: "fox", provider: "discord", spec: { hair: "hair:pompadour", voicePack: "voicePack:robot" } },
+  { id: "u-nia", nick: "NIA", animal: "deer", provider: "google", spec: { shirt: "shirt:poncho" } },
+  { id: "u-gus", nick: "GUS", animal: "wolf", provider: "discord", spec: { hat: "hat:cowboy", beard: "beard:full-beard" } },
+  { id: "u-koi", nick: "KOI", animal: "gator", provider: "discord", banned: "Repeat table-tampering — caught reading the shoe.", spec: { frame: "frame:wooden", anim: "anim:idle-whistler" } },
 ];
 
 const TITLES_POOL: readonly string[] = [
@@ -99,7 +102,7 @@ function buildUser(entry: (typeof CAST)[number], index: number): AdminUser {
     role: "user",
     banned: !!entry.banned,
     banReason: entry.banned,
-    avatarSpec: { base: entry.animal, ...(entry.spec ?? {}) },
+    avatarSpec: { base: entry.base ?? entry.animal, ...(entry.spec ?? {}) },
     activeTitle: rng() < 0.7 ? TITLES_POOL[Math.floor(rng() * TITLES_POOL.length)] ?? "Regular" : undefined,
     xp,
     nextLevelXp: Math.round(xp * 1.35) + 50, // display-only estimate — real curve is server-side (STR/04 §5) // TODO-sync-with-shared
@@ -136,7 +139,7 @@ function buildLedger(user: AdminUser): WalletLedgerEntry[] {
     push(1, "survived_round", `${matchId}:r${randInt(rng, 1, 6)}`);
     if (rng() < 0.4) {
       const item = SHOP_ITEMS[Math.floor(rng() * SHOP_ITEMS.length)];
-      push(-(item?.price ?? 100), "spend", item?.id ?? "hat-bowler");
+      push(-(item?.price ?? 100), "spend", item?.id ?? "hat:bowler");
     }
     if (rng() < 0.2) push(randInt(rng, 100, 1200), "purchase", ["starter", "popular", "big-bag", "whale"][Math.floor(rng() * 4)]!);
   }
@@ -176,7 +179,7 @@ const CATALOG: AdminCatalogItem[] = SHOP_ITEMS.map((item, i) => ({
   category: item.category,
   name: item.name,
   price: item.price,
-  tier: item.price === 0 ? "common" : item.price > 300 ? "epic" : "rare",
+  tier: item.tier ?? "common", // unmarked seed rows default to common server-side
   free: item.price === 0 && !item.levelReq,
   active: true,
   levelReq: item.levelReq,
@@ -209,10 +212,10 @@ function nickOf(userId: string): string {
 const AUDIT: AdminAuditEntry[] = [
   { _id: nextId("aud"), actor: "admin", action: "coins.adjust", targetType: "user", targetId: "u-sue", details: "+120 — tournament prize make-good", at: ts(30) },
   { _id: nextId("aud"), actor: "admin", action: "user.ban", targetType: "user", targetId: "u-koi", details: "Repeat table-tampering — caught reading the shoe.", at: ts(45) },
-  { _id: nextId("aud"), actor: "admin", action: "catalog.patch", targetType: "catalog_item", targetId: "theme-neon", details: "price 550 → 500", at: ts(64) },
-  { _id: nextId("aud"), actor: "admin", action: "catalog.create", targetType: "catalog_item", targetId: "voice-bard", details: "The Bard — 500 coins", at: ts(66) },
+  { _id: nextId("aud"), actor: "admin", action: "catalog.patch", targetType: "catalog_item", targetId: "theme:neon-district", details: "price 550 → 500", at: ts(64) },
+  { _id: nextId("aud"), actor: "admin", action: "catalog.create", targetType: "catalog_item", targetId: "voicePack:villain", details: "The Bard — 500 coins", at: ts(66) },
   { _id: nextId("aud"), actor: "admin", action: "pack.patch", targetType: "coin_pack", targetId: "popular", details: "priceMajor 99 (unchanged)", at: ts(78) },
-  { _id: nextId("aud"), actor: "admin", action: "upload.image", targetType: "catalog_item", targetId: "hat-stetson", details: "art uploaded — image server (id only, url derived)", at: ts(88) },
+  { _id: nextId("aud"), actor: "admin", action: "upload.image", targetType: "catalog_item", targetId: "hat:cowboy", details: "art uploaded — image server (id only, url derived)", at: ts(88) },
 ];
 
 function recordAudit(action: string, targetType: string, targetId: string, details: string): void {
@@ -259,12 +262,16 @@ export const mockAuth = {
 
 function viewerFrom(user: AdminUser | null): AuthMe | null {
   if (!user) return null;
+  // The demo viewer's identity follows the mock persona module (T4): renames
+  // and equips land in the header session the same moment /api/me reports
+  // them. Cast rows stay static.
+  const isViewer = user._id === "u-me";
   return {
     id: user._id,
     provider: user.provider,
     name: user.name,
-    nickname: user.nickname,
-    avatarSpec: user.avatarSpec,
+    nickname: isViewer ? viewerNicknameSnapshot() : user.nickname,
+    avatarSpec: isViewer ? { ...viewerSpecSnapshot() } : user.avatarSpec,
     level: user.level,
     coinBalance: user.coinBalance,
   };
