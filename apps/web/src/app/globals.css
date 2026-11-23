@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/* ============================================================================
+   DESIGN TOKENS — STR/05 §2 (single source of visual truth)
+   walnut wood · felt green · lamp amber · ivory · blood red · brass gold
+   Theme packs swap these CSS variables via [data-theme] (STR/05 §2) —
+   utilities reference the vars, so a swap re-skins everything.
+   No other file in apps/web may hardcode palette hex.
+   ============================================================================ */
+
+@theme {
+  /* fonts wired to next/font css variables (app/layout.tsx) */
+  --font-display: var(--font-smokum), "Georgia", serif;
+  --font-body: var(--font-special-elite), "Courier New", monospace;
+
+  /* palette */
+  --color-wood: #2a1a12;
+  --color-wood-mid: #3a2418;
+  --color-wood-deep: #190e09;
+  --color-felt: #1d3a2a;
+  --color-felt-deep: #142a1e;
+  --color-lamp: #e8a54b;
+  --color-lamp-soft: #b97f36;
+  --color-ivory: #f2e8d5;
+  --color-ink: #f2e8d5;
+  --color-ink-dim: #b3a68d;
+  --color-blood: #b03a2e;
+  --color-blood-bright: #d9574a;
+  --color-blood-deep: #5f1d17;
+  --color-brass: #d4af37;
+  --color-brass-deep: #8f7420;
+  --color-verdict: #3f9e63;
+  --color-verdict-deep: #2c6e46;
+
+  /* radii (cards 12px, buttons 10px — STR/05 §2) */
+  --radius-card: 12px;
+  --radius-btn: 10px;
+
+  /* shadows */
+  --shadow-spotlight: 0 0 24px 6px rgb(232 165 75 / 0.35);
+  --shadow-panel: 0 10px 30px rgb(0 0 0 / 0.45);
+
+  /* animations */
+  --animate-spot-pulse: spot-pulse 1.6s ease-in-out infinite;
+  --animate-shake: shake 380ms ease-in-out;
+}
+
+@keyframes spot-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 18px 4px rgb(232 165 75 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 30px 8px rgb(232 165 75 / 0.6);
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-6px);
+  }
+  50% {
+    transform: translateX(6px);
+  }
+  75% {
+    transform: translateX(-4px);
+  }
+}
+
+/* ── base ──────────────────────────────────────────────────────────────── */
+
+body {
+  background-color: var(--color-wood-deep);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  background-image:
+    radial-gradient(120% 70% at 50% -10%, rgb(232 165 75 / 0.13), transparent 60%),
+    radial-gradient(150% 100% at 50% 115%, rgb(29 58 42 / 0.35), transparent 55%);
+  background-attachment: fixed;
+}
+
+/* Table stage: felt under lamp light (rail + oval shells share it). */
+.stage-felt {
+  background:
+    radial-gradient(70% 55% at 50% 12%, rgb(232 165 75 / 0.1), transparent 70%),
+    radial-gradient(120% 90% at 50% 0%, var(--color-felt) 0%, var(--color-felt-deep) 78%);
+  box-shadow: inset 0 30px 60px rgb(0 0 0 / 0.35), inset 0 -20px 40px rgb(0 0 0 / 0.3);
+}
+
+/* Card back pattern (no image assets needed). */
+.card-back {
+  background-color: var(--color-felt-deep);
+  background-image: repeating-linear-gradient(
+      45deg,
+      rgb(212 175 55 / 0.12) 0 6px,
+      transparent 6px 12px
+    ),
+    repeating-linear-gradient(-45deg, rgb(212 175 55 / 0.12) 0 6px, transparent 6px 12px);
+}
+
+/* Noise texture overlay — 4% opacity per STR/05 §2. */
+.noise-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Safe-area utilities (research/09 §7) */
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 8px);
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+}
+.px-safe {
+  padding-left: max(env(safe-area-inset-left), 16px);
+  padding-right: max(env(safe-area-inset-right), 16px);
+}
+
+/* Focus ring — always visible (STR/05 §7) */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* Scrollbars: keep the bar mood even in scroll containers */
+* {
+  scrollbar-color: var(--color-wood-mid) var(--color-wood-deep);
+}
+
+/* ── theme packs (STR/04 §4 registry; host picks, room renders it) ─────── */
+
+[data-theme="house"] {
+  --color-felt: #2c4a33;
+  --color-felt-deep: #20371f;
+  --color-wood: #3b2a1a;
+  --color-lamp: #d9b36a;
+}
+
+[data-theme="neon"] {
+  --color-felt: #191b33;
+  --color-felt-deep: #101226;
+  --color-wood: #120f26;
+  --color-wood-mid: #221c44;
+  --color-wood-deep: #0b0920;
+  --color-lamp: #4fd8e8;
+  --color-lamp-soft: #2ba7c9;
+  --color-brass: #ff4fd8;
+  --color-brass-deep: #b23a96;
+}
+
+[data-theme="royale"] {
+  --color-felt: #0f3325;
+  --color-felt-deep: #082018;
+  --color-wood: #1a1214;
+  --color-wood-mid: #2c1e24;
+  --color-lamp: #ffd700;
+  --color-brass: #ffd700;
+}
+
+[data-theme="speakeasy"] {
+  --color-felt: #2b2118;
+  --color-felt-deep: #1c1410;
+  --color-wood: #1c1410;
+  --color-wood-mid: #33261c;
+  --color-lamp: #c9a15f;
+  --color-brass: #c9a15f;
+}
+
+[data-theme="haunted"] {
+  --color-felt: #1a2420;
+  --color-felt-deep: #101816;
+  --color-wood: #141014;
+  --color-wood-mid: #241c24;
+  --color-lamp: #7fd18a;
+  --color-lamp-soft: #4f9e58;
+  --color-brass: #9fb8a6;
+  --color-brass-deep: #5c7263;
+}
+
+[data-theme="orbital"] {
+  --color-felt: #101c2c;
+  --color-felt-deep: #0a1420;
+  --color-wood: #0c1018;
+  --color-wood-mid: #1a2436;
+  --color-wood-deep: #060a12;
+  --color-lamp: #6ee7ff;
+  --color-lamp-soft: #3fb4c9;
+  --color-brass: #6ee7ff;
+  --color-brass-deep: #23789c;
+}
+
+[data-theme="kabuki"] {
+  --color-felt: #33141c;
+  --color-felt-deep: #200d13;
+  --color-wood: #1c1014;
+  --color-wood-mid: #3a1c24;
+  --color-lamp: #ff6b81;
+  --color-lamp-soft: #c94b60;
+  --color-brass: #ffb84f;
+}
+
+/* ── reduced motion: system pref OR manual (mirrors on <html>) ─────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html[data-reduced-motion="on"] *,
+html[data-reduced-motion="on"] *::before,
+html[data-reduced-motion="on"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}

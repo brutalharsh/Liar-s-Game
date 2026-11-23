@@ -1,0 +1,156 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import { Panel, SectionTitle } from "@/components/ui/Panel";
+import { RULE_SECTIONS, DECK_TABLE } from "@/lib/mock/rules-content";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
+
+const LOOP = [
+  { icon: "🃏", label: "DEAL", detail: "table card drawn · 5 cards each" },
+  { icon: "🤞", label: "THROW", detail: "claim they match the table card" },
+  { icon: "🗣️", label: "CALL", detail: "cry LIAR on the previous play" },
+  { icon: "🔍", label: "REVEAL", detail: "the accused flips, one by one" },
+  { icon: "🔫", label: "SHOT", detail: "loser pulls the trigger" },
+  { icon: "🏆", label: "SURVIVE… OR WIN", detail: "last one standing takes the table" },
+] as const;
+
+/**
+ * The numbered game-loop diagram (pure CSS + props-driven highlight — no
+ * images). The spotlight cycles 1→6 forever; reduced motion parks it on
+ * step 1 with every step lit.
+ */
+function LoopDiagram() {
+  const reduced = usePrefersReducedMotion();
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    if (reduced) return;
+    const t = setInterval(() => setActive((a) => (a + 1) % LOOP.length), 1500);
+    return () => clearInterval(t);
+  }, [reduced]);
+
+  return (
+    <Panel tone="felt" className="p-4 md:p-6">
+      <p className="mb-3 text-center font-body text-xs uppercase tracking-[0.3em] text-lamp">
+        the round loop
+      </p>
+      <ol className="flex flex-col items-stretch justify-center gap-2 md:flex-row md:items-center">
+        {LOOP.map((step, i) => {
+          const lit = reduced ? i === 0 : i === active;
+          return (
+            <li key={step.label} className="flex flex-col items-stretch md:flex-1 md:flex-row md:items-center">
+              <div className="flex items-center gap-3 md:flex-col md:gap-1">
+                <motion.span
+                  animate={{ scale: lit ? 1.06 : 1 }}
+                  transition={{ duration: reduced ? 0 : 0.3 }}
+                  className={`flex h-14 w-14 items-center justify-center rounded-full border-2 font-display text-lg ${
+                    lit
+                      ? "border-brass bg-brass/20 text-brass"
+                      : "border-wood-mid bg-wood-deep/60 text-ink-dim"
+                  }`}
+                >
+                  <span aria-hidden className="text-2xl">
+                    {step.icon}
+                  </span>
+                </motion.span>
+                <div className="md:text-center">
+                  <p className={`font-display text-sm tracking-wide ${lit ? "text-brass" : "text-ivory"}`}>
+                    {i + 1}. {step.label}
+                  </p>
+                  <p className="font-body text-[10px] text-ink-dim">{step.detail}</p>
+                </div>
+              </div>
+              <span aria-hidden className="hidden rotate-90 text-brass md:ml-auto md:mt-1 md:rotate-0 md:justify-end">
+                {i === LOOP.length - 1 ? "↺" : "↓"}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="mt-3 text-center font-body text-[11px] text-ink-dim">
+        …and the wheel keeps spinning until one player is left standing.
+      </p>
+    </Panel>
+  );
+}
+
+export function HowToPlayView() {
+  return (
+    <div className="flex flex-col gap-10 py-8">
+      <section className="text-center">
+        <h1 className="font-display text-4xl text-ivory md:text-6xl">How to play</h1>
+        <p className="mx-auto mt-3 max-w-lg font-body text-sm text-ink-dim">
+          The full house rules, distilled from the table itself. Two minutes to learn — a lifetime
+          to perfect the innocent face.
+        </p>
+      </section>
+
+      <LoopDiagram />
+
+      <section className="flex flex-col gap-6">
+        {RULE_SECTIONS.map((rule) => (
+          <Panel key={rule.id} className="flex flex-col gap-3 p-5 md:flex-row md:gap-8 md:p-7">
+            <div className="flex min-w-32 items-start gap-4 md:flex-col">
+              <span className="font-display text-5xl text-brass/80 md:text-6xl">{rule.step}</span>
+              <span className="text-4xl md:mt-2 md:text-5xl" aria-hidden>
+                {rule.icon}
+              </span>
+            </div>
+            <div className="max-w-2xl">
+              <h2 className="font-display text-2xl text-ivory md:text-3xl">{rule.title}</h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                {rule.body.map((para, i) => (
+                  <li key={i} className="font-body text-sm leading-relaxed text-ink-dim">
+                    · {para}
+                  </li>
+                ))}
+              </ul>
+              {rule.callout && (
+                <p className="mt-3 rounded-btn border-l-4 border-brass bg-brass/10 px-4 py-2 font-body text-sm italic text-lamp">
+                  “{rule.callout}”
+                </p>
+              )}
+            </div>
+          </Panel>
+        ))}
+      </section>
+
+      <section>
+        <SectionTitle kicker="equipment">Deck scaling</SectionTitle>
+        <Panel className="p-5">
+          <table className="w-full text-left font-body text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-widest text-lamp">
+                <th className="py-2 pr-4">Players</th>
+                <th className="py-2 pr-4">Liar's deck</th>
+                <th className="py-2">Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              {DECK_TABLE.map((row) => (
+                <tr key={row.players} className="border-t border-wood-mid/40 text-ink-dim">
+                  <td className="py-2 pr-4 font-display text-brass">{row.players}</td>
+                  <td className="py-2 pr-4">{row.deck}</td>
+                  <td className="py-2 text-xs">{row.note}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+      </section>
+
+      <section className="text-center">
+        <p className="font-body text-sm text-ink-dim">Got it? Prove it at the table.</p>
+        <div className="mt-4 flex justify-center gap-3">
+          <a
+            href="/create"
+            className="flex min-h-12 items-center rounded-btn border-2 border-brass bg-brass px-6 font-display text-wood-deep"
+          >
+            CREATE A TABLE
+          </a>
+        </div>
+      </section>
+    </div>
+  );
+}

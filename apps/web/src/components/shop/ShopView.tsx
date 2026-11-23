@@ -1,0 +1,254 @@
+"use client";
+
+import { useState } from "react";
+import { Panel, SectionTitle } from "@/components/ui/Panel";
+import { Button } from "@/components/ui/Button";
+import { CoinBadge, PriceChip } from "@/components/ui/CoinBadge";
+import { Avatar } from "@/components/ui/Avatar";
+import { Sheet } from "@/components/ui/Sheet";
+import { Tabs } from "@/components/ui/Tabs";
+import { useEconomyStore } from "@/store/economy";
+import { useIdentityStore } from "@/store/identity";
+import { useToasts } from "@/store/ui";
+import {
+  SHOP_CATEGORIES,
+  SHOP_ITEMS,
+  FEATURED_ITEMS,
+  COIN_PACKS,
+  type ShopCategory,
+  type ShopItem,
+} from "@/lib/mock/catalog";
+import { createCoinPackOrder } from "@/lib/payments";
+import { formatInr, formatCoins } from "@/lib/format";
+
+function TryOnSheet({ item, open, onClose }: { item: ShopItem | null; open: boolean; onClose: () => void }) {
+  const buy = useEconomyStore((s) => s.buy);
+  const equip = useEconomyStore((s) => s.equip);
+  const unequip = useEconomyStore((s) => s.unequip);
+  const owned = useEconomyStore((s) => (item ? s.owned.includes(item.id) : false));
+  const equipped = useEconomyStore((s) => (item ? s.equipped[item.category] === item.id : false));
+  const coins = useEconomyStore((s) => s.coins);
+  const avatar = useIdentityStore((s) => s.avatar);
+  const push = useToasts();
+
+  if (!item) return null;
+
+  const previewAvatar =
+    item.category === "hat"
+      ? { ...avatar, hat: item.id }
+      : item.category === "glasses"
+        ? { ...avatar, glasses: item.id }
+        : item.category === "frame"
+          ? { ...avatar, frame: item.id }
+          : avatar;
+
+  return (
+    <Sheet open={open} onClose={onClose} title={`Try on — ${item.name}`}>
+      <div className="flex flex-col items-center gap-4">
+        <div className="flex items-center justify-center gap-6 rounded-card border-2 border-wood-mid bg-felt-deep/40 px-10 py-6">
+          <Avatar spec={avatar} size="xl" />
+          <span className="text-3xl text-lamp" aria-hidden>
+            →
+          </span>
+          <Avatar spec={previewAvatar} size="xl" />
+        </div>
+        <p className="text-center font-body text-sm text-ink-dim">{item.desc}</p>
+        <div className="flex items-center gap-2">
+          <PriceChip price={item.price} />
+          {item.levelReq && (
+            <span className="rounded-full bg-wood-deep px-2 py-0.5 font-body text-[10px] text-lamp">
+              LEVEL {item.levelReq} — EARNED ONLY
+            </span>
+          )}
+          <span className="font-body text-[11px] text-ink-dim">wallet: {formatCoins(coins)} 🪙</span>
+        </div>
+        <div className="flex w-full gap-3">
+          {equipped ? (
+            <Button variant="outline" className="flex-1" onClick={() => { unequip(item.category); push({ title: `${item.name} removed`, tone: "info" }); }}>
+              UNEQUIP
+            </Button>
+          ) : owned || item.price === 0 ? (
+            <Button variant="brass" className="flex-1" disabled={!!item.levelReq} onClick={() => { equip(item.category, item.id); push({ title: `${item.name} equipped`, tone: "good" }); }}>
+              {owned ? "EQUIP" : "CLAIM FREE"}
+            </Button>
+          ) : (
+            <Button
+              variant="brass"
+              className="flex-1"
+              onClick={() => {
+                if (buy(item.id, item.price)) push({ title: `${item.name} yours`, tone: "good" });
+              }}
+            >
+              BUY — 🪙 {item.price}
+            </Button>
+          )}
+        </div>
+      </div>
+    </Sheet>
+  );
+}
+
+export function ShopView() {
+  const [category, setCategory] = useState<ShopCategory>("hat");
+  const [tryOn, setTryOn] = useState<ShopItem | null>(null);
+  const [payPack, setPayPack] = useState<string | null>(null);
+  const [payResult, setPayResult] = useState<string | null>(null);
+  const owned = useEconomyStore((s) => s.owned);
+  const equipped = useEconomyStore((s) => s.equipped);
+  const coins = useEconomyStore((s) => s.coins);
+
+  const items = SHOP_ITEMS.filter((item) => item.category === category);
+
+  const buyPack = async (packId: string) => {
+    setPayPack(packId);
+    const outcome = await createCoinPackOrder({ packId });
+    setPayPack(null);
+    setPayResult(outcome.detail);
+  };
+
+  return (
+    <div className="flex flex-col gap-8 py-8">
+      <section className="text-center">
+        <h1 className="font-display text-4xl text-ivory md:text-5xl">The general store</h1>
+        <p className="mt-2 font-body text-sm text-ink-dim">
+          Cosmetics only. Coins can't buy luck, odds, XP — or a way out.
+        </p>
+        <div className="mt-3 flex justify-center">
+          <CoinBadge amount={coins} size="lg" />
+        </div>
+      </section>
+
+      {/* featured carousel */}
+      <section>
+        <SectionTitle kicker="featured">Tonight's window dressing</SectionTitle>
+        <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+          {FEATURED_ITEMS.map((item) => (
+            <Panel
+              key={item.id}
+              className="min-w-72 max-w-72 shrink-0 snap-center p-4 md:min-w-80 md:max-w-80"
+            >
+              <div
+                className="flex h-36 items-center justify-center rounded-card border border-wood-mid text-6xl"
+                style={{
+                  background:
+                    "radial-gradient(80% 100% at 50% 0%, color-mix(in srgb, var(--color-lamp) 10%, transparent), transparent)",
+                }}
+                aria-hidden
+              >
+                {item.overlay}
+              </div>
+              <p className="mt-3 font-display text-xl text-ivory">{item.name}</p>
+              <p className="font-body text-xs text-ink-dim">{item.desc}</p>
+              <div className="mt-3 flex items-center justify-between">
+                <PriceChip price={item.price} />
+                <Button variant="outline" size="sm" onClick={() => setTryOn(item)}>
+                  TRY ON
+                </Button>
+              </div>
+            </Panel>
+          ))}
+        </div>
+      </section>
+
+      {/* category tabs */}
+      <Tabs
+        tabs={SHOP_CATEGORIES.map((c) => ({ id: c.id, label: c.label, emoji: c.emoji }))}
+        active={category}
+        onChange={setCategory}
+        className="justify-center"
+      />
+
+      {/* item grid */}
+      <section>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+          {items.map((item) => {
+            const isOwned = owned.includes(item.id);
+            const isEquipped = equipped[item.category] === item.id;
+            const lockedByLevel = !!item.levelReq && !isOwned;
+            return (
+              <Panel key={item.id} className={`flex flex-col gap-2 p-3 ${isEquipped ? "border-brass" : ""}`}>
+                <div className="flex h-20 items-center justify-center rounded-btn bg-wood-deep text-4xl" aria-hidden>
+                  {item.overlay}
+                </div>
+                <p className="truncate font-display text-base text-ivory" title={item.name}>
+                  {item.name}
+                </p>
+                <div className="flex items-center justify-between gap-1">
+                  <PriceChip price={lockedByLevel ? 0 : item.price} />
+                  {isEquipped && <span className="font-body text-[10px] text-brass">ON YOU</span>}
+                </div>
+                <Button
+                  variant={isOwned ? "outline" : "brass"}
+                  size="sm"
+                  onClick={() => setTryOn(item)}
+                  className="text-xs"
+                >
+                  {lockedByLevel ? "LEVEL LOCK" : isOwned ? "STYLED" : item.price === 0 ? "FREE" : "TRY ON"}
+                </Button>
+              </Panel>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* coin packs */}
+      <section>
+        <SectionTitle kicker="top up">Coin packs</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          {COIN_PACKS.map((pack) => (
+            <Panel key={pack.id} className="relative flex flex-col items-center gap-1 p-4 text-center">
+              {pack.badge && (
+                <span className="absolute -top-3 rounded-full border-2 border-brass-deep bg-brass px-2 py-0.5 font-body text-[9px] tracking-widest text-wood-deep">
+                  {pack.badge}
+                </span>
+              )}
+              <p className="font-display text-2xl text-brass">{formatCoins(pack.coins + pack.bonus)}</p>
+              <p className="font-display text-lg text-ivory">{formatInr(pack.priceInr)}</p>
+              {pack.bonus > 0 && (
+                <p className="font-body text-[10px] text-verdict">+{formatCoins(pack.bonus)} bonus coins</p>
+              )}
+              <Button
+                variant="brass"
+                size="sm"
+                className="mt-2 w-full"
+                disabled={payPack !== null}
+                onClick={() => void buyPack(pack.id)}
+              >
+                {payPack === pack.id ? "CHECKING…" : "BUY"}
+              </Button>
+            </Panel>
+          ))}
+        </div>
+        <Sheet open={payResult !== null} onClose={() => setPayResult(null)} title="Payment gateway coming soon">
+          <div className="flex flex-col items-center gap-3 text-center">
+            <span className="text-5xl" aria-hidden>
+              🪙⏳
+            </span>
+            <p className="font-body text-sm text-ivory">{payResult}</p>
+            <p className="font-body text-[11px] text-ink-dim">
+              The buy button already calls <code className="text-brass">POST /api/payments/create-order</code>{" "}
+              with <code className="text-brass">{`{packId}`}</code> — the moment the provider
+              registers, packs go live with zero screen changes.
+            </p>
+            <Button variant="brass" onClick={() => setPayResult(null)}>
+              UNDERSTOOD
+            </Button>
+          </div>
+        </Sheet>
+        <p className="mt-3 text-center font-body text-[11px] text-ink-dim">
+          Coins are cosmetic-only and non-redeemable. No loot boxes, no odds, no XP for money —
+          ever.
+        </p>
+      </section>
+
+      <TryOnSheet item={tryOn} open={tryOn !== null} onClose={() => setTryOn(null)} />
+      <p className="text-center font-body text-[11px] text-ink-dim">
+        Curious what's equipped where? Check your{" "}
+        <a href="/profile" className="text-brass underline">
+          profile rack
+        </a>
+        . Purchases are final — support can adjust the ledger if the house breaks something.
+      </p>
+    </div>
+  );
+}

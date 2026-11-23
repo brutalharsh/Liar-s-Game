@@ -45,22 +45,21 @@
 | F1 | Foundations: root toolchain + `packages/shared` | root configs, `packages/shared` | ✅ done — 51/51 green; env-trio config follow-up in flight |
 | S-A1 | Server foundation: Express + Mongo models + **auth (Discord/Google JWT)** + **admin REST** + **hosted-payments integration** + **image-server module** + Socket.IO mount | `apps/server` | 🏃 running |
 | R1 | Rules engine: complete pure-TS Liar's Deck per STR/01 + 30+ vitest cases | `packages/rules-engine` | 🏃 running |
-| W1 | Web shell: Next 16.4 + all app screens mock-first, two-mode responsive per STR/05 | `apps/web` | 🏃 running |
+| W1 | Web shell: 15 routes mock-first + two-mode GameTableShell | `apps/web` | ✅ done — build green; orchestrator re-verified (build + privacy scan) |
+| W2 | Game table UI wiring + reveal/shot cinematics (motion absorbed) vs shared schemas; store vitest | `apps/web` game/table/motion/store | 🏃 running |
+| W-AUTH | Login gate (Discord/Google), `/admindashboard` UI, billing return + shop wiring | `apps/web` auth/admin/shop/api | 🏃 running |
 
 ## Next up (queue — dispatch as prerequisites land)
 
-1. **F1 follow-up (in flight)**: config loader → env-trio convention
-   (`.env.production` / `.env.local` / `.env`) + accept `PAYMENTS_PROVIDER=proxy`
-2. **S1 — Game rooms wave** (`apps/server`): RoomManager + event router wired to
-   `packages/rules-engine` + timers + reconnection — needs R1 ✓ + S-A1's mount
-3. **W-AUTH/Admin UI** (`apps/web`): login gate + OAuth buttons + full
-   `/admindashboard` screens consuming S-A1's REST — needs W1 ✓
-4. **W2 — Game table UI** (`apps/web/table`): wire socket events to store, hand/
-   pile/CHECK states, reveal + shot cinematics per STR/03/05 — needs W1 + S1
-5. **M1 — Motion pass**: cinematic timeline polish (STR/05 §4) — after W2
-6. **E1 — Economy services** (after S-A1): shop spend flow, XP awarding, titles
-   computation, match-record ingestion (STR/04/09)
-7. **W3 — Shop/profile/leaderboard wiring** to real APIs
+1. **S1 — Game rooms wave** (`apps/server`): RoomManager + event router wired to
+   `packages/rules-engine` + timers + reconnection — needs R1 (running) + S-A1's
+   io mount (running)
+2. **E1 — Economy services** (after S-A1): XP awarding, titles computation,
+   match-record ingestion at game end (STR/04/09)
+3. **W3 — Shop/profile/leaderboard wiring** to real APIs (after S-A1)
+4. **Integration pass**: web ↔ server smoke over real sockets (after S1), fixing
+   drift between W2/W-AUTH mock-first clients and the live APIs
+5. *(M1 motion pass absorbed into W2's mission)*
 
 ## Open items (owner, no rush)
 
@@ -88,6 +87,11 @@
 - Build wave 1 (F1, R1, W1) — dispatched 2026-11-23
 - F1 — ✅ completed same day; orchestrator re-verified (51/51 tests, tsc,
   eslint, zero secrets in packages, env gitignore checks)
-- F1 follow-up (config-loader env trio + provider switch) — sent 2026-11-23 eve
+- F1 follow-up (config-loader env trio + provider switch) — ✅ completed same
+  day (59/59 green), orchestrator re-verified
 - S-A1 (server foundation: auth + admin + payments + images) — dispatched
-  2026-11-23 evening; R1, W1 still running
+  2026-11-23 evening; R1 still running
+- W1 (web shell) — ✅ completed same day; orchestrator re-verified (build green,
+  15 routes, privacy + secrets scans clean)
+- W2 (table UI + cinematics) + W-AUTH (auth gate + admin UI + billing) —
+  dispatched 2026-11-23 evening

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Liar's Game placeholder favicon: felt + ivory card + blood diamond -->
+  <rect width="64" height="64" rx="10" fill="#1d3a2a"/>
+  <rect x="14" y="9" width="36" height="46" rx="4" fill="#d4af37"/>
+  <rect x="16" y="11" width="32" height="42" rx="3" fill="#f2e8d5"/>
+  <path d="M32 20 L42 32 L32 44 L22 32 Z" fill="#b03a2e"/>
+  <path d="M22 17 L25 21 L22 25 L19 21 Z" fill="#b03a2e"/>
+</svg>
