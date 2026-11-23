@@ -16,6 +16,14 @@
     "typecheck": "npm run typecheck --if-present --workspaces",
     "lint": "npm run lint --if-present --workspaces",
     "test": "npm run test --if-present --workspaces",
-    "verify": "npm run typecheck && npm run lint && npm test"
+    "verify": "npm run typecheck && npm run lint && npm test",
+    "format": "prettier --write \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\"",
+    "format:check": "prettier --check \"packages/*/src/**/*.ts\" \"packages/*/test/**/*.ts\""
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "eslint": "^9.18.0",
+    "prettier": "^3.4.0",
+    "typescript-eslint": "^8.21.0"
   }
 }
