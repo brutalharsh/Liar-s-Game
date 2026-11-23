@@ -22,7 +22,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover", // safe-area insets (research/09 §7)
-  themeColor: "#1d3a2a",
+  themeColor: "#0a0a0a",
 };
 
 export default function RootLayout({

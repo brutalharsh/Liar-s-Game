@@ -538,6 +538,45 @@ here receives the directive before any further work.
   clean system sans stack. Zero font downloads → the font-swap-bound LCP
   (U1 measured 3.2s mobile) is dead by construction. STR/05 §2 updated.
 
+## Owner directives (third round — the noir + avatars build, 2026-11-23)
+
+1. **Icons, not emojis** (emote-wheel CONTENT stays; all UI chrome → lucide)
+   — T1 running.
+2. **Re-theme: black / white / gray main + RED primary accent**, free
+   secondary (gold kept for coins/warmth only) — T2 running. Token NAMES
+   stay (compile-compat aliasing), VALUES remap; [data-theme] packs re-
+   authored as noir variants.
+3. **Real avatar engine** ("same to same" equip): layered SVG paper-doll —
+   bases human-{male|female}-{thin|gym} + dog/cat/horse upright species;
+   every catalog item renders faithfully ON the avatar; tap-to-equip
+   previews. New endpoints: PUT /api/me/profile (nickname) + POST
+   /api/me/equip (ownership-checked) — T3 running. emojiForSpec dies.
+4. **Settings → proper dashboard** (sidebar, sections: avatar editor with
+   live try-on, inventory grid with tap-to-equip, appearance, sound/
+   haptics, account) — **T4, wave 2** against T3's contract.
+5. **Admin dashboard → sidebar shell** (Users/Payments/Catalog/Packs/Audit
+   as sidebar nav, mosaic reflow, no tabs) — **T5, wave 2**.
+6. Standing rules unchanged: git-lockdown per agent, no browsers/MCP
+   anywhere, code gates per landing, orchestrator verifies + commits each
+   wave pathspec'd.
+
+### Noir + avatars wave 1 — T2 landed
+
+- **T2** ✅ noir re-theme: token VALUES remapped under their historical
+  names (compile-compat alias map in globals.css) — black/white/gray
+  surfaces (#0a0a0a–#1c1c1c, ivory/ink → #f5f5f5/#a3a3a3), brass* =
+  PRIMARY RED family #d92d20 (hover #e5484d, deep #a71d14) harmonized
+  with blood, lamp = toned gold SECONDARY (coins only), spotlight amber →
+  red hot-seat glow, all 8 [data-theme] packs re-authored noir variants,
+  palette literals migrated to color-mix tokens (muzzle flash, oval +
+  revolver shadows, text-shadow). Contrast: body ≥15:1; red-as-small-text
+  failed (3.9-4.1:1) → new --color-red-text #f2554a (5.4+) + the 2 owned
+  usages swapped. Gates: tsc · 63/63 · build (22 routes). Disposition of
+  its flags: brass small-text sweep (~25 non-owned files) + themes.ts
+  swatch sync + LandingView color edits → post-wave-1 integration pass
+  (LandingView held out of this commit — the icon agent owns it live);
+  icon.svg/PNG palette = owner verdict (noir logo pass).
+
 ## Fix wave (post-mega-wave, 2 agents, disjoint territories)
 
 - **FW-2** ✅ interaction layer — 11/11: Sheet focus management complete

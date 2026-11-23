@@ -206,7 +206,7 @@ export function ShotCinematic() {
             className="absolute inset-0"
             style={{
               background:
-                "radial-gradient(ellipse 380px 300px at 50% 44%, rgb(0 0 0/0) 0%, rgb(0 0 0/0.55) 60%, rgb(0 0 0/0.88) 100%)",
+                "radial-gradient(ellipse 380px 300px at 50% 44%, transparent 0%, color-mix(in srgb, var(--color-wood-deep) 55%, transparent) 60%, color-mix(in srgb, var(--color-wood-deep) 88%, transparent) 100%)",
             }}
             initial={{ opacity: 0 }}
             animate={{ opacity: beat === null ? 0 : 1 }}
@@ -294,7 +294,7 @@ export function ShotCinematic() {
                 className="absolute left-1/2 top-[62%] h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full"
                 style={{
                   background:
-                    "radial-gradient(circle, rgb(255 245 214/1) 0%, rgb(232 165 75/0.85) 35%, rgb(217 87 74/0.4) 60%, transparent 75%)",
+                    "radial-gradient(circle, var(--color-ivory) 0%, color-mix(in srgb, var(--color-brass) 85%, transparent) 35%, color-mix(in srgb, var(--color-blood-bright) 40%, transparent) 60%, transparent 75%)",
                 }}
                 initial={{ opacity: 1, scale: 0.4 }}
                 animate={{ opacity: [1, 1, 0], scale: [0.4, 1.7, 1.9] }}
@@ -354,7 +354,7 @@ export function ShotCinematic() {
               initial={{ opacity: 0, y: reduced ? 0 : 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: reduced ? 0 : 0.25 }}
-              className="absolute bottom-16 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-brass-deep bg-wood-deep/95 px-4 py-1 font-body text-xs text-brass"
+              className="absolute bottom-16 left-1/2 z-30 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-brass-deep bg-wood-deep/95 px-4 py-1 font-body text-xs text-red-text"
             >
               👻 the ghost lounge opens — emotes are yours while you spectate
             </motion.span>

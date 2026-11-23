@@ -67,7 +67,7 @@ export function DesktopTableLayout({
 
         <div className="stage-felt relative min-h-0 flex-1">
           {/* the oval felt */}
-          <div className="absolute left-1/2 top-1/2 h-[58%] w-[64%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[10px] border-wood bg-[radial-gradient(65%_65%_at_50%_45%,var(--color-felt),var(--color-felt-deep))] shadow-[inset_0_0_60px_rgb(0_0_0/0.4),0_30px_60px_rgb(0_0_0/0.5)]">
+          <div className="absolute left-1/2 top-1/2 h-[58%] w-[64%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border-[10px] border-wood bg-[radial-gradient(65%_65%_at_50%_45%,var(--color-felt),var(--color-felt-deep))] shadow-[inset_0_0_60px_color-mix(in_srgb,var(--color-wood-deep)_40%,transparent),0_30px_60px_color-mix(in_srgb,var(--color-wood-deep)_50%,transparent)]">
             <div className="absolute inset-2 rounded-[50%] border border-brass/15" aria-hidden />
           </div>
 

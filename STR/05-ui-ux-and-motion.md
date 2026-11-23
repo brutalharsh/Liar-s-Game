@@ -1,7 +1,7 @@
 # STR/05 — UI/UX & MOTION
 
 > Two designed modes, not one stretched layout. Source: research/09 (full wireframes
-> live there). Dark-bar mood on both.
+> live there). Monochrome black-red noir mood on both.
 
 ## 1. Two design modes
 
@@ -16,13 +16,30 @@
 
 ## 2. Tokens (Tailwind → CSS variables; theme packs swap vars)
 
-- Palette: walnut wood `#2a1a12`, felt green `#1d3a2a`, lamp amber `#e8a54b`,
-  ivory text `#f2e8d5`, blood red (danger/LIAR) `#b03a2e`, brass gold (coins/wins) `#d4af37`.
+- **Palette — monochrome noir** (owner directive 2026-11-23): black/gray
+  surfaces — page ground `#0a0a0a` (wood-deep), cards `#111111` (wood),
+  raised `#1c1c1c` (wood-mid), table felt `#141414/#101010` (felt/felt-deep);
+  near-white text `#f5f5f5` (ink/ivory, ≥15:1 on the blacks), neutral gray
+  `#a3a3a3` (ink-dim). **Primary accent = RED** `#d92d20` (brass), hover/live
+  `#e5484d` (brass-soft — same tone as blood-bright), pressed `#a71d14`
+  (brass-deep); small red text uses `#f2554a` (`--color-red-text`, ≥4.5:1 on
+  surfaces — the pure red lands 3.9–4.1:1 there). Danger "blood" reds
+  `#b91c1c/#e5484d/#7f1d1d` are the SAME family (hues 359–4°). **Secondary
+  accent = restrained gold** `#d4a94e` (lamp, soft `#ab8940`) — coins/count-up
+  money + a few warm highlights ONLY, never primary actions. Verdict green
+  is unchanged (colorblind-safe icon+text pairing, §7).
+- **Token names are historical aliases** (noir re-skin, 2026-11-23): `wood*`/
+  `felt*` = surface grays/blacks (were walnut/felt), `brass*` = PRIMARY RED
+  (was brass gold), `lamp*` = secondary gold, `blood*` = the danger half of
+  the red family. Names kept so every utility class keeps compiling — the
+  values are the truth. New tokens: `brass-soft` (hover/live red) and
+  `red-text` (small-text red tint).
 - Fonts (owner directive 2026-11-23): classic system stacks — display
   **Georgia** (Iowan Old Style → Times New Roman → serif; formerly Smokum),
   body **system sans** (-apple-system stack; formerly Special Elite). Zero
   font downloads — no font-swap CLS/LCP.
-- Radii: cards 12px, buttons 10px; shadows soft amber glow for spotlight; noise
+- Radii: cards 12px, buttons 10px; shadows black/gray only; the spotlight
+  glow is RED (active-turn "hot seat" tint — follows the pack); noise
   texture overlay 4% opacity.
 - Touch targets ≥48px; safe-area insets on mobile; focus rings visible.
 

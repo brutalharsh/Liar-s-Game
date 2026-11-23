@@ -2,7 +2,17 @@
 
 /* ============================================================================
    DESIGN TOKENS — STR/05 §2 (single source of visual truth)
-   walnut wood · felt green · lamp amber · ivory · blood red · brass gold
+   MONOCHROME NOIR (owner directive 2026-11-23): black/white/gray surfaces,
+   RED as the primary accent, restrained gold as the free secondary.
+   Token NAMES are historical aliases (kept so every utility class keeps
+   compiling — the names predate the noir re-skin, the values are truth):
+     wood*     = near-black surfaces      (was walnut browns)
+     felt*     = table-top dark grays     (was felt greens)
+     brass*    = PRIMARY RED accent       (was brass gold)
+     blood*    = danger red family — harmonized with brass (one red family)
+     lamp*     = SECONDARY restrained gold — coins/count-up money + a few
+                 warm highlights ONLY, never primary actions
+     ink/ivory = near-white text · ink-dim = neutral gray
    Theme packs swap these CSS variables via [data-theme] (STR/05 §2) —
    utilities reference the vars, so a swap re-skins everything.
    No other file in apps/web may hardcode palette hex.
@@ -15,25 +25,39 @@
   --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
 
-  /* palette */
-  --color-wood: #2a1a12;
-  --color-wood-mid: #3a2418;
-  --color-wood-deep: #190e09;
-  --color-felt: #1d3a2a;
-  --color-felt-deep: #142a1e;
-  --color-lamp: #e8a54b;
-  --color-lamp-soft: #b97f36;
-  --color-ivory: #f2e8d5;
-  --color-ink: #f2e8d5;
-  --color-ink-dim: #b3a68d;
-  --color-blood: #b03a2e;
-  --color-blood-bright: #d9574a;
-  --color-blood-deep: #5f1d17;
-  --color-brass: #d4af37;
-  --color-brass-deep: #8f7420;
-  /* blood-bright raised from #d9574a (U12 audit 2026-11-23): 4.5:1 on felt-deep
-     instead of 3.9:1 — used as text color on felt chips / seat labels. */
-  --color-blood-bright: #e56a59;
+  /* palette — noir remap 2026-11-23 (old → new):
+     wood       #2a1a12 → #111111   wood-mid   #3a2418 → #1c1c1c
+     wood-deep  #190e09 → #0a0a0a   felt       #1d3a2a → #141414
+     felt-deep  #142a1e → #101010    lamp       #e8a54b → #d4a94e
+     lamp-soft  #b97f36 → #ab8940    ivory      #f2e8d5 → #f5f5f5
+     ink        #f2e8d5 → #f5f5f5    ink-dim    #b3a68d → #a3a3a3
+     blood      #b03a2e → #b91c1c    blood-deep #5f1d17 → #7f1d1d
+     brass      #d4af37 → #d92d20    brass-deep #8f7420 → #a71d14
+     reds form ONE family (hues 359–4°): brass #d92d20 base, #e5484d hover/live,
+     #a71d14 pressed, blood joins the same family. */
+  --color-wood: #111111;
+  --color-wood-mid: #1c1c1c;
+  --color-wood-deep: #0a0a0a;
+  --color-felt: #141414;
+  --color-felt-deep: #101010;
+  --color-lamp: #d4a94e;
+  --color-lamp-soft: #ab8940;
+  --color-ivory: #f5f5f5;
+  --color-ink: #f5f5f5;
+  --color-ink-dim: #a3a3a3;
+  --color-blood: #b91c1c;
+  --color-blood-deep: #7f1d1d;
+  /* blood-bright = #e5484d in the noir remap: 4.86:1 on felt-deep #101010
+     (keeps the U12 2026-11-23 contract ≥4.5:1 — used as text on felt chips /
+     seat labels). Same tone as brass-soft (hover/live pair of the family). */
+  --color-blood-bright: #e5484d;
+  /* brass* = primary red (was brass gold). brass-soft: hover/live state. */
+  --color-brass: #d92d20;
+  --color-brass-deep: #a71d14;
+  --color-brass-soft: #e5484d;
+  /* red-text: tint for SMALL red text on the dark surfaces — the pure red
+     lands 3.9–4.1:1 there; #f2554a clears 4.5:1 on wood/felt tones. */
+  --color-red-text: #f2554a;
   --color-verdict: #3f9e63;
   --color-verdict-deep: #2c6e46;
 
@@ -41,9 +65,11 @@
   --radius-card: 12px;
   --radius-btn: 10px;
 
-  /* shadows */
-  --shadow-spotlight: 0 0 24px 6px rgb(232 165 75 / 0.35);
-  --shadow-panel: 0 10px 30px rgb(0 0 0 / 0.45);
+  /* shadows — black/gray only (noir law). spotlight = the red "hot seat"
+     glow (brass tint — live-state red per STR/05 §2); rides var() so theme
+     packs re-skin it. */
+  --shadow-spotlight: 0 0 24px 6px color-mix(in srgb, var(--color-brass) 30%, transparent);
+  --shadow-panel: 0 10px 30px rgb(0 0 0 / 0.5);
 
   /* animations */
   --animate-spot-pulse: spot-pulse 1.6s ease-in-out infinite;
@@ -53,10 +79,10 @@
 @keyframes spot-pulse {
   0%,
   100% {
-    box-shadow: 0 0 18px 4px rgb(232 165 75 / 0.35);
+    box-shadow: 0 0 18px 4px color-mix(in srgb, var(--color-brass) 28%, transparent);
   }
   50% {
-    box-shadow: 0 0 30px 8px rgb(232 165 75 / 0.6);
+    box-shadow: 0 0 30px 8px color-mix(in srgb, var(--color-brass) 55%, transparent);
   }
 }
 
@@ -83,28 +109,28 @@ body {
   color: var(--color-ink);
   font-family: var(--font-body);
   background-image:
-    radial-gradient(120% 70% at 50% -10%, rgb(232 165 75 / 0.13), transparent 60%),
-    radial-gradient(150% 100% at 50% 115%, rgb(29 58 42 / 0.35), transparent 55%);
+    radial-gradient(120% 70% at 50% -10%, color-mix(in srgb, var(--color-lamp) 8%, transparent), transparent 60%),
+    radial-gradient(150% 100% at 50% 115%, color-mix(in srgb, var(--color-felt) 35%, transparent), transparent 55%);
   background-attachment: fixed;
 }
 
-/* Table stage: felt under lamp light (rail + oval shells share it). */
+/* Table stage: bare bulb over dark felt (rail + oval shells share it). */
 .stage-felt {
   background:
-    radial-gradient(70% 55% at 50% 12%, rgb(232 165 75 / 0.1), transparent 70%),
+    radial-gradient(70% 55% at 50% 12%, color-mix(in srgb, var(--color-lamp) 6%, transparent), transparent 70%),
     radial-gradient(120% 90% at 50% 0%, var(--color-felt) 0%, var(--color-felt-deep) 78%);
   box-shadow: inset 0 30px 60px rgb(0 0 0 / 0.35), inset 0 -20px 40px rgb(0 0 0 / 0.3);
 }
 
-/* Card back pattern (no image assets needed). */
+/* Card back pattern (no image assets needed): faint red lattice on black. */
 .card-back {
   background-color: var(--color-felt-deep);
   background-image: repeating-linear-gradient(
       45deg,
-      rgb(212 175 55 / 0.12) 0 6px,
+      color-mix(in srgb, var(--color-brass) 14%, transparent) 0 6px,
       transparent 6px 12px
     ),
-    repeating-linear-gradient(-45deg, rgb(212 175 55 / 0.12) 0 6px, transparent 6px 12px);
+    repeating-linear-gradient(-45deg, color-mix(in srgb, var(--color-brass) 14%, transparent) 0 6px, transparent 6px 12px);
 }
 
 /* Noise texture overlay — 4% opacity per STR/05 §2. */
@@ -141,81 +167,119 @@ body {
 }
 
 /* ── theme packs (STR/04 §4 registry; host picks, room renders it) ─────── */
-/* Every pack overrides the full wood chain — inheriting saloon's wood-mid or
-   wood-deep next to a themed wood collapses borders/ground (U12 audit). */
+/* Noir variants (owner directive 2026-11-23): every pack keeps the app-wide
+   black/gray discipline and owns its full surface chain — identity comes
+   from accent hue + surface tint shifts only. The canonical noir values in
+   @theme render for any un-packed slug. wood-mid/wood-deep stay defined per
+   pack: inheriting the base chain next to a themed wood collapses
+   borders/ground (U12 audit 2026-11-23). */
 
-[data-theme="house"] {
-  --color-felt: #2c4a33;
-  --color-felt-deep: #20371f;
-  --color-wood: #3b2a1a;
-  --color-wood-mid: #4a3620;
-  --color-wood-deep: #291a0c;
-  --color-lamp: #d9b36a;
+/* Saloon — the house classic: warmest blacks of the set (tungsten-warm
+   grays), richest amber lamp. Primary red inherits the canonical family. */
+[data-theme="saloon"] {
+  --color-felt: #161412;
+  --color-felt-deep: #100f0d;
+  --color-wood: #131110;
+  --color-wood-mid: #201a15;
+  --color-wood-deep: #0b0908;
+  --color-lamp: #d9a646;
+  --color-lamp-soft: #a8843f;
 }
 
+/* House Table — "pure noir": fully neutral grays, muted gold under a shaded
+   lamp. Red inherits the canonical family. */
+[data-theme="house"] {
+  --color-felt: #151515;
+  --color-felt-deep: #0f0f0f;
+  --color-wood: #121212;
+  --color-wood-mid: #1f1f1f;
+  --color-wood-deep: #0b0b0b;
+  --color-lamp: #c0a46c;
+  --color-lamp-soft: #968253;
+}
+
+/* Neon District — indigo-leaning blacks; magenta primary + cyan secondary. */
 [data-theme="neon"] {
-  --color-felt: #191b33;
-  --color-felt-deep: #101226;
-  --color-wood: #120f26;
-  --color-wood-mid: #221c44;
-  --color-wood-deep: #0b0920;
+  --color-felt: #11121c;
+  --color-felt-deep: #0b0c13;
+  --color-wood: #101019;
+  --color-wood-mid: #1e1e2e;
+  --color-wood-deep: #080810;
   --color-lamp: #4fd8e8;
   --color-lamp-soft: #2ba7c9;
   --color-brass: #ff4fd8;
   --color-brass-deep: #b23a96;
+  --color-brass-soft: #ff6bde;
+  --color-red-text: #ff7feb;
 }
 
+/* Casino Royale — crimson-leaning blacks, casino-gold secondary. */
 [data-theme="royale"] {
-  --color-felt: #0f3325;
-  --color-felt-deep: #082018;
-  --color-wood: #1a1214;
-  --color-wood-mid: #2c1e24;
-  --color-wood-deep: #0e0a0b;
-  --color-lamp: #ffd700;
-  --color-brass: #ffd700;
+  --color-felt: #1a0d12;
+  --color-felt-deep: #12090c;
+  --color-wood: #12090b;
+  --color-wood-mid: #241119;
+  --color-wood-deep: #080406;
+  --color-lamp: #d4a94e;
+  --color-brass: #c12233;
+  --color-brass-deep: #841424;
+  --color-red-text: #ff7f8f;
 }
 
+/* Jazz Speakeasy — sepia-warm blacks, one dim tungsten bulb. */
 [data-theme="speakeasy"] {
-  --color-felt: #2b2118;
-  --color-felt-deep: #1c1410;
-  --color-wood: #1c1410;
-  --color-wood-mid: #33261c;
-  --color-lamp: #c9a15f;
-  --color-brass: #c9a15f;
+  --color-felt: #171411;
+  --color-felt-deep: #100e0b;
+  --color-wood: #131110;
+  --color-wood-mid: #241d15;
+  --color-wood-deep: #0b0a08;
+  --color-lamp: #b8944c;
+  --color-lamp-soft: #8f7136;
 }
 
+/* Haunted Inn — cold green-tinged blacks, pale wick-flame accents. */
 [data-theme="haunted"] {
-  --color-felt: #1a2420;
-  --color-felt-deep: #101816;
-  --color-wood: #141014;
-  --color-wood-mid: #241c24;
+  --color-felt: #121815;
+  --color-felt-deep: #0c110e;
+  --color-wood: #0e1210;
+  --color-wood-mid: #1b231d;
+  --color-wood-deep: #080a09;
   --color-lamp: #7fd18a;
   --color-lamp-soft: #4f9e58;
   --color-brass: #9fb8a6;
   --color-brass-deep: #5c7263;
+  --color-brass-soft: #b3c9b8;
+  --color-red-text: #b3c9b8;
 }
 
+/* Orbital Cantina — iron blacks, cold cyan accents. */
 [data-theme="orbital"] {
-  --color-felt: #101c2c;
-  --color-felt-deep: #0a1420;
-  --color-wood: #0c1018;
-  --color-wood-mid: #1a2436;
-  --color-wood-deep: #060a12;
+  --color-felt: #0e1219;
+  --color-felt-deep: #090c11;
+  --color-wood: #0b0e14;
+  --color-wood-mid: #171d2a;
+  --color-wood-deep: #05070a;
   --color-lamp: #6ee7ff;
   --color-lamp-soft: #3fb4c9;
   --color-brass: #6ee7ff;
   --color-brass-deep: #23789c;
+  --color-brass-soft: #8fdcff;
+  --color-red-text: #8fdcff;
 }
 
+/* Kabuki Alley — red-blacks; vermilion primary + white-wave secondary. */
 [data-theme="kabuki"] {
-  --color-felt: #33141c;
-  --color-felt-deep: #200d13;
-  --color-wood: #1c1014;
-  --color-wood-mid: #3a1c24;
-  --color-wood-deep: #160b0f;
-  --color-lamp: #ff6b81;
+  --color-felt: #1b0e11;
+  --color-felt-deep: #13090b;
+  --color-wood: #13090b;
+  --color-wood-mid: #261318;
+  --color-wood-deep: #090506;
+  --color-lamp: #f2e7e0;
   --color-lamp-soft: #c94b60;
-  --color-brass: #ffb84f;
+  --color-brass: #df3c1f;
+  --color-brass-deep: #a5260f;
+  --color-brass-soft: #f2554a;
+  --color-red-text: #f2554a;
 }
 
 /* ── reduced motion: system pref OR manual (mirrors on <html>) ─────────── */
